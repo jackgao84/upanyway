@@ -1,0 +1,459 @@
+/* The Trail Map: one big illustrated mountain (canvas) with DOM markers and words on top. */
+
+.trailmap .layout__body {
+  max-width: calc(980px + 2 * var(--gutter));
+  gap: 12px;
+}
+.trailmap__toggle {
+  width: min(320px, 100%);
+}
+.trailmap__intro {
+  margin: 0;
+  color: var(--ink-soft);
+  font-weight: 750;
+  text-align: center;
+}
+.trailmap__frame {
+  position: relative;
+  flex: 1 0 auto;
+  width: 100%;
+  /* Tall enough that every marker has room around it; it fills the screen when there is more. */
+  height: max(820px, calc(var(--vh, 1vh) * 100 - 250px));
+  height: max(820px, calc(100dvh - 250px));
+  overflow: hidden;
+  border-radius: var(--r-xl);
+  background: #cfe7f3;
+  box-shadow:
+    0 4px 0 var(--edge),
+    0 18px 30px -18px rgba(110, 62, 34, 0.45),
+    inset 0 0 0 4px var(--white);
+}
+.trailmap__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.trailmap__layer {
+  position: absolute;
+  inset: 0;
+}
+
+/* Pitch markers */
+.trail-pin {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.trail-pin__disc {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--zc, var(--coral));
+  color: var(--white);
+  font-size: 1.25rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow:
+    0 3px 0 var(--zd, var(--coral-deep)),
+    0 0 0 3px var(--white),
+    0 8px 14px -6px rgba(60, 30, 20, 0.5);
+  transition: transform var(--t-fast) var(--ease-out);
+}
+.trail-pin.is-pressed .trail-pin__disc {
+  transform: translateY(2px) scale(0.94);
+}
+.trail-pin[data-zone='meadow'] {
+  --zc: #6fae55;
+  --zd: #4f8a3a;
+}
+.trail-pin[data-zone='hollow'] {
+  --zc: #5d6bb0;
+  --zd: #424e8c;
+}
+.trail-pin[data-zone='crumble'] {
+  --zc: #d0804b;
+  --zd: #a55f31;
+}
+.trail-pin[data-zone='ridge'] {
+  --zc: #4f97ad;
+  --zd: #34768b;
+}
+.trail-pin[data-zone='cloud'] {
+  --zc: #9583c8;
+  --zd: #7462a8;
+}
+.trail-pin[data-zone='summit'] {
+  --zc: #ee8a5c;
+  --zd: #c9693e;
+}
+
+/* Open: a warm glow that breathes. */
+.trail-pin.is-open::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 226, 130, 0.85) 0%, rgba(255, 226, 130, 0.35) 55%, rgba(255, 226, 130, 0) 72%);
+  animation: trail-glow 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.trail-pin.is-open .trail-pin__disc {
+  box-shadow:
+    0 3px 0 var(--zd),
+    0 0 0 3px #ffe9a6,
+    0 0 16px 4px rgba(255, 214, 110, 0.75);
+}
+@keyframes trail-glow {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+}
+
+/* Sent: a little flag on the marker. */
+.trail-pin__flag {
+  position: absolute;
+  top: -4px;
+  left: 33px;
+  width: 3px;
+  height: 26px;
+  border-radius: 2px;
+  background: #6c5048;
+  pointer-events: none;
+}
+.trail-pin__flag::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 15px solid var(--sun);
+  filter: drop-shadow(0 1px 0 var(--sun-deep));
+  transform-origin: left center;
+  animation: trail-flag 2.8s ease-in-out infinite;
+}
+@keyframes trail-flag {
+  0%,
+  100% {
+    transform: skewY(0deg) scaleX(1);
+  }
+  50% {
+    transform: skewY(-6deg) scaleX(0.9);
+  }
+}
+
+/* Hidden: a soft fog puff. */
+.trail-pin.is-hidden .trail-pin__disc {
+  background: rgba(255, 255, 255, 0.82);
+  color: #a9a3c4;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.6),
+    0 0 18px 6px rgba(255, 255, 255, 0.8);
+}
+
+/* Her: "you are here" */
+.trail-me {
+  position: absolute;
+  z-index: 3;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.trail-me__bubble {
+  position: absolute;
+  bottom: 16px;
+  display: block;
+  width: 62px;
+  height: 62px;
+  padding: 2px;
+  border-radius: 50%;
+  background: var(--white);
+  box-shadow:
+    0 3px 0 var(--edge),
+    0 10px 16px -8px rgba(60, 30, 20, 0.55);
+  animation: trail-bob 2.6s ease-in-out infinite;
+}
+.trail-me__bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -9px;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 12px solid var(--white);
+}
+.trail-me--right .trail-me__bubble {
+  left: 14px;
+}
+.trail-me--right .trail-me__bubble::after {
+  left: 6px;
+  transform: rotate(28deg);
+}
+.trail-me--left .trail-me__bubble {
+  right: 14px;
+}
+.trail-me--left .trail-me__bubble::after {
+  right: 6px;
+  transform: rotate(-28deg);
+}
+.trail-me__art {
+  display: block;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, #fff7ec, #fde3c8);
+}
+@keyframes trail-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Words on the map */
+.trail-name {
+  position: absolute;
+  z-index: 1;
+  max-width: 170px;
+  margin-top: -14px;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 252, 246, 0.92);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  line-height: 1.2;
+  width: max-content;
+  text-wrap: balance;
+  box-shadow: 0 2px 0 rgba(110, 62, 34, 0.18);
+  pointer-events: none;
+}
+.trail-name--left {
+  transform: translate(calc(-100% - 34px), 0);
+}
+.trail-name--right {
+  transform: translateX(34px);
+}
+.trail-name--below {
+  margin-top: 26px;
+  text-align: center;
+  transform: translateX(-50%);
+}
+.trail-zone {
+  position: absolute;
+  z-index: 1;
+  max-width: 108px;
+  margin-top: -1em;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: var(--zc, #6c5048);
+  color: var(--white);
+  box-shadow: 0 2px 0 var(--zd, #4a332c);
+  font-size: var(--fs-xs);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.trail-zone[data-zone='meadow'] {
+  --zc: #5f9e47;
+  --zd: #467a33;
+}
+.trail-zone[data-zone='hollow'] {
+  --zc: #4f5da3;
+  --zd: #3a4682;
+}
+.trail-zone[data-zone='crumble'] {
+  --zc: #c27443;
+  --zd: #9a5730;
+}
+.trail-zone[data-zone='ridge'] {
+  --zc: #3f879d;
+  --zd: #2d6a7c;
+}
+.trail-zone[data-zone='cloud'] {
+  --zc: #8574bd;
+  --zd: #66569c;
+}
+.trail-zone[data-zone='summit'] {
+  --zc: #e07c4f;
+  --zd: #b85f37;
+}
+.trail-zone--left {
+  left: 8px;
+}
+.trail-zone--right {
+  right: 8px;
+  text-align: right;
+}
+.trail-place {
+  position: absolute;
+  z-index: 1;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 252, 246, 0.92);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: 900;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.trail-place--camp {
+  margin-left: -46px;
+  margin-top: 8px;
+}
+.trail-place--lake {
+  color: var(--sky-deep);
+}
+.trail-replay {
+  position: absolute;
+  z-index: 3;
+  top: 10px;
+  left: 50%;
+  max-width: calc(100% - 20px);
+  padding-left: 16px;
+  padding-right: 18px;
+  font-size: var(--fs-md);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.trail-replay.is-pressed {
+  transform: translateX(-50%) translateY(3px);
+}
+.trail-sparkle {
+  position: absolute;
+  z-index: 1;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  background: radial-gradient(circle, #fff 0%, rgba(255, 255, 255, 0.9) 22%, rgba(255, 255, 255, 0) 60%);
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  animation: trail-twinkle 2.7s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes trail-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+/* The footer button: "Climb Pitch 5" with the pitch's name under it. */
+.trailmap__go .btn__label {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.trailmap__go-title {
+  font-size: var(--fs-sm);
+  font-weight: 750;
+  opacity: 0.9;
+}
+
+/* The hidden-trail card. */
+.trailmap__fog-art {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #eef0fb, #ffffff);
+  color: #9d97c0;
+}
+.trailmap__locked {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--fs-lg);
+  font-weight: 850;
+  line-height: 1.35;
+  text-align: center;
+  text-wrap: balance;
+}
+.trailmap__locked-more {
+  margin: 10px 0 0;
+  color: var(--ink-soft);
+  font-weight: 750;
+  text-align: center;
+}
+
+/* Night */
+.trailmap--night .trailmap__frame {
+  background: #262c66;
+}
+.trailmap--night .trail-pin.is-open::before {
+  background: radial-gradient(circle, rgba(255, 236, 160, 0.9) 0%, rgba(255, 236, 160, 0.35) 55%, rgba(255, 236, 160, 0) 72%);
+}
+.trailmap--night .trail-pin__flag::after {
+  border-left-color: #fff3b8;
+  filter: drop-shadow(0 1px 0 #d9b85a);
+}
+.trailmap--night .trail-zone {
+  opacity: 0.9;
+}
+
+@media (max-width: 600px) {
+  /* Both card buttons on one line each on a phone. */
+  .trailmap__card .modal__actions > .btn {
+    font-size: var(--fs-lg);
+    white-space: nowrap;
+  }
+  .trailmap__frame {
+    border-radius: var(--r-lg);
+  }
+  .trail-zone {
+    max-width: 74px;
+    padding: 3px 7px;
+    font-size: 0.7rem;
+  }
+  .trail-replay {
+    top: 8px;
+    font-size: var(--fs-sm);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trail-pin.is-open::before,
+  .trail-pin__flag::after,
+  .trail-me__bubble,
+  .trail-sparkle {
+    animation: none;
+  }
+  .trail-sparkle {
+    opacity: 0.8;
+  }
+}

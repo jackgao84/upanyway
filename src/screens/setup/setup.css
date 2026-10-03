@@ -334,7 +334,13 @@
     0 4px 0 7px rgba(196, 87, 63, 0.35);
 }
 @media (max-width: 600px) {
+  /* A phone: her picture stays in view under the header (title and progress dots, 94px) while the options
+     scroll beneath it, so a colour tapped lower down shows on her at once. */
   .designer__stage {
+    position: -webkit-sticky;
+    position: sticky;
+    top: calc(var(--safe-top) + 94px);
+    z-index: 4;
     height: clamp(190px, 26vh, 240px);
   }
   .designer__hint {
@@ -635,6 +641,18 @@
 }
 .cheer__line {
   line-height: 1.45;
+}
+/* The first-time meaning of "cairn": a caption under the sentence, not inside the heading. */
+.cheer__def {
+  display: block;
+  width: -webkit-fit-content;
+  width: fit-content;
+  max-width: min(100%, 21em);
+  margin: -4px auto 0;
+  font-size: var(--fs-lg);
+  line-height: 1.35;
+  text-align: center;
+  text-wrap: balance;
 }
 @media (max-width: 520px) {
   .cheer__line {

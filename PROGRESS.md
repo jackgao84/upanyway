@@ -6,13 +6,15 @@
 
 ## Status
 
-- **Current stage:** 5 — Camp (+ 6 — Parent, run together); Stages 1–4 committed.
-- **Stage 4 verified:** typecheck clean; `npm run validate` 17/17 levels; vitest 362/362; Playwright WebKit
-  24/24 on 820×1180, 1180×820, 390×844 (first run + lesson, send p01 by replay, a fall counts, p02 Looks
-  Scary forecast → reveal → "Forecast 7. Really 2.", Sky Lake finale day + night). Zero console errors.
-- **Next:** Stages 5–6 workflow (scratchpad draft `stage56.js` — re-create from the Stages list if lost):
-  logging flow + ideas/Oops content + plans; cairn + weather station; hall of flops + letters + badges;
-  wardrobe + gear + trail map + camp hub; parent mode; e2e; review; fix. Then Stage 7.
+- **Current stage:** 7 — Verify + ship (Stages 1–6 committed; 5 and 6 were built in one workflow and committed together).
+- **Stages 5–6 verified:** typecheck clean; `npm run validate` 17/17 levels; vitest 455/455; Playwright WebKit
+  54/54 on 820×1180, 1180×820, 390×844 (first run + lesson, send p01 by replay, a fall counts, Looks Scary,
+  finale, log a brave thing (both paths), plans: Not today + Make it smaller, open Pitch 3 with one stone,
+  every camp screen + every parent page, letters bonus + waiting stone, export → reset → re-import (file and
+  paste), test mode on/off leaves the save identical). Zero console errors.
+- **Next:** Stage 7 (scratchpad draft `stage7.js` — re-create from the Stages list if lost): requirements audit
+  by brief section + hands-on device QA → fixes → `check:stubs`, personal-identifier grep, offline e2e,
+  README + DEPLOY.md, full test pass, final report.
 - **Machine note:** this Mac (16 GB) is shared with other sessions running Playwright; keep ≤ 3 agents that run
   dev servers/browsers at once, and Playwright workers ≤ 2 (`PW_WORKERS=2`).
 
@@ -366,6 +368,7 @@ interface ClimberLook { hairStyle; hairColor; skinTone; outfit; outfitColor; hel
                         backpack; backpackColor; gear: string[] }
 interface BraveThing { id; createdAt; text; ideaId?; oops: boolean; forecast: number /*0-10*/; worry?
   status: 'planned' | 'done'; notTodayCount: number /*never displayed*/; smallerOf?: string
+  afterNotToday?: true /*made smaller after a Not today on the original; badge only, never displayed*/
   doneAt?; really?: number; whatHappened?: string; outcome?: 'nailed'|'wobbly'|'flopped'; learned?
   stoneDay: DayKey | null }          // day its stone was placed; null = not done yet, or waiting (cap)
 interface Letter { id; createdAt; from: string; text; openedAt?; stoneDay: DayKey | null }
@@ -541,8 +544,9 @@ Failing pitch → edit the LEVEL. Never the validator, thresholds or tolerances.
     `#/climb/p01`. The lesson whipper counts (stats, first-whipper badge, its pose).
 - **Camp** `#/camp`: cozy scene (tent, fire, cairn, the goat peeking from the backpack, idle line; first
   visit: goat names Sky Lake as where they're going) + big buttons: Climb (Trail Map), Log a brave thing,
-  Plans, Cairn, Weather Station, Hall of Flops, Letters (unread count), Wardrobe, Badges, small grown-ups
-  (PIN) button. Waiting stones are placed here on a new day.
+  Plans (no count), Cairn, Weather Station, Hall of Flops, Letters (unread count), Wardrobe, Badges, small
+  grown-ups (PIN) button. Waiting stones are placed here on a new day (their hop plays at the next cairn
+  visit).
 - **Climb** `#/climb/:id[?night=1]`: full-bleed canvas + DOM HUD (camp button, sinking sun — no numbers,
   goat bubble, beta button when offered). Non-blocking toasts: "New flop unlocked!", word cards,
   "Spotted a hold on the way down!". Blocking (clock frozen): Fear Forecast, How-scary-really, Beta Map,
@@ -614,7 +618,7 @@ Failing pitch → edit the LEVEL. Never the validator, thresholds or tolerances.
 | big-leap | First Big Leap Tried | a non-cancelled launch from a `bigLeaps.from` toward its `to` |
 | oops | First Oops Mission | an Oops brave thing reaches `done` |
 | still-here | Flopped — and Still Here | a brave thing with outcome `flopped` |
-| smaller-step | A Smaller Step | "Make it smaller" used on a plan with `notTodayCount > 0` |
+| smaller-step | A Smaller Step | "Make it smaller" used on a plan with `notTodayCount > 0` (marked `afterNotToday` on the new plan at that moment) |
 | beta | Asked for Beta | accepted a hint or tapped the ghost |
 | stormy-5 | Stormy Forecasts ×5 | 5 done brave things with `forecast > really` |
 Test mode never writes stats, poses, badges, stones or attempts.
@@ -634,10 +638,17 @@ Test mode never writes stats, poses, badges, stones or attempts.
 - **Playwright** (webkit, `hasTouch`) against `vite preview` of the production build at `/upanyway/`,
   projects 820×1180, 1180×820, 390×844. Drags = dispatched `PointerEvent`s (`pointerType: 'touch'`) that
   start just outside the climber's hit radius; taps via `locator.tap()`. Every test fails on any
-  `console.error` / `pageerror`. Specs: first run (incl. lesson; asserts tap count); log a brave thing;
-  open pitch 3; send pitch 1 by replaying `solutions.json`; open every camp screen; export (download) +
-  re-import; fear-scale targets ≥ 48 px on the phone; offline relaunch (SW controller → `setOffline` →
-  reload → camp + climb; Chromium fallback if WebKit can't drive it, logged as a Known issue).
+  `console.error` / `pageerror`. Specs: `first-run` (incl. lesson; asserts tap count); `send-pitch1` (replays
+  `solutions.json`); `looks-scary`; `finale`; `brave` (every log step, "I already did it!" → Flopped → cairn
+  → Hall of Flops → Weather Station empty state; "I'll do it later" → Plans → Not today → Make it smaller →
+  I did it!); `unlock` (p03 hidden after the first run → one brave thing → climb p03); `camp-screens` (every
+  camp screen, Hall room, Wardrobe tab and grown-ups' page for a new climber, a mid-game one and one after
+  Sky Lake: heading, 48 px targets, no sideways scroll, 16 px fields); `backup` (download → start over →
+  first run again → restore the file, and paste the text on a second device: deep-equal saves); `testmode`
+  (everything open + night, a test-mode climb records nothing, off → deep-equal save); `letters` (bonus
+  stone today; a second letter's stone waits); fear-scale targets ≥ 48 px on the phone (checkScreen on the
+  log's weather steps). Stage 7: offline relaunch (SW controller → `setOffline` → reload → camp + climb;
+  Chromium fallback if WebKit can't drive it, logged as a Known issue).
 
 ---
 
@@ -654,10 +665,10 @@ Test mode never writes stats, poses, badges, stones or attempts.
       for lesson/p01/p02; first-run e2e incl. lesson; send-p01 replay e2e.
 - [x] **4. Mountain** — p03–p16 validated, zone art/palettes/particles/fog, Looks Scary moments, 80+ goat
       lines + picker, beta hints + ghost, beta map, night mode, finale.
-- [ ] **5. Camp** — cairn + logging flow, plans, weather station, hall of flops, letters, wardrobe, trail
+- [x] **5. Camp** — cairn + logging flow, plans, weather station, hall of flops, letters, wardrobe, trail
       map, badges, daily stone cap + climb-time sunset, ideas (≥ 30) + Oops (≥ 16) + chips + smaller
       content, post-summit unlockables (≥ 40) in camp + wardrobe.
-- [ ] **6. Parent + sound** — parent mode (all pages), How to cheer, export/import/reset, test mode, full
+- [x] **6. Parent + sound** — parent mode (all pages), How to cheer, export/import/reset, test mode, full
       sound pass (sfx + generative ambient + music toggle).
 - [ ] **7. Verify + ship** — full test pass (unit, validator, e2e ×3 + offline), stub search (TODO, FIXME,
       lorem, "coming soon", placeholder text, empty content arrays), personal-identifier grep (pattern kept
@@ -797,6 +808,70 @@ Test mode never writes stats, poses, badges, stones or attempts.
     always happens. Ordinary Big Leap landings may be reached from further down: that shortcut is her
     choice and still a big leap. (If she somehow arrives without a forecast, the screen asks it there.)
 
+51. **Logging a brave thing:** the backpack goat's face follows the step, never her numbers. Badges earned
+    by a logged brave thing wait until its stone has landed on the cairn (`holdBadgesForCairn` →
+    `releaseHeldBadges()` in the cairn's `onSettled`; 4.2 s fallback). On Plans, "Saved to your Plans."
+    shows first and the goat greets the new plan after it (2.4 s); a "smaller step" badge follows the
+    goat's line (2.6 s).
+52. **Cairn arrivals:** `#/cairn?new=` takes a comma list. Finishing a brave thing navigates to
+    `?new=<older waiting stones it placed>,<its id>`, so stones that waited hop on before the new one
+    drops. Each new stone settles into the lowest gap near the middle; adding a stone never moves the
+    others; each arrival plays once per session. A new stone over today's cap gets the scripted line
+    "The cairn's full for today. This stone goes on tomorrow." only when it really goes on tomorrow
+    (`waitingWhen`); with older stones queued ahead of it, `stoneWaitingLater`: "The cairn's full for
+    today. This stone waits its turn." Stones placed elsewhere (camp places waiting stones on entry; a
+    letter places its own) are noted in a one-shot session list (`log/events.ts` `noteArrivals` →
+    `takeArrivals`), so the next cairn visit plays their hop however she gets there; a letter's "See the
+    cairn" always passes `?new=<waiting stones it placed>,<its id>` (its stone drops onto the pile or the
+    waiting spot). New goat moments: `cairnVisit`, `cairnEmpty` (the goat sits in the pack there, like
+    camp, until Sky Lake).
+53. **Hall of Flops:** each framed flop is a calm landscape picked from the record id only (never fear
+    numbers or outcome), no figures or jokes; the Grown-ups' Wing uses the same frames. `#/flops` opens the
+    room she was last in; `?new=<id>` opens My flops with a "Just hung" ribbon. **Letters:** opening saves
+    on the tap (before the animation); the note says whether the stone went on or waits. **Badges:**
+    "n of m so far" bars only for the attempt badges. Stormy ×5's not-yet card never counts or explains
+    its rule ("After a brave thing, say how scary it really was."), so her fear numbers are never a
+    target (brief: no rewards tied to fear ratings; the Weather Station must stay honest).
+54. **Wardrobe and camp:** one gear item per slot (up to six worn); gear tried on in test mode comes off
+    when test mode is switched off (`applyTestMode` prunes `look.gear` to gear her own stones unlocked —
+    the climber is drawn with whatever `look.gear` holds, everywhere), and at the next Wardrobe visit; each decoration is drawn once, in its newest
+    variant's colour. Goat-beside drawings pass `inBackpack: !goatOut` (tied to `isGoatOut`).
+55. **Parent mode:** switching test mode either way clears the test-mode climbs (`clearTestRuns`), so her
+    real runs come back exactly as they were. A grown-up can take back an unopened letter (no stone yet);
+    opened letters stay. Settings allow 5–120 minutes (first run offers 5–60). "Share / Save to Files"
+    only where the browser can share files. A restore brings back the backup's PIN and names; a backup
+    made before the first run finished resumes at `#/setup`. "Restart now" reloads into the PIN door.
+56. **Test mode never changes the real-life half:** brave things, letters, flops and ideas added in test
+    mode are real (stones and all); only climbs record nothing. The Settings page says so.
+57. **No interim screens:** every route is a real screen (`building.ts` and its copy removed). E2E: the
+    Playwright port can be moved with `PW_PORT` (default 4173) when another server holds it.
+
+58. **The sunset card's sun is half-dipped behind the hills** (`sunDial().set(0.58)`): at 0.8 the disc sat
+    wholly behind the far hill and the card showed an empty sky.
+59. **Stage 5–6 review fixes.** Camp's Plans tile is a plain tile (no "n saved for later": a count of
+    things still to do is a to-do list on the hub; only Letters shows an unread count). Oops Missions that
+    could land on schoolwork name a safe place ("…on scrap paper", "…at home"). The idea-card field has no
+    Enter-to-add (the keyboard's Done only closes it, so the Oops Mission switch below stays reachable).
+    The first-run cheer line ends with its full stop and the first-time meaning of "cairn" sits in a
+    caption under it, not inline in heading type.
+60. **"A Smaller Step" is event-based:** `makeSmallerPlan` marks the new plan `afterNotToday: true` when the
+    original already had a Not today; the badge reads that mark, so Make it smaller followed by a later
+    Not today never earns it (and it can't pop later at an unrelated moment).
+61. **Test mode still earns the brave-thing badges** (Oops, Flopped and Still Here, A Smaller Step, Stormy
+    ×5) at the moment they're earned, because brave things logged in test mode are real (Decision 56);
+    the climbing badges wait for real climbs (test-mode climbs record nothing).
+62. **A backup holding a newer-version save is never overwritten** (`Store.writeBackup` checks the backup's
+    schemaVersion): after a newer save opens lossily, Restore and Start over keep that original rather
+    than copying the lossy view over the only full copy.
+63. **Layout:** on an iPad held upright the camp picture is shorter (`clamp(200px, 21vh, 300px)`), so every
+    tile and the Grown-ups button fit with a 24 px status-bar inset (measured: scrollHeight = clientHeight
+    for a new, mid-game and post-summit save). The Wardrobe's preview is sticky under the header in every
+    one-column layout (phones, iPad portrait) and the first-run designer's on phones (under the header and
+    progress dots), so the last colour or treasure tapped shows on her (measured at 390×844, 375×667 and
+    820×1180). The Settings minutes stepper fills the card on phones. The Beta Map's side card has
+    `touch-action: manipulation` like every other scroll container. The stone-story sheet frees its
+    canvas after it closes.
+
 ## Difficulty ramp (validator report, mean success % of the searched input space / min margin)
 
 | zone | pitches | mean success | min margin |
@@ -814,4 +889,5 @@ for her also comes from the mechanic (crumbles, gust timing, hidden landings), w
 
 ## Known issues
 
-- `src/screens/building.ts` (Stage 2 interim screen for routes built in later stages) must be gone by Stage 5.
+- None open.
+

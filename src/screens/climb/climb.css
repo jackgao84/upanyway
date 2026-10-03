@@ -191,12 +191,14 @@
 .climb-map--side.is-open {
   transform: translateY(-50%);
 }
-/* A short screen (a phone on its side): the card scrolls rather than growing off the top. */
+/* A short screen (a phone on its side): the card scrolls rather than growing off the top.
+   WebKit restarts touch-action at every scroll container: keep double-tap from zooming the page. */
 .climb-map--side {
   max-height: calc(100% - var(--safe-top) - var(--safe-bottom) - 24px);
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  touch-action: manipulation;
 }
 .climb-map__title {
   font-size: var(--fs-2xl);

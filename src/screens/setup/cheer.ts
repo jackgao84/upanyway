@@ -9,7 +9,7 @@ import { button, screenLayout } from '../../ui/components'
 import { h } from '../../ui/dom'
 import { goatBubble } from '../../ui/goatBubble'
 import { icon } from '../../ui/icons'
-import { isNewWord, term } from '../../ui/term'
+import { definition, isNewWord } from '../../ui/term'
 import { kidDots } from './common'
 
 export const cheerScreen: Screen = (root, ctx) => {
@@ -19,14 +19,20 @@ export const cheerScreen: Screen = (root, ctx) => {
   const bubble = goatBubble({ avatar: () => goatAvatar(d.profile.look), name: d.profile.goatName, tapToHide: false })
   const portrait = h('canvas', { class: 'setup-portrait', 'aria-hidden': 'true' })
 
+  // The sentence ends with its full stop; the first time, "cairn" is explained in a caption under it
+  // (not inline in heading type, where it read as one long run-on sentence).
+  const newWord = isNewWord('cairn', d.glossarySeen)
   const line = h(
     'p',
     { class: 'ask__q cheer__line' },
     `${who} `,
-    ...splitAround(c.line, 'cairn', () => term('cairn', { seen: d.glossarySeen, onSeen: markWordSeen })),
-    // The first-time definition ends with its own full stop.
-    isNewWord('cairn', d.glossarySeen) ? null : '.',
+    ...splitAround(c.line, 'cairn', () => h('span', { class: 'term' }, 'cairn')),
+    '.',
   )
+  const meaning = newWord
+    ? h('p', { class: 'term__def cheer__def', role: 'note' }, h('span', { class: 'sr-only' }, 'cairn means: '), definition('cairn') ?? '')
+    : null
+  if (newWord) queueMicrotask(() => markWordSeen('cairn'))
 
   const go = () => {
     update((draft) => {
@@ -48,6 +54,7 @@ export const cheerScreen: Screen = (root, ctx) => {
           { class: 'ask cheer' },
           h('div', { class: 'cheer__art', 'aria-hidden': 'true' }, portrait, h('span', { class: 'cheer__cairn' }, icon('cairn', 88), icon('heart', 36))),
           line,
+          meaning,
           h('div', { class: 'cheer__goat' }, bubble.el),
         ),
       ],

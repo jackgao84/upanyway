@@ -127,12 +127,6 @@ export const CAMP_COPY = {
     n === 1 ? 'A waiting stone joined your cairn.' : `${n} waiting stones joined your cairn.`,
 } as const
 
-export const BUILDING_COPY = {
-  title: 'This part of the mountain is still being built',
-  text: 'The trail crew is busy here. Head back to camp for now.',
-  back: 'Back to camp',
-} as const
-
 /** "Mum", "Mum and Dad", "Mum, Dad and Nana". */
 export function joinNames(names: readonly string[]): string {
   const list = names.map((n) => n.trim()).filter(Boolean)

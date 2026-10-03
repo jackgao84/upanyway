@@ -8,6 +8,8 @@
 import { readFileSync } from 'node:fs'
 import { test as base, expect, type Browser, type BrowserContext, type BrowserContextOptions, type Locator, type Page, type TestInfo } from '@playwright/test'
 import type { ClimbSnapshot } from '../src/debug'
+import { dayKey } from '../src/model/clock'
+import { makePinRecord } from '../src/model/pin'
 import { KEYS } from '../src/storage/keys'
 import { defaultPitchProgress, defaultSave, type PitchRun, type SaveData } from '../src/storage/schema'
 
@@ -790,4 +792,198 @@ export async function seedSave(page: Page, save: SaveData): Promise<void> {
 /** The Looks Scary set-piece on the climb right now ('looming' | 'revealing' | 'revealed', or null). */
 export async function scaryPhase(page: Page): Promise<string | null> {
   return page.evaluate(() => window.__upanyway?.climb.scaryPhase() ?? null)
+}
+
+// ---------------------------------------------------------------------------------------------
+// Camp, the kid's screens and the grown-ups' pages
+
+/** Give a seeded save the specs' PIN (hashed, as the first run stores it). Returns the save. */
+export function withPin(d: SaveData, pin = DEFAULT_PIN): SaveData {
+  Object.assign(d.parent, makePinRecord(pin))
+  return d
+}
+
+/** Today's local day key ("2026-10-03"), as the app writes `stoneDay`. */
+export function todayKey(now = new Date()): string {
+  return dayKey(now)
+}
+
+/** A button by its exact accessible name (or a pattern). */
+export function buttonNamed(scope: Page | Locator, name: string | RegExp): Locator {
+  return scope.getByRole('button', { name, exact: typeof name === 'string' })
+}
+
+/** The screen's main heading (`h1`), e.g. "Hall of Flops" or a log question. */
+export function mainHeading(page: Page): Locator {
+  return page.locator('main.screen h1, .screen h1').first()
+}
+
+/** Tap weather `n` (0–10) on the fear scale inside `scope` (its radios are named "7, Stormy"). */
+export async function tapWeather(scope: Page | Locator, n: number): Promise<void> {
+  await tap(scope.getByRole('radio', { name: new RegExp(`^${n},`) }))
+}
+
+/** Open camp (a seeded climber starts here) and wait for its tiles. */
+export async function gotoCamp(page: Page): Promise<void> {
+  await page.goto('./#/camp')
+  await expectRoute(page, '/camp')
+  await expect(page.locator('.camp__tiles')).toBeVisible()
+}
+
+/** The tent button on a climb, back to camp. */
+export async function climbToCamp(page: Page): Promise<void> {
+  await tap(page.locator('.climb-hud__camp'))
+  await expectRoute(page, '/camp')
+  await expect(page.locator('.camp__tiles')).toBeVisible()
+}
+
+/** From camp: the small Grown-ups button, the PIN door, then the grown-ups' home. */
+export async function openGrownups(page: Page, pin = DEFAULT_PIN): Promise<void> {
+  await tap(buttonNamed(page.locator('.camp__grownups'), 'Grown-ups'))
+  await expectRoute(page, '/parent')
+  await enterPin(page, pin)
+  await expectRoute(page, '/parent/home')
+  await expect(mainHeading(page)).toHaveText('Grown-ups')
+}
+
+/** On the grown-ups' home: open one of its page cards by title. */
+export async function openParentPage(page: Page, title: string, path: string): Promise<void> {
+  await tap(page.locator('.pp-home__card').filter({ has: page.locator('.card__title', { hasText: title }) }))
+  await expectRoute(page, path)
+}
+
+export interface QuickLog {
+  text: string
+  forecast?: number
+  really?: number
+  /** The outcome card's words (default "Wobbly, but I did it"). */
+  outcome?: string
+}
+
+/**
+ * On the log flow's first question (#/log): log a brave thing she already did, the quick way — type
+ * it, a forecast, skip the worry, "I already did it!", how scary it really was, the first "what
+ * happened" chip, an outcome, no "what I learned", "Add my stone". Ends on the cairn.
+ */
+export async function logDoneBraveThing(page: Page, log: QuickLog): Promise<void> {
+  const q = mainHeading(page)
+  await expect(q).toHaveText('What’s the brave thing?')
+  await typeInto(page.getByRole('textbox', { name: 'The brave thing' }), log.text)
+  await tap(buttonNamed(page, 'Next'))
+  await expect(q).toHaveText('How scary does it look?')
+  await tapWeather(page.locator('.log-fear'), log.forecast ?? 6)
+  await expect(q).toHaveText('What are you worried might happen?')
+  await tap(buttonNamed(page, 'Skip'))
+  await expect(q).toHaveText('Have you done it yet?')
+  await tap(page.getByRole('button', { name: /^I already did it!/ }))
+  await expect(q).toHaveText('How scary was it really?')
+  await tapWeather(page.locator('.log-fear'), log.really ?? 2)
+  await expect(q).toHaveText('What actually happened?')
+  await tap(page.locator('.log-chips button').first())
+  await tap(buttonNamed(page, 'Next'))
+  await expect(q).toHaveText('How did it go?')
+  await tap(page.getByRole('button', { name: log.outcome ?? 'Wobbly, but I did it' }))
+  await expect(q).toHaveText('What did I learn?')
+  await tap(buttonNamed(page, 'Add my stone'))
+  await expectRoute(page, '/cairn')
+}
+
+/**
+ * A climber well into the game, with something on every camp screen: a PIN, `stones` done brave
+ * things with their stones (default 5), a framed flop with what she learned, an Oops Mission, a plan
+ * and its smaller step (after a "Not today"), a read letter with its stone and a sealed one, a
+ * Grown-ups' Wing flop, a custom idea card, fall poses, badges and the first pitches sent.
+ * `summit`: after Sky Lake (finale seen, every pitch sent), so the stones also brought treasures.
+ */
+export function richSave(opts: { stones?: number; summit?: boolean; now?: Date } = {}): SaveData {
+  const now = opts.now ?? new Date()
+  const d = withPin(climberSave(now))
+  const at = (days: number, hours = 0) => new Date(now.getTime() - days * 86_400_000 - hours * 3_600_000)
+  const iso = (days: number, hours = 0) => at(days, hours).toISOString()
+  addStones(d, opts.stones ?? (opts.summit ? 20 : 5), now)
+  d.brave.push(
+    {
+      id: 'flop-1',
+      createdAt: iso(9),
+      text: 'Read my story out loud in class',
+      oops: false,
+      forecast: 9,
+      status: 'done',
+      notTodayCount: 0,
+      doneAt: iso(9),
+      really: 4,
+      whatHappened: 'I lost my place twice',
+      outcome: 'flopped',
+      learned: 'People were kinder than I expected',
+      stoneDay: dayKey(at(9)),
+    },
+    {
+      id: 'oops-1',
+      createdAt: iso(10),
+      text: 'Wear odd socks for a whole day',
+      ideaId: 'oops-odd-socks',
+      oops: true,
+      forecast: 5,
+      status: 'done',
+      notTodayCount: 0,
+      doneAt: iso(10),
+      really: 1,
+      whatHappened: 'Nobody minded at all',
+      outcome: 'nailed',
+      stoneDay: dayKey(at(10)),
+    },
+    {
+      id: 'plan-1',
+      createdAt: iso(3),
+      text: 'Jump into the deep end at swimming lessons',
+      ideaId: 'school-deep-end',
+      oops: false,
+      forecast: 8,
+      worry: 'I swallow water',
+      status: 'planned',
+      notTodayCount: 1,
+      stoneDay: null,
+    },
+    {
+      id: 'plan-2',
+      createdAt: iso(2),
+      text: 'Sit on the edge of the deep end first',
+      oops: false,
+      forecast: 4,
+      status: 'planned',
+      notTodayCount: 0,
+      smallerOf: 'plan-1',
+      afterNotToday: true,
+      stoneDay: null,
+    },
+  )
+  d.letters.push(
+    {
+      id: 'letter-1',
+      createdAt: iso(4, 2),
+      from: DEFAULT_NAMES[0],
+      text: 'I saw you ask for help when you were stuck. That took guts.',
+      openedAt: iso(4),
+      stoneDay: dayKey(at(4)),
+    },
+    { id: 'letter-2', createdAt: iso(0, 1), from: DEFAULT_NAMES[1], text: 'I saw you try the high board, wobbly legs and all.', stoneDay: null },
+  )
+  d.grownupFlops.push({
+    id: 'gf-1',
+    createdAt: iso(6),
+    who: DEFAULT_NAMES[1],
+    what: 'I tried a new recipe for guests and it came out like soup.',
+    learned: 'Practise new things on a quiet night.',
+  })
+  d.customIdeas.push({ id: 'idea-1', createdAt: iso(5), text: 'Order a new ice-cream flavour', oops: false })
+  d.poses = { starfish: { firstAt: iso(12), count: 3 }, pancake: { firstAt: iso(6), count: 1 } }
+  d.stats = { whippers: 9, sends: 3, bigLeapsTried: 1, betaAsked: 1 }
+  d.badges = { 'first-whipper': iso(12), 'attempts-10': iso(6), 'still-here': iso(9), oops: iso(10), 'smaller-step': iso(2) }
+  const sent = opts.summit ? 16 : 3
+  for (let i = 1; i <= sent; i++) {
+    const id = `p${String(i).padStart(2, '0')}` as keyof SaveData['pitches']
+    d.pitches[id] = { ...defaultPitchProgress(), sends: 1, totalAttempts: 2, firstSentAt: iso(12) }
+  }
+  if (opts.summit) d.summit = { reached: true, at: iso(30), finaleSeen: true }
+  return d
 }

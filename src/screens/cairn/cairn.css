@@ -1,0 +1,466 @@
+/* The Cairn (#/cairn): the hilltop picture, the goat, and what her stones have opened.
+   Also the stone story sheet (cairn/story.ts), shared with the Weather Station. */
+
+/* ------------------------------------------------------------------------------------------ */
+/* The picture */
+
+.cairn-scene {
+  height: clamp(320px, 56vh, 760px);
+  touch-action: manipulation;
+}
+/* The frame's white inner edge sits above the canvas (an inset shadow would hide behind it). */
+.cairn-scene::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 4px var(--white);
+  pointer-events: none;
+}
+.cairn-scene > .cairn-scene__canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.cairn-scene__scroll {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: manipulation;
+  scrollbar-width: none;
+}
+.cairn-scene__scroll::-webkit-scrollbar {
+  display: none;
+}
+.cairn-scene__track {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+}
+/* Invisible buttons over the stones (≥ 48 px): keyboard, VoiceOver and taps. */
+.cairn-stone {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+.cairn-stone:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.cairn-stone[hidden] {
+  display: none;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Layout: picture on top (phones, iPad portrait), or picture left + words right (iPad landscape) */
+
+.cairn-screen .layout__body {
+  max-width: calc(980px + 2 * var(--gutter));
+}
+.cairn-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cairn-grid__scene {
+  min-width: 0;
+}
+.cairn-grid__side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.cairn-bubble {
+  min-height: 84px;
+}
+.cairn-grid.is-empty .cairn-scene {
+  height: clamp(260px, 42vh, 520px);
+}
+
+@media (min-width: 900px) and (orientation: landscape) {
+  .cairn-screen .layout__body {
+    max-width: calc(1260px + 2 * var(--gutter));
+  }
+  .cairn-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr);
+    align-items: start;
+    gap: 28px;
+  }
+  .cairn-scene,
+  .cairn-grid.is-empty .cairn-scene {
+    height: max(420px, calc(var(--vh, 1vh) * 100 - var(--safe-top) - var(--safe-bottom) - 128px));
+    height: max(420px, calc(100dvh - var(--safe-top) - var(--safe-bottom) - 128px));
+  }
+  .cairn-grid__side {
+    padding-top: 8px;
+  }
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* The words under the picture */
+
+.cairn-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 22px 18px;
+  border-radius: var(--r-lg);
+  background-color: var(--card);
+  background-image: var(--grain-a), linear-gradient(180deg, var(--card) 40%, var(--leaf-soft) 220%);
+  background-size:
+    6px 6px,
+    100% 100%;
+  box-shadow: var(--shadow-paper);
+}
+.cairn-info__count {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: var(--fs-xl);
+  font-weight: 900;
+  line-height: 1.25;
+}
+/* The number sits on a pebble. */
+.cairn-info__num {
+  display: grid;
+  place-items: center;
+  flex: none;
+  min-width: 72px;
+  height: 56px;
+  padding: 0 16px;
+  border-radius: 52% 48% 46% 54% / 60% 58% 42% 40%;
+  background:
+    radial-gradient(ellipse at 34% 28%, rgba(255, 255, 255, 0.85) 0 12%, rgba(255, 255, 255, 0) 46%),
+    radial-gradient(ellipse at 60% 90%, rgba(74, 47, 58, 0.18), rgba(74, 47, 58, 0) 60%),
+    #d9c7a7;
+  color: var(--ink);
+  font-size: var(--fs-2xl);
+  font-variant-numeric: tabular-nums;
+  box-shadow:
+    0 3px 0 #b9a27f,
+    0 10px 16px -10px rgba(80, 50, 30, 0.5),
+    inset 0 0 0 2px rgba(61, 42, 36, 0.55);
+}
+.cairn-info__words {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* The first time: "cairn" gets its definition on a line of its own under the count. */
+.cairn-info__words .term__def {
+  display: table;
+  margin-top: 6px;
+  font-size: var(--fs-md);
+  line-height: 1.4;
+}
+.cairn-info__num.is-bump {
+  animation: cairn-bump 0.5s var(--ease-pop);
+}
+@keyframes cairn-bump {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.22) rotate(-4deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+/* A stone that opened a new pitch: the trail line glows for a moment. */
+.cairn-info__trail {
+  margin: 0 -8px;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+}
+.cairn-info__trail.is-new {
+  color: var(--ink);
+  animation: cairn-trail 2.4s var(--ease-out);
+}
+@keyframes cairn-trail {
+  0%,
+  45% {
+    background: var(--sun-soft);
+  }
+  100% {
+    background: rgba(253, 233, 182, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cairn-info__num.is-bump,
+  .cairn-info__trail.is-new {
+    animation: none;
+  }
+}
+.cairn-info__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--ink-soft);
+  font-size: var(--fs-lg);
+  font-weight: 750;
+  line-height: 1.4;
+}
+.cairn-info__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--leaf-deep);
+}
+.cairn-info__glow {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff1b8 0 22%, rgba(255, 214, 120, 0.85) 38%, rgba(255, 214, 120, 0) 70%);
+}
+.cairn-info__hint {
+  color: var(--ink-faint);
+  font-size: var(--fs-md);
+  font-weight: 750;
+}
+.cairn-info__word {
+  font-size: var(--fs-lg);
+}
+.cairn-info__word .term__def {
+  display: table;
+  margin-top: 6px;
+  font-size: var(--fs-md);
+  line-height: 1.4;
+}
+.cairn-info__empty-title {
+  font-size: var(--fs-xl);
+  font-weight: 900;
+  line-height: 1.3;
+}
+.cairn-info__text {
+  color: var(--ink-soft);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  line-height: 1.45;
+}
+.cairn-info > .btn {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+@media (max-width: 520px) {
+  .cairn-scene {
+    height: clamp(300px, 52vh, 560px);
+  }
+  .cairn-info {
+    padding: 16px 16px 14px;
+  }
+  .cairn-info__count {
+    font-size: var(--fs-lg);
+  }
+  .cairn-info > .btn {
+    align-self: stretch;
+  }
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* A stone's story (sheet) */
+
+.story .sheet__art {
+  margin-bottom: 0;
+}
+.story__stone {
+  position: relative;
+  width: 156px;
+  height: 108px;
+}
+.story__stone-canvas {
+  width: 100%;
+  height: 100%;
+}
+.story .sheet__title {
+  overflow-wrap: anywhere;
+}
+.story__waiting {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: var(--r-pill);
+  background: #fff4cf;
+  color: var(--ink);
+  font-size: var(--fs-md);
+  font-weight: 850;
+  box-shadow: 0 2px 0 rgba(217, 149, 32, 0.35);
+}
+.story__waiting-dot {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff6cc 0 25%, #ffd36b 55%, rgba(255, 211, 107, 0) 72%);
+}
+.story__tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.story__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px 6px 10px;
+  border-radius: var(--r-pill);
+  background: var(--sun-soft);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: 850;
+}
+.story__tag--smaller {
+  background: var(--sky-soft);
+}
+
+/* "Forecast 7 → Really 2" */
+.wpair {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.wpair__side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 128px;
+  padding: 10px 14px 12px;
+  border-radius: var(--r-md);
+  background: var(--tint, var(--paper-2));
+  box-shadow:
+    0 3px 0 rgba(110, 62, 34, 0.1),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.7);
+}
+.wpair__icon {
+  display: grid;
+  place-items: center;
+  height: 60px;
+}
+.wpair__word {
+  color: var(--ink);
+  font-size: var(--fs-lg);
+  font-weight: 900;
+}
+.wpair__label {
+  color: var(--ink-soft);
+  font-size: var(--fs-sm);
+  font-weight: 750;
+}
+.wpair__arrow {
+  color: var(--ink-faint);
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.story__note {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 6px;
+  text-align: left;
+}
+.story__q {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--leaf-deep);
+  font-size: var(--fs-sm);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.story__a {
+  color: var(--ink);
+  font-size: var(--fs-lg);
+  font-weight: 750;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.story__outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.story__outcome > .icon {
+  color: var(--leaf-deep);
+}
+.story__qa--flopped .story__outcome > .icon {
+  color: var(--plum);
+}
+/* What she learned: underlined with a soft highlighter. */
+.story__qa--learned .story__a {
+  display: inline;
+  padding: 0 2px;
+  background: linear-gradient(180deg, transparent 58%, rgba(245, 184, 61, 0.38) 58%);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.story__when {
+  color: var(--ink-faint);
+  font-size: var(--fs-md);
+  font-weight: 750;
+}
+.story__letter {
+  margin-top: 8px;
+  text-align: left;
+}
+.story__sign {
+  margin-top: 8px;
+  color: var(--ink-soft);
+  font-size: var(--fs-lg);
+  font-weight: 850;
+  text-align: right;
+}
+.story__bonus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--coral-deep);
+  font-size: var(--fs-md);
+  font-weight: 800;
+}
+
+@media (max-width: 520px) {
+  .wpair {
+    gap: 8px;
+  }
+  .wpair__side {
+    min-width: 0;
+    flex: 1 1 0;
+    padding: 8px 8px 10px;
+  }
+  .story__note {
+    padding: 22px 18px 18px;
+  }
+}

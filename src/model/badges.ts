@@ -1,7 +1,8 @@
 /**
  * Badge triggers (attempts + courage only). Call evaluateBadges() after anything that could earn one:
  * whippers, sends, Big Leap tries, beta, finishing a brave thing, making a plan smaller.
- * Never earns anything in test mode.
+ * In test mode only the brave-thing badges can be earned: brave things logged in test mode are real
+ * (Decision 56), while climbs in test mode record nothing.
  */
 import { BADGES, type Badge, type BadgeId } from '../content/badges'
 import type { SaveData } from '../storage/schema'
@@ -33,11 +34,8 @@ function triggered(d: SaveData, id: BadgeId): boolean {
     case 'still-here':
       return done.some((b) => b.outcome === 'flopped')
     case 'smaller-step':
-      return d.brave.some((b) => {
-        if (!b.smallerOf) return false
-        const original = d.brave.find((o) => o.id === b.smallerOf)
-        return Boolean(original && original.notTodayCount > 0)
-      })
+      // Marked when the plan was made smaller after a Not today (never the other way round).
+      return d.brave.some((b) => b.afterNotToday === true)
     case 'beta':
       return d.stats.betaAsked >= 1
     case 'stormy-5':
@@ -45,12 +43,16 @@ function triggered(d: SaveData, id: BadgeId): boolean {
   }
 }
 
+/** Badges earned by her real-life brave things (the only ones test mode can award). */
+const BRAVE_BADGES: ReadonlySet<BadgeId> = new Set<BadgeId>(['oops', 'still-here', 'smaller-step', 'stormy-5'])
+
 /** Award every badge whose trigger now holds. Returns the newly earned ids, in BADGES order. */
 export function evaluateBadges(d: SaveData, now: Date): BadgeId[] {
-  if (d.testMode) return []
   const earned: BadgeId[] = []
   for (const badge of BADGES) {
     if (d.badges[badge.id]) continue
+    // Test-mode climbs write nothing, so the climbing badges wait for her real climbs.
+    if (d.testMode && !BRAVE_BADGES.has(badge.id)) continue
     if (triggered(d, badge.id)) {
       d.badges[badge.id] = now.toISOString()
       earned.push(badge.id)

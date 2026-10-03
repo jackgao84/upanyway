@@ -1,0 +1,544 @@
+/* Letters (#/letters): sealed envelopes, the opening, and the Spotted! notes she has read. */
+
+.letters {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+.letters__section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.letters__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+}
+.letters__title {
+  font-size: var(--fs-xl);
+  font-weight: 900;
+}
+.letters__count {
+  padding: 5px 14px;
+  border-radius: var(--r-pill);
+  background: var(--coral);
+  color: var(--white);
+  font-size: var(--fs-sm);
+  font-weight: 900;
+  box-shadow: 0 2px 0 var(--coral-deep);
+}
+.letters__all-read {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: var(--r-md);
+  background: var(--sun-soft);
+  color: var(--ink-soft);
+  font-size: var(--fs-lg);
+  font-weight: 750;
+  text-align: center;
+}
+.letters__all-read .icon {
+  color: var(--sun-deep);
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Sealed envelopes */
+
+.letters__envelopes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 26px 22px;
+  padding: 6px 4px 4px;
+}
+.envelope {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transform: rotate(var(--tilt, 0deg));
+  animation: envelope-in 0.5s var(--ease-pop) var(--delay, 0ms) both;
+}
+.envelope__body {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  border-radius: 14px;
+  filter: drop-shadow(0 4px 0 rgba(201, 165, 130, 0.9)) drop-shadow(0 14px 16px rgba(110, 62, 34, 0.22));
+  transition: transform var(--t-fast) var(--ease-out);
+  animation: envelope-wiggle 5s ease-in-out calc(var(--delay, 0ms) + 1.6s) infinite;
+}
+@supports not (aspect-ratio: 3 / 2) {
+  .envelope__body {
+    height: 0;
+    padding-top: 66.6%;
+  }
+}
+.envelope.is-pressed .envelope__body {
+  transform: translateY(3px) scale(0.985);
+}
+.envelope__back,
+.envelope__front {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.envelope__flap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 62%;
+}
+.envelope__seal {
+  position: absolute;
+  top: 59%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #f08c70 0%, #d4583f 55%, #b5452f 100%);
+  color: #fff2ea;
+  box-shadow:
+    0 2px 0 #9c3529,
+    inset 0 0 0 3px rgba(255, 255, 255, 0.14),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.12);
+}
+.envelope__seal .icon * {
+  fill-opacity: 1;
+}
+.envelope__address {
+  position: absolute;
+  left: 50%;
+  bottom: 8%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  max-width: 84%;
+  padding: 4px 14px 5px;
+  border-radius: 12px;
+  background: rgba(253, 241, 222, 0.94);
+  text-align: center;
+  transform: translateX(-50%);
+}
+.envelope__from {
+  color: var(--coral-deep);
+  font-size: var(--fs-lg);
+  font-weight: 900;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.envelope__when {
+  color: var(--ink-faint);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+}
+.envelope__tap {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 6px 18px;
+  border-radius: var(--r-pill);
+  background: var(--card);
+  color: var(--sun-deep);
+  font-size: var(--fs-md);
+  font-weight: 900;
+  box-shadow:
+    0 3px 0 var(--edge),
+    inset 0 0 0 1.5px rgba(236, 216, 192, 0.85);
+}
+
+@keyframes envelope-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) rotate(var(--tilt, 0deg)) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(var(--tilt, 0deg));
+  }
+}
+/* Every few seconds a sealed letter gives a tiny wiggle, as if something inside can't wait. */
+@keyframes envelope-wiggle {
+  0%,
+  86%,
+  100% {
+    rotate: 0deg;
+  }
+  89% {
+    rotate: -2.4deg;
+  }
+  92% {
+    rotate: 2deg;
+  }
+  95% {
+    rotate: -1deg;
+  }
+}
+
+/* The small envelope in the empty state. */
+.envelope-art {
+  position: relative;
+  display: block;
+  width: 78px;
+  height: 52px;
+  filter: drop-shadow(0 3px 0 rgba(201, 165, 130, 0.9));
+}
+.envelope-art .envelope__back,
+.envelope-art .envelope__front {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.envelope-art .envelope__seal {
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Letters she has read */
+
+.letters__read {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px;
+}
+.letter-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-height: var(--tap);
+  margin: 0;
+  padding: 16px 18px 14px;
+  border: 0;
+  border-radius: 6px 6px 18px 6px;
+  background-color: #fffef8;
+  background-image: var(--grain-a);
+  background-size: 6px 6px;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow:
+    0 3px 0 var(--edge),
+    0 12px 20px -14px rgba(110, 62, 34, 0.45);
+  transition: transform var(--t-fast) var(--ease-out);
+}
+.letter-card:nth-child(odd) {
+  transform: rotate(-0.5deg);
+}
+.letter-card:nth-child(even) {
+  transform: rotate(0.4deg);
+}
+.letter-card.is-pressed {
+  transform: translateY(3px);
+}
+.letter-card__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.letter-card__spotted {
+  color: var(--coral-deep);
+  font-size: var(--fs-md);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+.letter-card__when {
+  color: var(--ink-faint);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+}
+.letter-card__text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.letter-card__from {
+  align-self: flex-end;
+  color: var(--coral-deep);
+  font-size: var(--fs-sm);
+  font-weight: 850;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Opening a letter (inside the dialog) */
+
+.modal.letter-modal {
+  width: min(560px, 100%);
+}
+.letter-modal .modal__body {
+  text-align: left;
+}
+.letter-view {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.letter-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: min(118px, 26vw) 0 6px;
+  cursor: pointer;
+}
+.letter-stage__env {
+  position: relative;
+  width: min(360px, 74vw);
+  aspect-ratio: 3 / 2;
+  perspective: 900px;
+  animation: stage-in 0.42s var(--ease-pop) both;
+  filter: drop-shadow(0 5px 0 rgba(201, 165, 130, 0.9)) drop-shadow(0 18px 20px rgba(110, 62, 34, 0.22));
+}
+@supports not (aspect-ratio: 3 / 2) {
+  .letter-stage__env {
+    height: min(240px, 49vw);
+  }
+}
+.letter-stage__back,
+.letter-stage__front {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.letter-stage__back {
+  z-index: 1;
+}
+.letter-stage__front {
+  z-index: 3;
+}
+.letter-stage__paper {
+  position: absolute;
+  z-index: 2;
+  top: 6%;
+  left: 8%;
+  right: 8%;
+  height: 86%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8%;
+  border-radius: 4px;
+  background: #fffef8;
+  box-shadow: 0 2px 6px rgba(110, 62, 34, 0.18);
+  transition: transform 0.7s var(--ease-out);
+}
+.letter-stage__paper-title {
+  color: var(--coral-deep);
+  font-size: var(--fs-xl);
+  font-weight: 900;
+}
+.letter-stage__paper-lines {
+  width: 74%;
+  height: 40%;
+  background-image: linear-gradient(180deg, transparent 12px, rgba(140, 195, 217, 0.55) 12px, rgba(140, 195, 217, 0.55) 14px, transparent 14px);
+  background-size: 100% 16px;
+}
+.letter-stage__flap {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 62%;
+  transform-origin: 50% 0;
+  transition:
+    transform 0.46s var(--ease-out),
+    z-index 0s linear 0.23s;
+}
+.letter-stage__seal {
+  position: absolute;
+  z-index: 5;
+  top: 59%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin: -29px 0 0 -29px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #f08c70 0%, #d4583f 55%, #b5452f 100%);
+  color: #fff2ea;
+  box-shadow:
+    0 3px 0 #9c3529,
+    inset 0 0 0 3px rgba(255, 255, 255, 0.14),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.12);
+  transition:
+    transform 0.3s var(--ease-pop),
+    opacity 0.26s ease-out;
+}
+.letter-stage__seal .icon * {
+  fill-opacity: 1;
+}
+.letter-stage__from {
+  position: absolute;
+  z-index: 4;
+  left: 0;
+  right: 0;
+  bottom: 9%;
+  color: var(--coral-deep);
+  font-size: var(--fs-lg);
+  font-weight: 900;
+  text-align: center;
+  transition: opacity 0.3s;
+}
+.letter-stage__skip {
+  color: var(--ink-faint);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  text-align: center;
+}
+.letter-stage.is-unsealed .letter-stage__seal {
+  opacity: 0;
+  transform: scale(1.5) rotate(18deg);
+}
+.letter-stage.is-open .letter-stage__flap {
+  z-index: 0;
+  transform: rotateX(180deg);
+}
+.letter-stage.is-rising .letter-stage__paper {
+  transform: translateY(-62%);
+}
+.letter-stage.is-rising .letter-stage__from {
+  opacity: 0;
+}
+@keyframes stage-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The note, unfolded */
+.letter-read {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-top: 18px;
+  animation: note-unfold 0.5s var(--ease-pop) both;
+}
+.letter-note {
+  padding-top: 30px;
+  /* A thin paper edge, so the note reads as a sheet on the cream dialog. */
+  box-shadow:
+    0 3px 0 var(--edge),
+    0 14px 26px -16px rgba(110, 62, 34, 0.45),
+    inset 0 0 0 1.5px rgba(226, 196, 164, 0.7);
+}
+.letter-note__stamp {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 3px 14px 4px;
+  border: 3px solid var(--coral);
+  border-radius: 10px;
+  color: var(--coral-deep);
+  font-size: var(--fs-xl);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  transform: rotate(-4deg);
+}
+.letter-note__text {
+  font-size: var(--fs-lg);
+}
+.letter-note__sign {
+  margin-top: 12px;
+  color: var(--coral-deep);
+  font-size: var(--fs-lg);
+  font-weight: 900;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.letter-read__stone {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--r-md);
+  background: var(--sun-soft);
+  color: var(--ink);
+  font-size: var(--fs-md);
+  font-weight: 750;
+  line-height: 1.4;
+}
+.letter-read__stone.is-placed {
+  background: var(--leaf-soft);
+}
+.letter-read__stone-art {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--ink-soft);
+  box-shadow: 0 2px 0 var(--edge);
+}
+.letter-read__stone.is-placed .letter-read__stone-art {
+  color: var(--leaf-deep);
+}
+.letter-read__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+@keyframes note-unfold {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .letters__envelopes {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 6px 12px 4px;
+  }
+}

@@ -119,6 +119,14 @@ describe('badge triggers', () => {
     expect(evaluateBadges(d, DAY1)).toEqual(['smaller-step'])
   })
 
+  it('a Not today after Make it smaller is not a smaller step', () => {
+    const d = fresh()
+    const a = addBraveThing(d, { text: 'Sing in assembly', forecast: 9 }, DAY1)
+    makeSmallerPlan(d, a.id, { text: 'Sing to my family', forecast: 5 }, DAY1)
+    markNotToday(d, a.id)
+    expect(evaluateBadges(d, DAY1)).toEqual([])
+  })
+
   it('asked for beta', () => {
     const d = fresh()
     recordBetaAsked(d)
@@ -137,12 +145,19 @@ describe('badge triggers', () => {
     expect(evaluateBadges(d, DAY1)).toEqual(['stormy-5'])
   })
 
-  it('test mode never earns badges', () => {
+  it('test mode earns no climbing badges, but brave things are real', () => {
     const d = fresh()
     d.stats.whippers = 100
+    d.stats.bigLeapsTried = 1
+    d.stats.betaAsked = 1
     d.testMode = true
     expect(evaluateBadges(d, DAY1)).toEqual([])
     expect(d.badges).toEqual({})
+    // A brave thing logged in test mode is real (stone and all), and so is its badge.
+    doBrave(d, DAY1, { outcome: 'flopped', oops: true })
+    expect(evaluateBadges(d, DAY1)).toEqual(['oops', 'still-here'])
+    d.testMode = false
+    expect(evaluateBadges(d, DAY1)).toEqual(['first-whipper', 'attempts-10', 'attempts-50', 'attempts-100', 'big-leap', 'beta'])
   })
 
   it('earnedBadges lists what she has, in order, with the time', () => {

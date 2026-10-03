@@ -83,6 +83,27 @@ describe('Store', () => {
     expect(storage.keys().sort()).toEqual([KEYS.backup, KEYS.save].sort())
   })
 
+  it('never replaces a backup that holds a save from a newer version', () => {
+    const storage = new MemoryStorage()
+    const newer = JSON.stringify({ ...richSave(), schemaVersion: 99, futureThing: { kept: true } })
+    storage.setItem(KEYS.save, newer)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const store = new Store(storage)
+    expect(store.loadInfo.kind).toBe('newer')
+    expect(storage.getItem(KEYS.backup)).toBe(newer)
+    store.update((d) => {
+      d.stats.whippers = 5
+    })
+    vi.runAllTimers()
+    store.reset(DAY1)
+    expect(storage.getItem(KEYS.backup)).toBe(newer)
+    // ...and after a restart, too (the main save is now this version's).
+    const again = new Store(storage)
+    again.writeBackup()
+    expect(storage.getItem(KEYS.backup)).toBe(newer)
+    warn.mockRestore()
+  })
+
   it('reports a failed write instead of throwing', () => {
     const storage = new MemoryStorage()
     const store = new Store(storage)

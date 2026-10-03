@@ -4,7 +4,7 @@
  * The goat's own rules (groups, moral cap, picker) are in goatVoice.test.ts.
  */
 import { describe, expect, it } from 'vitest'
-import { BUILDING_COPY, CAMP_COPY, GATE_COPY, SETUP_COPY, fill, joinNames } from '../../src/content/copy'
+import { CAMP_COPY, GATE_COPY, SETUP_COPY, fill, joinNames } from '../../src/content/copy'
 import { GOAT_LINES, GOAT_MOMENTS, MOMENT_MOOD, SCRIPTED, type GoatLine } from '../../src/content/goatLines'
 import { GLOSSARY_WORDS, glossary } from '../../src/content/glossary'
 import { GOAT_NAMES, MOUNTAIN_NAMES } from '../../src/content/names'
@@ -51,7 +51,6 @@ const COPY = {
   SETUP_COPY,
   GATE_COPY,
   CAMP_COPY,
-  BUILDING_COPY,
   GOAT_LINES,
   SCRIPTED,
   glossary,

@@ -5,7 +5,7 @@
  */
 import { defineConfig } from '@playwright/test'
 
-const PORT = 4173
+const PORT = Number(process.env.PW_PORT) || 4173
 const CI = !!process.env.CI
 
 export default defineConfig({

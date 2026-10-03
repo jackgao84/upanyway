@@ -1,0 +1,656 @@
+/* Log a brave thing (#/log, #/log/did/:id), Pick an idea, Make it smaller, and Plans (#/plans). */
+
+/* ------------------------------------------------------------------------------------------ */
+/* The flow: one question per screen */
+
+.log-step {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+/* The question gets focus for screen readers when a step opens; it isn't a control, so no ring. */
+.log__q:focus,
+.log .layout__title:focus {
+  outline: none;
+}
+
+/* The goat riding along in the backpack, at the foot of the short questions (tall screens only). */
+.log-peek {
+  display: flex;
+  justify-content: center;
+  /* Down onto the hill in front (the body's bottom padding). */
+  margin: auto 0 -22px;
+  padding-top: 12px;
+  pointer-events: none;
+}
+.log-peek[hidden],
+.kb-open .log-peek {
+  display: none;
+}
+.log-peek__canvas {
+  display: block;
+  width: 180px;
+  height: 180px;
+}
+@media (max-height: 899px) {
+  .log-peek {
+    display: none;
+  }
+}
+/* On a tall phone the chips of "What actually happened?" already fill the page. */
+@media (max-width: 560px) {
+  .log--happened .log-peek {
+    display: none;
+  }
+}
+.log .ask {
+  padding-top: min(3vh, 24px);
+}
+.log-ask {
+  align-items: stretch;
+}
+.log-pick {
+  align-self: center;
+  min-width: min(100%, 300px);
+}
+.log-chips {
+  justify-content: center;
+}
+.log-fear {
+  margin-top: 6px;
+}
+
+/* Her brave thing on a scrap of paper, kept in view while she answers. */
+.log-ticket {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  align-self: center;
+  width: fit-content;
+  max-width: 100%;
+  margin: 14px 0 2px;
+  padding: 14px 16px 14px 14px;
+  border-radius: 6px 6px 18px 6px;
+  background-color: #fffef8;
+  background-image: var(--grain-a);
+  background-size: 6px 6px;
+  color: var(--ink);
+  box-shadow:
+    0 3px 0 var(--edge),
+    0 12px 22px -16px rgba(110, 62, 34, 0.45);
+  transform: rotate(-0.8deg);
+  animation: ticket-in 0.45s var(--ease-out) both;
+}
+.log-ticket::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 78px;
+  height: 20px;
+  margin-left: -39px;
+  border-radius: 3px;
+  background: rgba(245, 184, 61, 0.45);
+  transform: rotate(-3deg);
+}
+.log-ticket__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--coral-soft);
+  color: var(--coral-deep);
+}
+.log-ticket--oops .log-ticket__icon {
+  background: var(--zone-crumble-soft);
+  color: var(--zone-crumble);
+}
+.log-ticket__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-lg);
+  font-weight: 850;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.log-ticket__forecast {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-left: 10px;
+  border-left: 2px dashed var(--line);
+}
+.log-ticket__weather {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 52px;
+  color: var(--ink-soft);
+  font-size: var(--fs-xs);
+  font-weight: 850;
+  line-height: 1.1;
+}
+.log-ticket__weather-icon {
+  display: flex;
+}
+.log-ticket__arrow {
+  display: flex;
+  color: var(--ink-faint);
+}
+@keyframes ticket-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) rotate(-2deg);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-0.8deg);
+  }
+}
+
+/* Big choice cards: "I'll do it later" / "I already did it!", and the three ways it can go. */
+.log-choices {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  margin-top: 4px;
+}
+.log-choices--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.log-choice {
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  min-height: 190px;
+  padding: 22px 16px 20px;
+  text-align: center;
+}
+.log-choice .card__icon {
+  width: 84px;
+  height: 84px;
+  border-radius: 28px;
+}
+.log-choice .card__content {
+  align-items: center;
+  flex: none;
+}
+.log-choice .card__title {
+  font-size: var(--fs-xl);
+  font-weight: 900;
+}
+.log-choice .card__text {
+  font-size: var(--fs-md);
+}
+.log-choices--three {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.log-choice--outcome {
+  flex-direction: row;
+  justify-content: flex-start;
+  min-height: 104px;
+  padding: 16px 20px;
+  text-align: left;
+}
+.log-choice--outcome .card__icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
+}
+.log-choice--outcome .card__content {
+  align-items: flex-start;
+  flex: 1 1 auto;
+}
+@media (max-width: 560px) {
+  .log-choices--two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .log-choice {
+    flex-direction: row;
+    justify-content: flex-start;
+    min-height: 112px;
+    padding: 16px 18px;
+    text-align: left;
+  }
+  .log-choice .card__icon {
+    width: 68px;
+    height: 68px;
+    border-radius: 22px;
+  }
+  .log-choice .card__content {
+    align-items: flex-start;
+    flex: 1 1 auto;
+  }
+  .log-ticket__icon {
+    display: none;
+  }
+  .log-ticket {
+    padding-left: 16px;
+  }
+}
+
+/* Flopped — and still here: the goat's line and where her flop will hang. */
+.log-flop {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+.log-flop .goat-bubble__bubble {
+  margin-bottom: 14px;
+}
+.log-flop__note {
+  align-items: center;
+  margin: 0;
+  font-size: var(--fs-md);
+}
+.log-flop__note > .icon {
+  color: var(--plum);
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Pick an idea */
+
+.log--ideas .layout__body {
+  max-width: calc(1040px + 2 * var(--gutter));
+}
+.ideas__care {
+  align-items: center;
+  margin-top: 4px;
+}
+.ideas__care-text {
+  font-size: var(--fs-lg);
+  line-height: 1.4;
+}
+.ideas__care-title {
+  display: block;
+  font-size: var(--fs-xl);
+  font-weight: 900;
+}
+.ideas__jump {
+  justify-content: center;
+  gap: 8px 10px;
+}
+.ideas__jump-chip {
+  gap: 8px;
+  padding-left: 12px;
+}
+.ideas__jump-icon {
+  display: flex;
+  color: var(--tone, var(--coral));
+}
+.ideas__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 8px;
+}
+.ideas__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ideas__head-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 17px;
+  background: var(--tone-soft);
+  color: var(--tone);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.05);
+}
+.ideas__title {
+  font-size: var(--fs-xl);
+  font-weight: 900;
+}
+.ideas__intro {
+  margin-top: -4px;
+  color: var(--ink-soft);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+.ideas__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 248px), 1fr));
+  gap: 14px;
+}
+.idea-card {
+  gap: 12px;
+  min-height: 84px;
+  padding: 14px 16px;
+}
+.idea-card .card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 15px;
+}
+.idea-card .card__title {
+  font-size: 1.08rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+/* Oops Missions: their own corner of the page, cards a little wonky on purpose. */
+.ideas__section--oops {
+  margin-top: 10px;
+  padding: 18px 16px 20px;
+  border-radius: var(--r-xl);
+  background:
+    var(--grain-b),
+    var(--zone-crumble-soft);
+  background-size:
+    5px 5px,
+    100% 100%;
+  box-shadow:
+    inset 0 0 0 2.5px rgba(201, 124, 75, 0.25),
+    0 3px 0 rgba(201, 124, 75, 0.18);
+}
+.ideas__section--oops .ideas__head-icon {
+  background: var(--card);
+}
+.ideas__section--oops .idea-card:nth-child(odd) {
+  transform: rotate(-0.7deg);
+}
+.ideas__section--oops .idea-card:nth-child(even) {
+  transform: rotate(0.6deg);
+}
+.ideas__section--oops .idea-card.is-pressed {
+  transform: translateY(3px);
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Make it smaller (bottom sheet) */
+
+.smaller {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.smaller__sub {
+  color: var(--ink-soft);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  text-align: center;
+}
+.smaller .log-ticket {
+  margin-top: 8px;
+}
+.smaller__ways {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 4px;
+}
+.smaller__way {
+  padding: 14px 16px;
+}
+.smaller__way .card__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 17px;
+}
+.smaller__way .card__text {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.smaller__back {
+  align-self: flex-start;
+  margin-left: -8px;
+}
+.smaller__own {
+  margin-top: 4px;
+}
+.smaller__actions {
+  display: flex;
+  justify-content: center;
+}
+.smaller__actions > .btn {
+  min-width: min(100%, 240px);
+}
+.smaller__q {
+  margin-top: 4px;
+  font-size: var(--fs-xl);
+  font-weight: 900;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Plans */
+
+.plans .layout__body {
+  max-width: calc(760px + 2 * var(--gutter));
+}
+.plans__intro {
+  color: var(--ink-soft);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  text-align: center;
+  text-wrap: balance;
+}
+/* The goat's spot takes room only while it talks. */
+.plans__goat {
+  max-height: 0;
+  margin: -10px 0;
+  overflow: hidden;
+  transition:
+    max-height 0.4s var(--ease-out),
+    margin 0.4s var(--ease-out);
+}
+.plans__goat.is-open {
+  max-height: 180px;
+  margin: 0;
+}
+.plans__goat .goat-bubble__bubble {
+  margin-bottom: 14px;
+}
+.plans__list {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-top: 6px;
+}
+
+.plan {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 20px 18px;
+  border-radius: var(--r-lg);
+  background:
+    var(--grain-a),
+    linear-gradient(180deg, #fffef8 0%, var(--card) 70%, var(--sky-soft) 160%);
+  background-size:
+    6px 6px,
+    100% 100%;
+  box-shadow:
+    var(--shadow-paper),
+    inset 0 0 0 1.5px rgba(236, 216, 192, 0.85);
+}
+.plan::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 84px;
+  height: 22px;
+  margin-left: -42px;
+  border-radius: 3px;
+  background: rgba(140, 195, 217, 0.5);
+  transform: rotate(-2deg);
+}
+.plan--oops::before {
+  background: rgba(201, 124, 75, 0.35);
+  transform: rotate(2deg);
+}
+.plan.is-new {
+  animation: plan-new 2.2s var(--ease-out) both;
+}
+@keyframes plan-new {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+  }
+  18% {
+    opacity: 1;
+    transform: none;
+    box-shadow:
+      var(--shadow-paper),
+      0 0 0 5px rgba(245, 184, 61, 0.55),
+      inset 0 0 0 1.5px rgba(236, 216, 192, 0.85);
+  }
+  100% {
+    box-shadow:
+      var(--shadow-paper),
+      0 0 0 0 rgba(245, 184, 61, 0),
+      inset 0 0 0 1.5px rgba(236, 216, 192, 0.85);
+  }
+}
+.plan__paper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.plan__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 17px;
+  background: var(--coral-soft);
+  color: var(--coral-deep);
+}
+.plan--oops .plan__icon {
+  background: var(--zone-crumble-soft);
+  color: var(--zone-crumble);
+}
+.plan__words {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.plan__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.plan__tag {
+  padding: 3px 10px 3px 6px;
+  font-size: var(--fs-xs);
+}
+.plan__text {
+  font-size: var(--fs-xl);
+  font-weight: 850;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.plan__forecast {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 64px;
+  padding: 6px 8px 7px;
+  border-radius: 18px;
+  background: rgba(220, 240, 246, 0.75);
+  color: var(--ink-soft);
+  font-size: var(--fs-xs);
+  font-weight: 850;
+}
+.plan__forecast-icon {
+  display: flex;
+}
+.plan__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+.plan__actions > .btn {
+  flex: 1 1 150px;
+  min-height: 60px;
+  padding: 10px 14px;
+  font-size: var(--fs-lg);
+}
+/* "Not today" and "Make it smaller" sit one size quieter than "I did it!" (and fit on one line). */
+.plan__actions > .btn--secondary {
+  font-size: var(--fs-md);
+}
+.plan__did {
+  --btn-top: #93c47c;
+  --btn-bg: var(--leaf);
+  --btn-edge: var(--leaf-deep);
+  --btn-glow: rgba(90, 140, 70, 0.45);
+}
+.plan__actions .btn--secondary.plan__not-today .btn__icon {
+  color: var(--sky-deep);
+}
+.plan__actions .btn--secondary.plan__smaller .btn__icon {
+  color: var(--sky-deep);
+}
+
+/* "Not today": the goat's words and a gentle offer, right on the card. */
+.plan__nottoday {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 2px dashed var(--line);
+  animation: ticket-in 0.4s var(--ease-out) both;
+}
+.plan__nottoday .goat-bubble__bubble {
+  margin-bottom: 14px;
+}
+.plan__offer {
+  font-size: var(--fs-lg);
+  font-weight: 900;
+  text-align: center;
+}
+.plan__actions--offer > .btn {
+  flex-basis: 180px;
+}
+
+@media (max-width: 560px) {
+  .plan {
+    padding: 20px 16px 16px;
+  }
+  .plan__text {
+    font-size: var(--fs-lg);
+  }
+  .plan__icon {
+    display: none;
+  }
+  .plan__actions > .btn {
+    flex-basis: 120px;
+    font-size: var(--fs-md);
+  }
+  /* "I did it!" and "Not today" share a row; "Make it smaller" gets its own. */
+  .plan__actions > .plan__smaller,
+  .plan__actions--offer > .btn {
+    flex-basis: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .log-ticket,
+  .plan.is-new,
+  .plan__nottoday {
+    animation: none;
+  }
+  .plans__goat {
+    transition: none;
+  }
+}

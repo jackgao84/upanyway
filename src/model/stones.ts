@@ -160,7 +160,11 @@ export function markNotToday(d: SaveData, id: string): void {
   if (b && b.status === 'planned') b.notTodayCount++
 }
 
-/** "Make it smaller": a NEW plan pointing at the original, which stays unchanged (Decision 22). */
+/**
+ * "Make it smaller": a NEW plan pointing at the original, which stays unchanged (Decision 22).
+ * Made after a "Not today" on the original, it's marked `afterNotToday` (the smaller-step badge:
+ * a Not today turned into a smaller step, in that order).
+ */
 export function makeSmallerPlan(
   d: SaveData,
   originalId: string,
@@ -171,6 +175,7 @@ export function makeSmallerPlan(
   if (!original) return null
   const b = addBraveThing(d, { ...input, oops: original.oops }, now)
   b.smallerOf = original.id
+  if (original.notTodayCount > 0) b.afterNotToday = true
   return b
 }
 

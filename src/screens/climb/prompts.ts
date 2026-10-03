@@ -142,7 +142,9 @@ function compareArt(forecast: number, really: number): HTMLElement {
 export function sunsetPrompt(goat: GoatInfo, line: SpokenLine, onCamp: () => void): Prompt {
   const bubble = goatSays(goat, line)
   const sun = sunDial()
-  sun.set(0.8)
+  // Half-dipped behind the hills: low enough to read as sunset, high enough to still be seen
+  // (at 0.8 the disc sits wholly behind the far hill and the picture is an empty sky).
+  sun.set(0.58)
   sun.el.classList.add('climb-sun--big')
   const handle = modal({
     body: [h('div', { class: 'climb-prompt__goat' }, bubble.el)],

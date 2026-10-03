@@ -131,6 +131,7 @@ export function richSave(): SaveData {
       status: 'planned',
       notTodayCount: 0,
       smallerOf: 'b-2',
+      afterNotToday: true,
       stoneDay: null,
     },
   ]

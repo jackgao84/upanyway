@@ -206,8 +206,16 @@ describe('plans', () => {
     const snapshot = { ...original }
     const smaller = makeSmallerPlan(d, original.id, { text: 'Sit on the edge first', forecast: 4 }, DAY2)
     expect(smaller).toMatchObject({ smallerOf: original.id, status: 'planned', forecast: 4, text: 'Sit on the edge first' })
+    expect(smaller?.afterNotToday).toBeUndefined()
     expect(original).toEqual(snapshot)
     expect(d.brave).toHaveLength(2)
     expect(makeSmallerPlan(d, 'missing', { text: 'x', forecast: 1 }, DAY2)).toBeNull()
+  })
+
+  it('a plan made smaller after a Not today remembers it (the smaller-step badge)', () => {
+    const d = fresh()
+    const original = addBraveThing(d, { text: 'Jump in the deep end', forecast: 9 }, DAY1)
+    markNotToday(d, original.id)
+    expect(makeSmallerPlan(d, original.id, { text: 'Dip my toes in', forecast: 2 }, DAY2)?.afterNotToday).toBe(true)
   })
 })

@@ -42,6 +42,8 @@ export interface BraveThing {
   notTodayCount: number
   /** If this plan is a smaller version of another plan, that plan's id. */
   smallerOf?: string
+  /** Made smaller after a "Not today" on its original (the smaller-step badge; never displayed). */
+  afterNotToday?: true
   doneAt?: string
   /** "How scary was it really?" 0–10. */
   really?: number

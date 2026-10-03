@@ -12,11 +12,18 @@
  *   summit pitch's Beta Map): camp, the Trail Map and any climb route open the finale first, so the
  *   goat's first time out of the pack is never skipped.
  */
-import { buildingScreen } from '../screens/building'
+import { cairnScreen } from '../screens/cairn'
 import { campScreen } from '../screens/camp'
 import { climbScreen } from '../screens/climb'
 import { finaleScreen } from '../screens/finale'
+import { badgesScreen } from '../screens/badges'
+import { flopsScreen } from '../screens/flops'
+import { lettersScreen } from '../screens/letters'
+import { mapScreen } from '../screens/map'
+import { logDidScreen, logScreen } from '../screens/log'
 import { gateScreen } from '../screens/parent/gate'
+import { parentScreen } from '../screens/parent/home'
+import { plansScreen } from '../screens/plans'
 import { braveScreen } from '../screens/setup/brave'
 import { cheerScreen } from '../screens/setup/cheer'
 import { climberScreen } from '../screens/setup/climber'
@@ -26,6 +33,8 @@ import { helloScreen } from '../screens/setup/hello'
 import { lessonScreen } from '../screens/setup/lesson'
 import { mountainScreen } from '../screens/setup/mountain'
 import { namesScreen } from '../screens/setup/names'
+import { wardrobeScreen } from '../screens/wardrobe'
+import { weatherScreen } from '../screens/weather'
 import { hasPin } from '../model/pin'
 import type { SaveData } from '../storage/schema'
 import { isParentUnlocked, KID_STEPS, lockParent, save, setupPath, setupStep, type KidStep } from './context'
@@ -48,19 +57,19 @@ export const ROUTES: Route[] = [
   { pattern: '/setup/cheer', screen: cheerScreen },
   { pattern: '/camp', screen: campScreen },
   { pattern: '/climb/:id', screen: climbScreen, className: 'screen--climb' },
-  // Built in later stages; until then a friendly "still being built" card with a way back to camp.
-  { pattern: '/map', screen: buildingScreen },
-  { pattern: '/log', screen: buildingScreen },
-  { pattern: '/plans', screen: buildingScreen },
-  { pattern: '/cairn', screen: buildingScreen },
-  { pattern: '/weather', screen: buildingScreen },
-  { pattern: '/flops', screen: buildingScreen },
-  { pattern: '/letters', screen: buildingScreen },
-  { pattern: '/wardrobe', screen: buildingScreen },
-  { pattern: '/badges', screen: buildingScreen },
+  { pattern: '/map', screen: mapScreen },
+  { pattern: '/log', screen: logScreen },
+  { pattern: '/log/did/:id', screen: logDidScreen },
+  { pattern: '/plans', screen: plansScreen },
+  { pattern: '/cairn', screen: cairnScreen },
+  { pattern: '/weather', screen: weatherScreen },
+  { pattern: '/flops', screen: flopsScreen },
+  { pattern: '/letters', screen: lettersScreen },
+  { pattern: '/wardrobe', screen: wardrobeScreen },
+  { pattern: '/badges', screen: badgesScreen },
   { pattern: '/finale', screen: finaleScreen, className: 'screen--fixed' },
   { pattern: '/parent', screen: gateScreen },
-  { pattern: '/parent/:page', screen: buildingScreen },
+  { pattern: '/parent/:page', screen: parentScreen },
 ]
 
 /** Where unknown paths go (the guard then picks camp or the first-run step). */

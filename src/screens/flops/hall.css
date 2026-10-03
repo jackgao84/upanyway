@@ -1,0 +1,484 @@
+/* Hall of Flops (#/flops): the fall-pose collection and two museum walls of framed flops. */
+
+.hall .layout__body {
+  max-width: calc(1000px + 2 * var(--gutter));
+}
+.hall__tabs {
+  width: min(720px, 100%);
+}
+.hall__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.hall__lead {
+  max-width: 34em;
+  margin: 0 auto;
+  color: var(--ink-soft);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Fall poses */
+
+.hall__intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-top: 4px;
+}
+.hall__count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px 12px;
+  border-radius: var(--r-lg);
+  background: var(--card);
+  box-shadow:
+    var(--shadow-paper),
+    inset 0 0 0 1.5px rgba(236, 216, 192, 0.85);
+}
+.hall__count-text {
+  color: var(--plum);
+  font-size: var(--fs-lg);
+  font-weight: 900;
+}
+.hall__tally {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+  max-width: 320px;
+}
+.hall__tally-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 5px;
+  background: var(--paper-3);
+  box-shadow: inset 0 0 0 1.5px rgba(138, 107, 176, 0.22);
+}
+.hall__tally-dot.is-found {
+  background: var(--plum);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.14);
+}
+
+.pose-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 16px;
+}
+.pose-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 10px 14px;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--card) 0%, var(--card) 60%, var(--plum-soft) 150%);
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+  box-shadow:
+    var(--shadow-paper),
+    inset 0 0 0 1.5px rgba(236, 216, 192, 0.85);
+}
+button.pose-card {
+  cursor: pointer;
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out);
+}
+button.pose-card.is-pressed {
+  transform: translateY(3px);
+  box-shadow:
+    var(--shadow-press),
+    inset 0 0 0 1.5px rgba(236, 216, 192, 0.85);
+}
+.pose-card__pic {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding-top: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--sky-soft);
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.75);
+}
+.pose-card__canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.pose-card__new {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: var(--coral);
+  color: var(--white);
+  font-size: var(--fs-sm);
+  font-weight: 900;
+  box-shadow: 0 2px 0 var(--coral-deep);
+  animation: hall-pop 0.5s var(--ease-pop) both;
+}
+.pose-card__words {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+}
+.pose-card__name {
+  font-size: var(--fs-md);
+  font-weight: 900;
+  line-height: 1.2;
+}
+.pose-card__text {
+  color: var(--ink-soft);
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  line-height: 1.35;
+}
+.pose-card__times {
+  margin-top: 4px;
+  padding: 3px 12px;
+  border-radius: var(--r-pill);
+  background: var(--plum-soft);
+  color: var(--plum);
+  font-size: var(--fs-sm);
+  font-weight: 900;
+}
+
+/* Not found yet: a paper silhouette and a question mark, quiet and a little mysterious. */
+.pose-card.is-mystery {
+  background: var(--paper-2);
+  box-shadow:
+    0 3px 0 rgba(226, 196, 164, 0.7),
+    inset 0 0 0 2px rgba(201, 165, 130, 0.35);
+}
+.pose-card.is-mystery .pose-card__pic {
+  background: var(--paper-3);
+  box-shadow: none;
+}
+.pose-card.is-mystery .pose-card__name {
+  color: var(--ink-faint);
+  letter-spacing: 0.18em;
+}
+.pose-card.is-mystery .pose-card__text {
+  color: var(--ink-faint);
+}
+
+@keyframes hall-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The big view of one pose. */
+.pose-modal__pic {
+  position: relative;
+  width: min(300px, 70vw, 42vh);
+  height: min(300px, 70vw, 42vh);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow:
+    0 4px 0 var(--edge),
+    inset 0 0 0 4px var(--white);
+}
+.pose-modal__canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.pose-modal__text {
+  color: var(--ink);
+  font-size: var(--fs-lg);
+  font-weight: 750;
+}
+.pose-modal__facts {
+  color: var(--plum);
+  font-size: var(--fs-md);
+  font-weight: 850;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* The museum walls */
+
+.hall__lead--wall {
+  padding-top: 4px;
+}
+.hall__wall {
+  --wall-a: #f5ecf6;
+  --wall-b: #f1e5f3;
+  --rail: #d9c5df;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 40px 30px;
+  padding: 34px 28px 36px;
+  border-radius: var(--r-xl);
+  background-color: var(--wall-a);
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 120px),
+    repeating-linear-gradient(90deg, var(--wall-a) 0 26px, var(--wall-b) 26px 52px);
+  box-shadow:
+    0 4px 0 var(--edge),
+    0 18px 30px -20px rgba(110, 62, 34, 0.45),
+    inset 0 10px 0 var(--rail),
+    inset 0 12px 0 rgba(255, 255, 255, 0.55);
+}
+.hall__wall--wing {
+  --wall-a: #eaf3f7;
+  --wall-b: #e3eef4;
+  --rail: #bcd7e2;
+}
+.hall__wall--empty {
+  display: block;
+  padding: 20px 16px 26px;
+}
+.hall__wall--empty .empty__art {
+  width: auto;
+  height: auto;
+  margin-bottom: 4px;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.hall__empty-frame {
+  display: block;
+  width: 128px;
+  height: 100px;
+  padding: 10px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #f7dd8b 0%, #d4a442 30%, #fae6a4 52%, #c08a2c 76%, #ecc867 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 246, 214, 0.8),
+    inset 0 0 0 4px #b78528,
+    0 3px 0 #94661d,
+    0 12px 22px -10px rgba(80, 44, 16, 0.5);
+}
+.hall__empty-mat {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 2px;
+  background: #fdf8ee;
+  box-shadow: inset 0 2px 6px rgba(90, 56, 20, 0.28);
+}
+
+.exhibit {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  min-width: 0;
+}
+
+/* A little brass picture lamp, and its warm light on the frame. */
+.exhibit__hang {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 0;
+}
+.exhibit__lamp {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 74px;
+  height: 12px;
+  margin-left: -37px;
+  border-radius: 6px 6px 10px 10px;
+  background: linear-gradient(180deg, #e9c46a, #b78528);
+  box-shadow:
+    0 2px 0 #8d6219,
+    inset 0 2px 0 rgba(255, 245, 210, 0.7);
+}
+.exhibit__lamp::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 4px;
+  height: 11px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: #a87a24;
+}
+.exhibit__glow {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 82%;
+  height: 120px;
+  transform: translateX(-50%);
+  border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 238, 180, 0.55), rgba(255, 238, 180, 0) 70%);
+  pointer-events: none;
+}
+
+.exhibit__frame {
+  position: relative;
+  width: 100%;
+  padding: 14px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #f7dd8b 0%, #d4a442 26%, #fae6a4 48%, #c08a2c 72%, #ecc867 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 246, 214, 0.85),
+    inset 0 0 0 5px #b78528,
+    inset 0 0 0 7px #f2d47c,
+    inset 0 0 0 8px rgba(141, 98, 25, 0.5),
+    0 4px 0 #94661d,
+    0 20px 30px -14px rgba(70, 36, 12, 0.55);
+}
+.exhibit__mat {
+  padding: 12px;
+  border-radius: 2px;
+  background: #fdf8ee;
+  box-shadow:
+    inset 0 2px 6px rgba(90, 56, 20, 0.3),
+    inset 0 0 0 1px rgba(141, 98, 25, 0.18);
+}
+.exhibit__art {
+  position: relative;
+  width: 100%;
+  padding-top: 75%;
+  overflow: hidden;
+  border-radius: 1px;
+  box-shadow: 0 0 0 1px rgba(90, 56, 20, 0.22);
+}
+.painting__svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+/* Canvas weave + a soft varnish sheen, so it reads as a painting rather than a picture. */
+.exhibit__art::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background:
+    linear-gradient(125deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 38%),
+    repeating-linear-gradient(0deg, rgba(90, 56, 20, 0.05) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(90, 56, 20, 0.04) 0 1px, transparent 1px 3px);
+  pointer-events: none;
+}
+.exhibit__ribbon {
+  position: absolute;
+  top: -12px;
+  right: -8px;
+  padding: 5px 12px 6px;
+  border-radius: var(--r-pill);
+  background: var(--coral);
+  color: var(--white);
+  font-size: var(--fs-sm);
+  font-weight: 900;
+  box-shadow: 0 3px 0 var(--coral-deep);
+  transform: rotate(4deg);
+  animation: hall-pop 0.6s var(--ease-pop) 0.2s both;
+}
+
+/* The museum placard under each painting. */
+.placard {
+  position: relative;
+  width: calc(100% - 28px);
+  margin-top: 18px;
+  padding: 14px 18px 16px;
+  border-radius: 6px;
+  background: #fffdf8;
+  color: var(--ink);
+  text-align: left;
+  box-shadow:
+    0 2px 0 rgba(201, 165, 130, 0.8),
+    0 10px 18px -12px rgba(110, 62, 34, 0.45),
+    inset 0 0 0 1px rgba(236, 216, 192, 0.9);
+}
+.placard__title {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.placard__meta {
+  margin: 4px 0 0;
+  color: var(--ink-faint);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+}
+.placard__caption {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1.5px solid var(--line);
+  color: var(--ink-soft);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.placard__label {
+  color: var(--plum);
+  font-weight: 900;
+}
+.hall__wall--wing .placard__label {
+  color: var(--sky-deep);
+}
+
+@media (max-width: 520px) {
+  .hall__tabs .segmented__opt {
+    padding: 6px 8px;
+    font-size: var(--fs-sm);
+    line-height: 1.15;
+    text-align: center;
+  }
+  .hall__lead {
+    font-size: var(--fs-md);
+  }
+  .pose-grid {
+    gap: 12px;
+  }
+  .hall__wall {
+    gap: 34px;
+    padding: 30px 16px 28px;
+  }
+  /* Keep the picture clear of the dialog's close button. */
+  .modal.pose-modal .modal__art {
+    margin-top: 30px;
+  }
+}
+
+/* A phone held sideways: a smaller picture, so the pose's words fit beside the button. */
+@media (max-height: 500px) {
+  .pose-modal__pic {
+    width: min(180px, 34vh);
+    height: min(180px, 34vh);
+  }
+  .pose-modal__text {
+    font-size: var(--fs-md);
+  }
+}

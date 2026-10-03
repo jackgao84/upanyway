@@ -6,8 +6,8 @@
  * scale to her feet and call drawClimber; it only changes the transform inside save/restore.
  */
 import type { ClimberLook } from '../../storage/schema'
-import { VARIANT_COLOURS } from '../../content/unlockables'
 import { drawGoat, goatBounds, type GoatState } from './goat'
+import { parseGearId } from './gear'
 import {
   DEG,
   RIG,
@@ -159,8 +159,8 @@ function palette(look: ClimberLook): Pal {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Gear (post-summit unlockables). Ids look like "gear-scarf", optionally with a colour variant
-// appended ("gear-scarf:sky-blue", "gear-scarf--sky-blue", "gear-scarf-sky-blue" or any "#rrggbb").
+// Gear (post-summit unlockables). Ids look like "gear-scarf", or a colour variant
+// "gear-scarf~sky-blue" (model/unlockables.ts); gear.ts reads them (older spellings too).
 
 const GEAR_BASE = [
   'gear-star-stickers',
@@ -217,16 +217,10 @@ function gearSet(ids: readonly string[]): Map<GearId, string> {
   if (hit) return hit
   const out = new Map<GearId, string>()
   for (const raw of ids) {
-    const base = GEAR_BASE.find((b) => raw === b || raw.startsWith(b + ':') || raw.startsWith(b + '-'))
-    if (!base) continue
-    let tint = GEAR_DEFAULT[base]
-    const hex = /#[0-9a-f]{6}/i.exec(raw)
-    if (hex) tint = hex[0]
-    else if (raw !== base) {
-      const v = VARIANT_COLOURS.find((vc) => raw.endsWith(vc.id))
-      if (v) tint = v.tint
-    }
-    out.set(base, tint)
+    const worn = parseGearId(raw)
+    const base = worn ? GEAR_BASE.find((b) => b === worn.baseId) : undefined
+    if (!worn || !base) continue
+    out.set(base, worn.tint ?? GEAR_DEFAULT[base])
   }
   if (gearCache.size > 32) gearCache.clear()
   gearCache.set(key, out)
@@ -1782,12 +1776,18 @@ function head(d: Draw): void {
   }
   const paint = d.gear.get('gear-face-paint')
   if (paint) {
+    // On the open cheek (the front one sits under braids and side hair), outlined so a pale
+    // colour still reads at thumbnail size.
     ctx.save()
-    ctx.translate(FACE.cheekF.x + 0.4, FACE.cheekF.y - 0.2)
-    ctx.rotate(0.2)
-    starPath(ctx, 1.3)
+    ctx.translate(FACE.cheekB.x - 0.4, FACE.cheekB.y - 0.3)
+    ctx.rotate(-0.15)
+    starPath(ctx, 1.75)
     ctx.fillStyle = paint
     ctx.fill()
+    ctx.strokeStyle = rgba(shade(paint, -0.45), 0.75)
+    ctx.lineWidth = 0.32
+    ctx.lineJoin = 'round'
+    ctx.stroke()
     ctx.restore()
   }
 
@@ -1950,6 +1950,9 @@ function helmet(d: Draw): void {
 
 function headlamp(d: Draw): void {
   const { ctx, lw, t } = d
+  // A colour variant of the headlamp gear tints its case; the plain one (and the helmet style) is grey.
+  const lampTint = d.gear.get('gear-headlamp')
+  const lampCase = lampTint && lampTint !== GEAR_DEFAULT['gear-headlamp'] ? lampTint : '#5d5676'
   ctx.strokeStyle = '#4f4866'
   ctx.lineWidth = 1.1
   ctx.beginPath()
@@ -1960,7 +1963,7 @@ function headlamp(d: Draw): void {
   ctx.translate(9.0, -8.2)
   ctx.rotate(0.35)
   const body = roundRectPath(-2.0, -1.6, 4.0, 3.2, 1)
-  paintShape(ctx, body, '#5d5676', lw * 0.85)
+  paintShape(ctx, body, lampCase, lw * 0.85)
   const glow = 0.55 + 0.15 * Math.sin(t * 3)
   ctx.fillStyle = rgba('#fff3b0', 0.35 * glow)
   ctx.beginPath()

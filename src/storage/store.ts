@@ -5,8 +5,8 @@
  * Storage is injectable (`StorageLike`) so unit tests run in node with an in-memory map.
  */
 import { KEYS } from './keys'
-import { loadSave, type LoadResult } from './migrations'
-import { defaultSave, type SaveData } from './schema'
+import { loadSave, versionOf, type LoadResult } from './migrations'
+import { CURRENT_SCHEMA_VERSION, defaultSave, type SaveData } from './schema'
 
 export interface StorageLike {
   getItem(key: string): string | null
@@ -98,10 +98,15 @@ export class Store {
     }
   }
 
-  /** Copy the currently stored save to the backup key (writing any pending change first). */
+  /**
+   * Copy the currently stored save to the backup key (writing any pending change first). A backup that
+   * holds a save from a newer version of the app is never replaced: it is the only full copy of that
+   * save (this version can only read part of it), and the grown-up was told it was kept.
+   */
   writeBackup(): void {
     if (this.timer) this.flush()
     try {
+      if (holdsNewerSave(this.storage.getItem(KEYS.backup))) return
       const current = this.storage.getItem(KEYS.save)
       if (current) this.storage.setItem(KEYS.backup, current)
     } catch (err) {
@@ -119,6 +124,19 @@ export class Store {
 
   private emit(): void {
     for (const fn of [...this.listeners]) fn(this.doc)
+  }
+}
+
+/** True when `text` is a save written by a newer version of the app. */
+function holdsNewerSave(text: string | null): boolean {
+  if (!text) return false
+  try {
+    const parsed: unknown = JSON.parse(text)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false
+    const v = versionOf(parsed as Record<string, unknown>)
+    return v !== null && v > CURRENT_SCHEMA_VERSION
+  } catch {
+    return false
   }
 }
 

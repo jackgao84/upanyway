@@ -49,6 +49,8 @@ export type GoatMoment =
   | 'campReached'
   | 'stoneAdded'
   | 'stoneWaiting'
+  | 'cairnVisit'
+  | 'cairnEmpty'
   | 'flopLogged'
   | 'notToday'
   | 'summit'
@@ -64,6 +66,7 @@ export type GoatMoment =
   | 'hop'
   | 'betaOffer'
   | 'smaller'
+  | 'planSaved'
   | 'letter'
 
 export interface GoatLine {
@@ -112,6 +115,8 @@ export const SCRIPTED = {
   notToday: "Fear won this round. That's allowed.",
   /** A stone over the day's cap waits beside the cairn. */
   stoneWaiting: "The cairn's full for today. This stone goes on tomorrow.",
+  /** The same, when more stones are already waiting and this one can't go on tomorrow. */
+  stoneWaitingLater: "The cairn's full for today. This stone waits its turn.",
   /** The day's climbing time is used up. */
   sunset: "The sun's going down. The mountain will be here tomorrow.",
   /** A hidden hold showed up during a fall. */
@@ -145,6 +150,7 @@ export const SCRIPTED_MOOD: {
   firstCamp: 'happy',
   notToday: 'calm',
   stoneWaiting: 'calm',
+  stoneWaitingLater: 'calm',
   sunset: 'calm',
   hiddenHold: 'happy',
   finale: ['happy', 'wobbly', 'giggly', 'happy'],
@@ -174,6 +180,8 @@ export const MOMENT_MOOD: Record<GoatMoment, GoatMood> = {
   campReached: 'happy',
   stoneAdded: 'happy',
   stoneWaiting: 'calm',
+  cairnVisit: 'calm',
+  cairnEmpty: 'calm',
   flopLogged: 'calm',
   notToday: 'calm',
   summit: 'happy',
@@ -189,6 +197,7 @@ export const MOMENT_MOOD: Record<GoatMoment, GoatMood> = {
   hop: 'giggly',
   betaOffer: 'calm',
   smaller: 'happy',
+  planSaved: 'happy',
   letter: 'happy',
 }
 
@@ -428,16 +437,21 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: 'I like camp. The ground stays exactly where it is.', mood: 'giggly' },
     { text: "The mountain looks very tall today. Let's go anyway?", mood: 'wobbly' },
     { text: 'My hooves are ready. My tummy is still deciding.', mood: 'scared' },
-    { text: 'Your backpack is the comfiest spot on the whole mountain.', mood: 'happy' },
+    { text: 'Your backpack is the comfiest spot on the whole mountain.', mood: 'happy', pack: true },
     { text: 'I peeked up the trail. Still high. Still coming.' },
     { text: 'Sitting by the fire is my best skill.', mood: 'giggly' },
-    { text: "Somewhere up there is Sky Lake. I wonder if it's splashy.", mood: 'happy' },
+    { text: "Somewhere up there is Sky Lake. I wonder if it's splashy.", mood: 'happy', pack: true },
     { text: "The fire crackled. I jumped. I'm still sitting here, though.", mood: 'giggly' },
     { text: 'Want to hear my fierce noise? Meh-eh-eh. Terrifying.', mood: 'giggly' },
     { text: "Somebody's tummy rumbled. Not mine. Okay, mine.", mood: 'giggly' },
     { text: "Mountain goats are meant to love heights. I'm a special one.", mood: 'giggly' },
     { text: 'I counted the stars last night. I got to eleven.' },
-    { text: 'I dreamed we could see the whole world from Sky Lake.', mood: 'happy' },
+    { text: 'I dreamed we could see the whole world from Sky Lake.', mood: 'happy', pack: true },
+    // After Sky Lake the goat sits beside her by the fire.
+    { text: 'I still have Sky Lake in my ears. Best flop ever.', mood: 'giggly', out: true },
+    { text: 'Out of the backpack, by the fire. Still a bit wobbly.', mood: 'calm', out: true },
+    { text: 'We saw everything from the top. My knees still remember.', mood: 'happy', out: true },
+    { text: "Climb by moonlight sometime? I'll bring my wobbly legs.", mood: 'wobbly', out: true },
     { text: 'Being scared just means it matters to us.', moral: true },
     { text: "You don't have to stop being scared to go.", moral: true },
     { text: "I'm scared lots. I come anyway. That's my whole trick.", moral: true },
@@ -469,8 +483,24 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
 
   stoneWaiting: [
     { text: S.stoneWaiting, mood: M.stoneWaiting },
+    { text: S.stoneWaitingLater, mood: M.stoneWaitingLater },
     { text: 'This one waits right here. It gets first spot tomorrow.' },
     { text: "A waiting stone! It's still yours. It goes on tomorrow.", mood: 'happy' },
+  ],
+
+  // Visiting the cairn with nothing new on it: sitting by the stones together.
+  cairnVisit: [
+    { text: 'Every stone here is a real thing you did.' },
+    { text: 'I like sitting by our cairn. It feels like a hug.', mood: 'happy' },
+    { text: "Tap a stone and I'll listen to its story again.", mood: 'happy' },
+    { text: 'Some went wobbly. Some flopped. Every stone counts the same.' },
+    { text: 'I gave our cairn a sniff. It smells like real life.', mood: 'giggly' },
+  ],
+
+  // The cairn's hilltop before the first stone.
+  cairnEmpty: [
+    { text: 'This hilltop is saving a spot for our first stone.' },
+    { text: 'One real brave thing, and a stone lands right here.', mood: 'happy' },
   ],
 
   // She logged a real brave thing that flopped. Respect, never a joke.
@@ -576,6 +606,15 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: "Tiny steps! That's how goats climb everything." },
     { text: 'Half a scary thing is still a scary thing.', mood: 'calm' },
     { text: 'Smaller is clever. Mountains are made of little rocks.' },
+  ],
+
+  // "I'll do it later": a brave thing saved to Plans. Plans keep; nothing is late.
+  planSaved: [
+    { text: "Saved for later! I'll keep it safe in the backpack.", pack: true },
+    { text: 'A plan! It can wait as long as it likes.' },
+    { text: "Later is a real time. It'll be right here.", mood: 'calm' },
+    { text: 'Into Plans it goes. My knees say thank you.', mood: 'giggly' },
+    { text: "Whenever you're ready, so is this plan.", mood: 'calm' },
   ],
 
   // Opening a Spotted! letter.

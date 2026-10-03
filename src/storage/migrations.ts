@@ -338,6 +338,7 @@ function normalizeBraveThing(v: unknown, now: Date): BraveThing | null {
   if (worry) b.worry = worry
   const smallerOf = optStr(v.smallerOf)
   if (smallerOf) b.smallerOf = smallerOf
+  if (smallerOf && v.afterNotToday === true) b.afterNotToday = true
   if (status === 'done') {
     b.doneAt = doneAt ?? createdAt
     const really = num(v.really, NaN, 0, 10, true)

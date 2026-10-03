@@ -1,0 +1,201 @@
+/* The climber designer's extras (the base designer styles live with the first run in
+   setup/setup.css): the stage's button row, the seventh "Treasures" tab, the Treasures panel, and
+   the Wardrobe's page layout. */
+
+.designer__stage-buttons {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.designer__stage-buttons .designer__surprise,
+.designer__stage-buttons .designer__undo {
+  position: static;
+  min-height: var(--tap-min);
+  padding: 8px 18px;
+  font-size: var(--fs-md);
+}
+.designer__undo[hidden] {
+  display: none;
+}
+
+/* Seven tabs: one row on an iPad, 4 + 3 on a phone. */
+.designer--seven .designer__tabs {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.designer--seven .designer__tab {
+  padding-left: 2px;
+  padding-right: 2px;
+}
+.designer__tab--treasures {
+  position: relative;
+  background: linear-gradient(180deg, #fff6dc, #fde9b6);
+  color: var(--sun-deep);
+}
+.designer__tab--treasures.is-selected {
+  background: linear-gradient(180deg, #f8c75a, var(--sun));
+  color: var(--white);
+  box-shadow: 0 3px 0 var(--sun-deep);
+}
+.designer__tab-star {
+  display: block;
+  font-size: 0.9em;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+/* Treasures */
+.treasures__note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--sun-soft);
+  color: var(--ink-soft);
+  font-weight: 800;
+  line-height: 1.3;
+}
+.treasures__note-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--sun-deep);
+}
+.treasures__caption {
+  min-height: 1.4em;
+  margin: 2px 2px 0;
+  color: var(--ink-soft);
+  font-weight: 700;
+  line-height: 1.35;
+}
+.treasures__slot {
+  margin-top: 6px;
+}
+.treasures__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 8px 10px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+.treasures__empty-art {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 28px;
+  background: var(--leaf-soft);
+  color: var(--leaf-deep);
+}
+.treasures__empty-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--fs-lg);
+  font-weight: 900;
+}
+.treasure {
+  position: relative;
+}
+.treasure__new {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--coral);
+  color: var(--white);
+  font-size: var(--fs-xs);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 0 var(--coral-deep);
+}
+.treasure__check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--coral);
+  color: var(--white);
+  box-shadow: 0 2px 0 var(--coral-deep);
+}
+.treasure.is-selected .treasure__check {
+  display: grid;
+}
+
+@media (max-width: 600px) {
+  .designer--seven .designer__tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .designer__stage-buttons {
+    right: 8px;
+    bottom: 8px;
+    gap: 8px;
+  }
+  .designer__stage-buttons .designer__surprise,
+  .designer__stage-buttons .designer__undo {
+    padding: 8px 14px;
+  }
+}
+
+/* The Wardrobe page */
+.wardrobe .designer__stage {
+  height: clamp(240px, 34vh, 420px);
+}
+/* One column (a phone, or an iPad held upright): her picture stays in view under the header while
+   the options scroll beneath it, so whatever she taps lower down shows on her at once. 74px is the
+   header's height under the safe-area inset (ui/styles/components.css .layout__header). */
+@media (max-width: 899px), (orientation: portrait) {
+  .wardrobe .designer__stage {
+    position: -webkit-sticky;
+    position: sticky;
+    top: calc(var(--safe-top) + 74px);
+    z-index: 4;
+  }
+}
+@media (max-width: 600px) {
+  /* On a phone the goat stands beside her: the buttons sit under the picture, not over the goat. */
+  .wardrobe .designer__stage {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+  }
+  /* Small enough that a row of options always shows under the picture. */
+  .wardrobe .designer__canvas {
+    height: clamp(170px, 22vh, 210px);
+  }
+  .wardrobe .designer__stage-buttons {
+    position: static;
+    justify-content: flex-end;
+    margin-top: -6px;
+    padding: 0 8px 8px;
+  }
+}
+@media (min-width: 900px) and (orientation: landscape) {
+  .wardrobe .layout__body {
+    max-width: calc(1180px + 2 * var(--gutter));
+  }
+  .wardrobe .designer {
+    display: grid;
+    /* The controls get the wider column so all seven tabs fit on one row. */
+    grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+    align-items: start;
+    gap: 24px;
+  }
+  .wardrobe .designer__stage {
+    position: -webkit-sticky;
+    position: sticky;
+    top: calc(var(--safe-top) + 96px);
+    height: min(62vh, 540px);
+  }
+}

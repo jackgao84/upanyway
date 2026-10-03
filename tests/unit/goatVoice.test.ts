@@ -79,6 +79,8 @@ const ALL_MOMENTS: GoatMoment[] = [
   'campReached',
   'stoneAdded',
   'stoneWaiting',
+  'cairnVisit',
+  'cairnEmpty',
   'flopLogged',
   'notToday',
   'summit',
@@ -94,6 +96,7 @@ const ALL_MOMENTS: GoatMoment[] = [
   'hop',
   'betaOffer',
   'smaller',
+  'planSaved',
   'letter',
 ]
 const SCARY_KINDS: LooksScaryKind[] = ['bigleap', 'eyes', 'rumble', 'bridge', 'shadow']
