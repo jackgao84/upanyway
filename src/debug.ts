@@ -11,6 +11,8 @@
  *   worldToClient()  a world point (units, y-up) in client px
  *   levelId()        'p01'… or 'lesson'
  *   pendingPrompt()  the open blocking prompt: 'forecast' | 'really' | 'reveal' | 'betamap' | 'sunset' | 'locked'
+ *   scaryPhase()     the pitch's Looks Scary set-piece: 'looming' | 'revealing' | 'revealed' (null: none)
+ *   goatOutside()    the goat climbs beside her (night climbs after Sky Lake) rather than in the pack
  */
 import { version } from '../package.json'
 import { store } from './storage/store'
@@ -36,6 +38,8 @@ export interface ClimbDebugProvider {
   worldToClient(x: number, y: number): { x: number; y: number } | null
   levelId(): string
   pendingPrompt(): string | null
+  scaryPhase?(): string | null
+  goatOutside?(): boolean
 }
 
 export interface ClimbDebug {
@@ -45,6 +49,8 @@ export interface ClimbDebug {
   worldToClient(x: number, y: number): { x: number; y: number } | null
   levelId(): string | null
   pendingPrompt(): string | null
+  scaryPhase(): string | null
+  goatOutside(): boolean | null
 }
 
 export interface DebugApi {
@@ -81,6 +87,8 @@ const climb: ClimbDebug = {
   worldToClient: (x, y) => (climbProvider ? climbProvider.worldToClient(x, y) : null),
   levelId: () => (climbProvider ? climbProvider.levelId() : null),
   pendingPrompt: () => (climbProvider ? climbProvider.pendingPrompt() : null),
+  scaryPhase: () => climbProvider?.scaryPhase?.() ?? null,
+  goatOutside: () => (climbProvider ? (climbProvider.goatOutside?.() ?? false) : null),
 }
 
 export function installDebugHook(): DebugApi {

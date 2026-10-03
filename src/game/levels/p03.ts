@@ -2,8 +2,9 @@
  * Meadow Slopes 3 — the last meadow pitch, where the grass runs out at the edge of the woods.
  * Same leaping-and-ledges language as p01/p02, ramping gently inside the pitch: a warm-up swing on
  * 115-wide ledges, a second swing on 110s, then one friendly Big Leap across a misty gully (a wide
- * landing only a little higher than the camp), then narrower ledges (105, then 100) with taller rises
- * up through the first pines. The top is a wide, easy step. A lantern at the top hints at Firefly Hollow.
+ * landing only a little higher than the camp; the way on climbs straight up the far side, so the leap
+ * can't be skipped), then narrower ledges (105-115, then 100) with taller rises up through the first
+ * pines. The top is a wide, easy step. A lantern at the top hints at Firefly Hollow.
  */
 import type { Level } from '../types'
 import { camp, ledge } from './build'
@@ -28,9 +29,9 @@ export const p03: Level = {
     camp('c2', 10, 965, 160),
     // The Big Leap: across the misty gully to a wide ledge, only 45 higher than the camp.
     ledge('hop', 245, 1010, 145),
-    ledge('d1', 145, 1115, 105),
-    ledge('d2', 30, 1220, 105),
-    ledge('d3', 145, 1325, 105),
+    // Then straight up the far side, out of reach from c2, so the leap is the only way on.
+    ledge('d1', 262, 1175, 115),
+    ledge('d2', 150, 1280, 105),
     camp('c3', 215, 1430, 170),
     ledge('e1', 148, 1540, 100),
     ledge('e2', 33, 1650, 100),
@@ -39,7 +40,7 @@ export const p03: Level = {
   ],
   route: [
     'c0', 'a1', 'a2', 'a3', 'a4', 'c1', 'b1', 'b2', 'b3', 'b4', 'c2', 'hop',
-    'd1', 'd2', 'd3', 'c3', 'e1', 'e2', 'e3', 'top',
+    'd1', 'd2', 'c3', 'e1', 'e2', 'e3', 'top',
   ],
   bigLeaps: [{ from: 'c2', to: 'hop' }],
   decor: [
@@ -62,9 +63,9 @@ export const p03: Level = {
     { kind: 'cloud', x: 320, y: 960, scale: 1.1 },
     { kind: 'flowers', x: 370, y: 1010 },
     // Into the first pines.
-    { kind: 'mushroom', x: 235, y: 1115 },
-    { kind: 'pine', x: 48, y: 1220, scale: 0.7 },
-    { kind: 'grass', x: 160, y: 1325 },
+    { kind: 'mushroom', x: 352, y: 1175 },
+    { kind: 'pine', x: 168, y: 1280, scale: 0.7 },
+    { kind: 'grass', x: 237, y: 1280 },
     { kind: 'pine', x: 235, y: 1430, scale: 0.85 },
     { kind: 'tent', x: 365, y: 1430 },
     { kind: 'mushroom', x: 165, y: 1540 },

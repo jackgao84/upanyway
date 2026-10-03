@@ -33,6 +33,7 @@ export type SfxName =
   | 'reveal'
   | 'creak'
   | 'snore'
+  | 'rumble'
   | 'splash'
   | 'chime'
   | 'tap'
@@ -60,6 +61,7 @@ export const SFX_VARIANTS: readonly { name: SfxName; arg?: SfxArg; label: string
   { name: 'reveal', label: 'reveal (hidden hold)' },
   { name: 'creak', label: 'creak (rope bridge)' },
   { name: 'snore', label: 'snore (sleepy bear)' },
+  { name: 'rumble', label: 'rumble (the bear snoring, far off)' },
   { name: 'splash', label: 'splash (Sky Lake)' },
   { name: 'chime', label: 'chime (new card / badge)' },
   { name: 'tap', label: 'tap (UI)' },
@@ -80,6 +82,7 @@ const MIN_GAP: Record<SfxName, number> = {
   reveal: 0.3,
   creak: 0.35,
   snore: 0.8,
+  rumble: 0.8,
   splash: 0.5,
   chime: 0.25,
   tap: 0.03,
@@ -581,6 +584,38 @@ function snore(v: Voice): number {
   return v.finish(end + 0.02)
 }
 
+/**
+ * The rumbling cliff: the bear's snore heard from far off, through the rock. The same in-and-out rhythm
+ * as snore(), low and muffled, with no whistle — and nothing like a crumbly ledge (no pebbles), so up
+ * close it turns out to be exactly the snore she has been hearing.
+ */
+function rumble(v: Voice): number {
+  const t = v.t
+  // In: a deep, slow rattle, muffled by the rock.
+  const rattle = v.osc('sawtooth', 46 * v.vary(0.05), t)
+  glide(rattle.frequency, [
+    [t, 44],
+    [t + 0.65, 52],
+  ])
+  const lp = v.filter('lowpass', 250, 1.1)
+  const inEnv = v.gain(0)
+  swell(inEnv.gain, t, 0.3, 0.3, 0.2, 0.26)
+  v.chain(rattle, lp, inEnv, v.out)
+  const body = v.noise('brown', t)
+  const bodyLp = v.filter('lowpass', 220, 0.8)
+  const bodyEnv = v.gain(0)
+  swell(bodyEnv.gain, t, 0.3, 0.32, 0.2, 0.26)
+  v.chain(body, bodyLp, bodyEnv, v.out)
+  // Out: a long, low breath (too far away to hear the whistle).
+  const out = t + 0.78
+  const breath = v.noise('brown', out)
+  const outLp = v.filter('lowpass', 260, 0.8)
+  const outEnv = v.gain(0)
+  const end = swell(outEnv.gain, out, 0.08, 0.22, 0.14, 0.38)
+  v.chain(breath, outLp, outEnv, v.out)
+  return v.finish(end + 0.02)
+}
+
 /** Sky Lake: a soft splash, a low plunk and a few bloops of droplets. */
 function splash(v: Voice): number {
   const t = v.t
@@ -665,6 +700,7 @@ const RECIPES: Record<SfxName, (v: Voice, arg: SfxArg) => number> = {
   reveal: (v) => reveal(v),
   creak: (v) => creak(v),
   snore: (v) => snore(v),
+  rumble: (v) => rumble(v),
   splash: (v) => splash(v),
   chime: (v) => chime(v),
   tap: (v) => tap(v),
@@ -757,6 +793,10 @@ export const sfx = {
   /** The rumbling cliff turns out to be a sleeping bear. */
   snore(): void {
     play('snore')
+  },
+  /** The same snore from far off (the rumbling cliff before she meets the bear). */
+  rumble(): void {
+    play('rumble')
   },
   /** Sky Lake finale. */
   splash(): void {

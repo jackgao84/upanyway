@@ -8,10 +8,14 @@
  * - Once it is done, /setup/* goes to camp (a parent reset makes a fresh save, so setup opens again).
  * - /parent/* needs the PIN gate passed in this visit; leaving the grown-up pages locks them again.
  * - '/' goes to camp, or to the right first-run step.
+ * - Summit reached but Sky Lake not seen yet (the app was closed during the finale, or reloaded on the
+ *   summit pitch's Beta Map): camp, the Trail Map and any climb route open the finale first, so the
+ *   goat's first time out of the pack is never skipped.
  */
 import { buildingScreen } from '../screens/building'
 import { campScreen } from '../screens/camp'
 import { climbScreen } from '../screens/climb'
+import { finaleScreen } from '../screens/finale'
 import { gateScreen } from '../screens/parent/gate'
 import { braveScreen } from '../screens/setup/brave'
 import { cheerScreen } from '../screens/setup/cheer'
@@ -54,7 +58,7 @@ export const ROUTES: Route[] = [
   { pattern: '/letters', screen: buildingScreen },
   { pattern: '/wardrobe', screen: buildingScreen },
   { pattern: '/badges', screen: buildingScreen },
-  { pattern: '/finale', screen: buildingScreen },
+  { pattern: '/finale', screen: finaleScreen, className: 'screen--fixed' },
   { pattern: '/parent', screen: gateScreen },
   { pattern: '/parent/:page', screen: buildingScreen },
 ]
@@ -88,6 +92,10 @@ export const guard: Guard = (m: RouteMatch) => {
   const path = m.path
   if (!path.startsWith('/parent')) lockParent()
   if (!d.setup.complete) return setupRedirect(path, d)
+  const finaleOwed = d.summit.reached && !d.summit.finaleSeen && !d.testMode
+  // A reload (or Safari restoring the tab) during the summit pitch's Beta Map lands on its climb
+  // route: she goes on to Sky Lake, not back to the bottom of the pitch she just sent.
+  if (finaleOwed && (path === '/' || path === '/camp' || path === '/map' || path.startsWith('/climb/'))) return '/finale'
   if (path === '/' || isSetupPath(path)) return '/camp'
   if (path.startsWith('/parent/') && !isParentUnlocked()) return '/parent'
   return null

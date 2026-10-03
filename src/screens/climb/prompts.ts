@@ -17,6 +17,8 @@ import { sunDial } from './sun'
 export interface GoatInfo {
   look: ClimberLook
   name: string
+  /** The goat climbs beside her (night climbs after Sky Lake): its face is drawn without the backpack. */
+  out?: boolean
 }
 
 export interface Prompt {
@@ -25,7 +27,7 @@ export interface Prompt {
 
 /** The goat saying one line inside a card. */
 function goatSays(goat: GoatInfo, line: SpokenLine): GoatBubble {
-  const b = goatBubble({ avatar: () => goatAvatar(goat.look), name: goat.name, tapToHide: false })
+  const b = goatBubble({ avatar: () => goatAvatar(goat.look, { out: goat.out }), name: goat.name, tapToHide: false })
   b.say(line.text, { mood: line.mood, durationMs: 0 })
   return b
 }

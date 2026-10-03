@@ -1,0 +1,269 @@
+/* The Sky Lake finale (screens/finale.ts): a full-bleed picture, the goat's bubble, Skip, the card. */
+
+.finale {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  overflow: hidden;
+  background: #a77ab9;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.finale--night {
+  background: #2c2462;
+}
+
+.finale__stage {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  cursor: pointer;
+}
+.finale__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+/* Reads the safe-area insets for the camera (never visible). */
+.finale__safe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  visibility: hidden;
+  pointer-events: none;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
+}
+
+/* The goat's little face beside its lines (the same rules as setup.css, so this screen stands alone). */
+.finale .goat-avatar-wrap {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.finale .goat-avatar {
+  width: 100%;
+  height: 100%;
+}
+
+/* The goat's lines never catch a tap meant for the picture. */
+.finale > .goat-bubble,
+.finale > .goat-bubble * {
+  pointer-events: none !important;
+}
+
+/* Skip: top-left (the mute toggle owns the top-right), after the first few seconds. */
+.finale__skip {
+  position: absolute;
+  top: var(--shell-top);
+  left: calc(var(--safe-left) + 12px);
+  z-index: var(--z-hud);
+  background: rgba(255, 252, 246, 0.92);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.4s var(--ease-out),
+    transform 0.4s var(--ease-out),
+    visibility 0s linear 0.4s;
+}
+.finale__skip.is-shown {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 0.4s var(--ease-out),
+    transform 0.4s var(--ease-out),
+    visibility 0s;
+}
+
+/* ---- The closing card ------------------------------------------------------------------- */
+
+.finale-card {
+  position: absolute;
+  left: calc(var(--safe-left) + 12px);
+  right: calc(var(--safe-right) + 12px);
+  bottom: calc(var(--safe-bottom) + 12px);
+  z-index: var(--z-hud);
+  max-width: 560px;
+  max-height: calc(100% - var(--safe-top) - var(--safe-bottom) - 96px);
+  margin: 0 auto;
+  padding: 20px 20px 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: manipulation;
+  border-radius: var(--r-xl);
+  background: var(--card);
+  color: var(--ink);
+  text-align: center;
+  box-shadow:
+    var(--shadow-float),
+    inset 0 0 0 1.5px var(--line);
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.45s var(--ease-out),
+    transform 0.6s var(--ease-pop);
+}
+.finale-card.is-open {
+  opacity: 1;
+  transform: none;
+}
+.finale-card--side {
+  left: auto;
+  right: calc(var(--safe-right) + 20px);
+  top: 50%;
+  bottom: auto;
+  width: min(420px, 36vw);
+  max-height: calc(100% - var(--safe-top) - var(--safe-bottom) - 40px);
+  margin: 0;
+  transform: translate(28px, -50%);
+}
+.finale-card--side.is-open {
+  transform: translateY(-50%);
+}
+
+.finale-card__title {
+  font-size: var(--fs-3xl);
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--coral-deep);
+}
+.finale-card--night .finale-card__title {
+  color: var(--zone-hollow);
+}
+.finale-card__line {
+  margin-top: 8px;
+  font-size: var(--fs-lg);
+  font-weight: 750;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+.finale-card__attempts {
+  margin-top: 2px;
+  font-size: var(--fs-md);
+  font-weight: 750;
+  color: var(--ink-faint);
+}
+.finale-card__goat {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+  text-align: left;
+}
+.finale-card__goat .goat-bubble {
+  max-width: 100%;
+}
+.finale-card__goat .goat-bubble__bubble {
+  margin-bottom: 14px;
+  background: var(--sky-soft);
+  box-shadow: 0 3px 0 rgba(76, 143, 172, 0.35);
+}
+.finale-card__goat .goat-bubble__bubble::before {
+  background: var(--sky-soft);
+}
+
+.finale-card__new {
+  margin-top: 12px;
+  padding: 10px 14px 12px;
+  border-radius: var(--r-lg);
+  background: var(--paper-2);
+  text-align: left;
+}
+.finale-card__new-title {
+  font-size: var(--fs-sm);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+}
+.finale-card__list {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.finale-card__list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-md);
+  font-weight: 750;
+  line-height: 1.3;
+  color: var(--ink-soft);
+}
+.finale-card__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: 0 2px 0 var(--edge);
+}
+
+.finale-card__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 16px;
+}
+/* On a short screen the card scrolls, but its buttons always stay in view. */
+@media (max-height: 640px) {
+  .finale-card__actions {
+    position: -webkit-sticky;
+    position: sticky;
+    bottom: -14px;
+    margin: 12px -4px -14px;
+    padding: 10px 4px 14px;
+    background: var(--card);
+    box-shadow: 0 -10px 12px -10px rgba(110, 62, 34, 0.25);
+  }
+}
+
+/* A phone held sideways: the card goes left, more compact. */
+@media (max-height: 499px) and (orientation: landscape) {
+  .finale-card--side {
+    left: calc(var(--safe-left) + 12px);
+    right: auto;
+    width: min(400px, calc(50% - 40px - var(--safe-left)));
+    padding: 14px 16px 14px;
+    transform: translate(-28px, -50%);
+  }
+  .finale-card--side.is-open {
+    transform: translateY(-50%);
+  }
+  .finale-card__title {
+    font-size: var(--fs-2xl);
+  }
+  .finale-card__line {
+    font-size: var(--fs-md);
+  }
+}
+@media (max-width: 420px) {
+  .finale-card {
+    padding: 16px 14px 14px;
+  }
+  .finale-card__title {
+    font-size: var(--fs-2xl);
+  }
+  .finale-card__line {
+    font-size: var(--fs-md);
+  }
+  .finale-card__goat .goat-bubble__bubble {
+    font-size: var(--fs-md);
+  }
+}

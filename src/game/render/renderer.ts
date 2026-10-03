@@ -1,9 +1,11 @@
 /**
  * The world renderer: composes one frame of the climb.
  *
- * Draw order: sky + parallax → face + ground + decorations behind the route → chalk + ghost → rope →
- * ledges, holds, windsocks → the climber (character module) → preview arc + slingshot band →
+ * Draw order: sky + parallax → face + ground + decorations behind the route → [behind hook] →
+ * chalk + ghost → rope → ledges, holds, windsocks → (Cloud Steps, summit) the fog with [fog hook] on
+ * it, then chalk + ghost above it → the climber (character module) → preview arc + slingshot band →
  * particles + wind streaks → [front hook] → foreground mist → vignette → [screen hook].
+ * In fog zones chalk and the ghost move above the fog so failed arcs and the beta still read.
  *
  * It reads the ClimbSession (never changes it) and notices what happened since the last frame —
  * a launch, a landing, a whipper, a crumble, a revealed hold — to add the juice (dust, chalk puffs,
@@ -17,6 +19,7 @@ import { restPoint } from '../physics'
 import type { ZoneId } from '../types'
 import { TUNING } from '../tuning'
 import { freeCanvas, makeCanvas, softDot, View, Vignette } from './effects'
+import { bigLeapTarget, FogLayer, type FogInfo } from './fog'
 import { CLIMBER_CENTER, drawBand, drawBetaMap, drawChalk, drawGhost, drawPreview, drawRope } from './overlays'
 import { paletteFor, type ZonePalette } from './palette'
 import { Parallax } from './parallax'
@@ -47,9 +50,15 @@ export interface CharacterDrawer {
   draw(ctx: CanvasRenderingContext2D, session: ClimbSession, camera: Camera, t: number): void
 }
 
-/** Extra drawing other modules can slot in (Looks Scary moments, fog, the finale). ctx in CSS px. */
+/**
+ * Extra drawing other modules can slot in (Looks Scary moments, the finale). ctx in CSS px.
+ * 'behind': before the ledges · 'fog': on the fog, under the Big Leap landing outline (fog zones
+ * only) · 'front': over everything in the world · 'screen': after the vignette.
+ */
 export type RenderHook = (ctx: CanvasRenderingContext2D, session: ClimbSession, camera: Camera, t: number) => void
-export type HookSlot = 'behind' | 'front' | 'screen'
+export type HookSlot = 'behind' | 'fog' | 'front' | 'screen'
+
+const NO_GAPS: readonly number[] = []
 
 export interface RendererOptions {
   zone: ZoneId
@@ -71,8 +80,14 @@ export class Renderer {
   private levelId: string | null = null
   private readonly seed: string
   private sized = false
-  private readonly hooks: Record<HookSlot, RenderHook | null> = { behind: null, front: null, screen: null }
+  private readonly hooks: Record<HookSlot, RenderHook | null> = { behind: null, fog: null, front: null, screen: null }
   private mist: HTMLCanvasElement | null = null
+  private readonly fog: FogLayer
+  private readonly fogInfo: FogInfo = { bigLeapTarget: null, her: null, onFog: null }
+  private gaps: (() => readonly number[]) | null = null
+  /** This frame's camera and clock (for the fog hook, called from inside the fog's draw). */
+  private frameCamera: Camera | null = null
+  private frameT = 0
 
   // What the last frame saw (to spot launches, landings, whippers).
   private session: ClimbSession | null = null
@@ -90,6 +105,7 @@ export class Renderer {
     this.parallax = new Parallax(this.palette, this.seed)
     this.particles = new Particles(this.palette, this.seed)
     this.vignette = new Vignette(this.palette.vignetteColor, this.palette.vignette)
+    this.fog = new FogLayer(opts.zone, { night: opts.night })
   }
 
   /** Size the canvas backing store to the camera's view (CSS px × capped DPR) and rebuild caches. */
@@ -102,6 +118,7 @@ export class Renderer {
     const startC = camera.viewH / camera.baseScale / 2 - 90
     this.parallax.resize(this.view, startC)
     this.terrain?.resize(this.view)
+    this.fog.resize(camera)
     freeCanvas(this.mist)
     this.mist = null
     this.sized = true
@@ -110,6 +127,14 @@ export class Renderer {
   /** Slot in extra drawing (or null to remove it). */
   setHook(slot: HookSlot, fn: RenderHook | null): void {
     this.hooks[slot] = fn
+  }
+
+  /**
+   * The rope bridge's missing deck planks right now (Gusty Ridge's Looks Scary: ScaryLayer.bridgeGaps),
+   * read once per frame; null = a whole deck.
+   */
+  setBridgeGaps(fn: (() => readonly number[]) | null): void {
+    this.gaps = fn
   }
 
   /** The canvas context (for hooks that need to draw outside a frame). */
@@ -134,6 +159,9 @@ export class Renderer {
     terrain.sync(session, t, dt, this.particles)
     wind.update(session.t, session.frozen ? 0 : dt, view, this.particles)
     this.particles.update(dt, view, wind.active ? wind : null)
+    this.fog.update(dt)
+    this.frameCamera = camera
+    this.frameT = t
 
     ctx.save()
     // 1. Sky and the far world (only where the face doesn't cover it).
@@ -142,15 +170,25 @@ export class Renderer {
     terrain.drawFace(ctx, view)
     terrain.drawBehind(ctx, view)
     this.hook('behind', ctx, session, camera, t, view)
-    // 3. Chalk and the ghost beta.
+    // 3. Chalk and the ghost beta (above the fog instead, where there is fog).
     const beta = frame.betaMap ?? null
-    if (!beta) drawChalk(ctx, view, session, this.palette)
-    if (frame.ghost && frame.ghost.length >= 4 && !beta) drawGhost(ctx, view, frame.ghost, session, t)
+    const fog = this.fog.active
+    if (!fog) this.drawChalkAndGhost(ctx, view, session, frame, t)
     // 4. The rope.
     drawRope(ctx, session, this.palette, view)
     // 5. Ledges, holds, the live bits, windsocks.
+    terrain.bridgeGaps = this.gaps ? this.gaps() : NO_GAPS
     terrain.drawLedges(ctx, view, session, t, wind.active ? wind : null)
     wind.drawSocks(ctx, view, t)
+    // 5b. Fog (Cloud Steps thick, the summit lightly), whatever sits on it, then chalk and the ghost.
+    if (fog) {
+      const info = this.fogInfo
+      info.bigLeapTarget = beta ? null : bigLeapTarget(session)
+      info.her = session.body
+      info.onFog = this.hooks.fog ? this.drawOnFog : null
+      this.fog.draw(ctx, camera, t, info)
+      this.drawChalkAndGhost(ctx, view, session, frame, t)
+    }
     // 6. Her.
     view.applyScreen(ctx)
     ctx.save()
@@ -176,6 +214,21 @@ export class Renderer {
     ctx.restore()
   }
 
+  private drawChalkAndGhost(ctx: CanvasRenderingContext2D, view: View, session: ClimbSession, frame: RenderFrame, t: number): void {
+    if (frame.betaMap) return
+    drawChalk(ctx, view, session, this.palette)
+    if (frame.ghost && frame.ghost.length >= 4) drawGhost(ctx, view, frame.ghost, session, t)
+  }
+
+  /** The fog hook, called by the fog between its banks and the Big Leap landing outline. */
+  private readonly drawOnFog = (): void => {
+    const ctx = this.ctx
+    const session = this.session
+    const camera = this.frameCamera
+    if (!ctx || !session || !camera) return
+    this.hook('fog', ctx, session, camera, this.frameT, this.view)
+  }
+
   private hook(slot: HookSlot, ctx: CanvasRenderingContext2D, session: ClimbSession, camera: Camera, t: number, view: View): void {
     const fn = this.hooks[slot]
     if (!fn) return
@@ -192,6 +245,7 @@ export class Renderer {
     this.levelId = id
     this.terrain = new Terrain(session.level, this.palette, `${this.seed}:${id}`)
     this.wind = new WindFx(session.level, this.palette)
+    this.fog.setLevel(session.level)
     if (this.sized) this.terrain.resize(this.view)
   }
 
@@ -306,7 +360,8 @@ export class Renderer {
 
   /** Cached offscreen pixels (lab/debug). */
   stats(): { cachedPx: number; particles: number } {
-    return { cachedPx: this.terrain?.cachedPixels() ?? 0, particles: this.particles.count }
+    const px = (this.terrain?.cachedPixels() ?? 0) + this.parallax.cachedPixels() + this.fog.cachedPixels()
+    return { cachedPx: px, particles: this.particles.count }
   }
 
   destroy(): void {
@@ -314,11 +369,14 @@ export class Renderer {
     this.terrain = null
     this.parallax.destroy()
     this.particles.destroy()
+    this.fog.destroy()
+    this.gaps = null
+    this.frameCamera = null
     this.vignette.destroy()
     freeCanvas(this.mist)
     this.mist = null
     this.session = null
-    this.hooks.behind = this.hooks.front = this.hooks.screen = null
+    this.hooks.behind = this.hooks.fog = this.hooks.front = this.hooks.screen = null
     this.canvas.width = 0
     this.canvas.height = 0
   }

@@ -5,7 +5,7 @@
  */
 import type { GlossaryWord } from '../content/glossary'
 import { drawPackWithGoat } from '../game/art/climber'
-import type { GoatMood as ArtGoatMood } from '../game/art/goat'
+import { drawGoat, type GoatMood as ArtGoatMood } from '../game/art/goat'
 import { TUNING } from '../game/tuning'
 import { hasPin } from '../model/pin'
 import type { ClimberLook, SaveData } from '../storage/schema'
@@ -229,15 +229,19 @@ const BUBBLE_TO_ART: Record<GoatMood, ArtGoatMood> = {
   wobbly: 'wobbly',
 }
 
-/** The goat's face over the backpack rim, for the goat bubble's avatar (it follows each line's mood). */
-export function goatAvatar(look: ClimberLook): GoatAvatar {
+/**
+ * The goat's face over the backpack rim, for the goat bubble's avatar (it follows each line's mood).
+ * `out`: the goat climbs beside her (night climbs after Sky Lake) — just its head, no backpack.
+ */
+export function goatAvatar(look: ClimberLook, opts: { out?: boolean } = {}): GoatAvatar {
   const canvas = h('canvas', { class: 'goat-avatar', 'aria-hidden': 'true' })
   const el = h('span', { class: 'goat-avatar-wrap' }, canvas) as GoatAvatar
   let mood: ArtGoatMood = 'peek'
   let moodAt = 0
   let lastT = 0
-  // The goat's head and the top of the pack (the rim sits 17 units above the ground origin).
-  const box: Box = { minX: -14, minY: -42, maxX: 15, maxY: -9 }
+  // The goat's head and the top of the pack (the rim sits 17 units above the ground origin), or
+  // its head and shoulders on their own.
+  const box: Box = opts.out ? { minX: -12, minY: -25, maxX: 14, maxY: 3 } : { minX: -14, minY: -42, maxX: 15, maxY: -9 }
   const loop = animate(
     canvas,
     (t) => {
@@ -249,7 +253,9 @@ export function goatAvatar(look: ClimberLook): GoatAvatar {
       // A little hop when the mood changes, as if it popped up to talk.
       const pop = Math.max(0, 1 - (t - moodAt) * 3)
       ctx.translate(0, -pop * 1.5)
-      drawPackWithGoat(ctx, look, { mood, t, inBackpack: true, earFlap: mood === 'happy' ? 0.3 * pop : 0 })
+      const state = { mood, t, inBackpack: true, earFlap: mood === 'happy' ? 0.3 * pop : 0 }
+      if (opts.out) drawGoat(ctx, state)
+      else drawPackWithGoat(ctx, look, state)
     },
     { fps: 30 },
   )

@@ -22,7 +22,6 @@ import { TUNING } from '../tuning'
 import { LEDGE_H, WORLD_W, type Decor, type Hold, type Ledge, type Level } from '../types'
 import { clamp01, easeOutBack, freeCanvas, makeCanvas, softDot, type View } from './effects'
 import type { FarClip } from './parallax'
-import { paperCloud } from './parallax'
 import type { ZonePalette } from './palette'
 import type { Particles } from './particles'
 
@@ -112,6 +111,15 @@ export class Terrain {
   private holdGlow: HTMLCanvasElement | null = null
 
   private readonly clip: FarClip = { x0: 0, x1: 0, topY: 0, groundY: 0 }
+  /** Colours mixed once (nothing is mixed per frame). */
+  private readonly inks: Inks
+  /** The rope bridge's sag inputs this frame (reused). */
+  private readonly bridge = { x0: 0, x1: 1, top: 0, stood: false, herX: 0, bounce: 0, gust: 0 }
+  /**
+   * Deck planks (0 = leftmost of round(w / 13)) left out of the rope bridge this frame: the Looks
+   * Scary layer's loose planks (ScaryLayer.bridgeGaps). Set by the renderer before drawLedges.
+   */
+  bridgeGaps: readonly number[] = []
   private k = 1
   private faceK = 1
   private faceStripH = 1000
@@ -145,6 +153,7 @@ export class Terrain {
     this.crestLow = this.topLedge.y + 26
     this.holds = level.elements.filter((e): e is Hold => e.kind === 'hold')
     this.siteSeed = createRng(`${seed}:sites`).range(0, 100)
+    this.inks = makeInks(palette)
     this.layout(ledges)
     this.loadFont()
   }
@@ -406,12 +415,12 @@ export class Terrain {
     if (top > bottom) {
       const j0 = Math.floor(bottom / H)
       const j1 = Math.floor(top / H)
-      for (const [j, c] of this.faceStrips) {
+      this.faceStrips.forEach((c, j) => {
         if (j < j0 - 1 || j > j1 + 1) {
           freeCanvas(c)
           this.faceStrips.delete(j)
         }
-      }
+      })
       for (let j = j0; j <= j1; j++) {
         let c = this.faceStrips.get(j)
         if (!c) {
@@ -599,14 +608,16 @@ export class Terrain {
 
     // Sandstone: long wavy stripes in four tones, with rounded erosion pockets.
     if (p.zone === 'crumble') {
-      const tones = [p.faceLight, p.face, mix(p.face, p.faceDark, 0.6), mix(p.faceLight, '#ffffff', 0.25)]
+      const tones = p.night
+        ? [p.faceLight, p.face, mix(p.face, p.faceDark, 0.6), mix(p.face, p.faceLight, 0.5)]
+        : [p.faceLight, p.face, mix(p.face, p.faceDark, 0.6), mix(p.faceLight, '#ffffff', 0.25), mix(p.face, '#e8967a', 0.3)]
       const BAND = 26
       for (let b = Math.floor(yLo / BAND) - 2; b <= Math.ceil(yHi / BAND) + 1; b++) {
         const br = createRng(`${this.seed}:band:${b}`)
         const ph = br.next() * 9
         const lift = br.range(-5, 5)
         const yAt = (x: number, k: number) => k * BAND + lift + 5 * Math.sin(x / 61 + ph) + 2.5 * Math.sin(x / 17 + ph * 2) + 0.03 * (x - 200)
-        g.fillStyle = tones[((b % 4) + 4) % 4]
+        g.fillStyle = tones[((b % tones.length) + tones.length) % tones.length]
         g.beginPath()
         for (let x = -FACE_PAD; x <= WORLD_W + FACE_PAD; x += 8) {
           if (x === -FACE_PAD) g.moveTo(x, -yAt(x, b + 1))
@@ -712,17 +723,190 @@ export class Terrain {
         }
       }
     }
+    if (yHi >= this.crestLow - 60) {
+      if (this.level.finale) this.skyLakeGlimpse(g, yLo, yHi)
+      this.crestGarland(g)
+    }
     return c
+  }
+
+  /** The top of every pitch is a little celebration: pennants strung along the crest. */
+  private crestGarland(g: CanvasRenderingContext2D): void {
+    const p = this.palette
+    const x0 = this.faceLeft(this.crestLow) + 16
+    const x1 = this.faceRight(this.crestLow) - 16
+    const colors = [p.flag, p.tentStripe, p.accents[0], p.hold.crystal, p.accents[1] ?? p.flag]
+    const inkLine = rgba(p.ink, 0.55)
+    const spans = Math.max(3, Math.round((x1 - x0) / 66))
+    const sw = (x1 - x0) / spans
+    const rng = createRng(`${this.seed}:garland`)
+    let ci = 0
+    g.save()
+    g.lineJoin = 'round'
+    g.lineCap = 'round'
+    for (let k = 0; k < spans; k++) {
+      const xa = x0 + k * sw
+      const xb = xa + sw
+      const ya = this.crest(xa) - 3
+      const yb = this.crest(xb) - 3
+      const sag = 6 + rng.range(0, 3)
+      const at = (u: number) => ya + (yb - ya) * u - sag * Math.sin(Math.PI * u)
+      // The string, pinned to the rock at each end.
+      g.strokeStyle = inkLine
+      g.lineWidth = 0.9
+      g.beginPath()
+      for (let q = 0; q <= 10; q++) {
+        const u = q / 10
+        const x = xa + sw * u
+        if (q === 0) g.moveTo(x, -at(u))
+        else g.lineTo(x, -at(u))
+      }
+      g.stroke()
+      g.fillStyle = mix(p.wood, p.ink, 0.2)
+      g.beginPath()
+      g.arc(xa, -ya, 1.6, 0, Math.PI * 2)
+      g.fill()
+      // Little triangle flags hanging from it.
+      const n = Math.max(3, Math.round(sw / 10))
+      for (let q = 1; q < n; q++) {
+        const u = q / n
+        const x = xa + sw * u
+        const y = -at(u)
+        const slope = ((yb - ya) / sw) * 0.6
+        const c = colors[ci++ % colors.length]
+        g.fillStyle = c
+        g.strokeStyle = ink(c)
+        g.lineWidth = 0.7
+        g.beginPath()
+        g.moveTo(x - 3.2, y - slope * 3.2)
+        g.lineTo(x + 3.2, y + slope * 3.2)
+        g.lineTo(x + rng.range(-0.8, 0.8), y + 8)
+        g.closePath()
+        g.fill()
+        g.stroke()
+      }
+    }
+    g.fillStyle = mix(p.wood, p.ink, 0.2)
+    g.beginPath()
+    g.arc(x1, -(this.crest(x1) - 3), 1.6, 0, Math.PI * 2)
+    g.fill()
+    g.restore()
+  }
+
+  /**
+   * The summit pitch: Sky Lake is just over the crest. Its light glows above the rim, and a ribbon of
+   * its water spills over the edge of the face and falls away into mist.
+   */
+  private skyLakeGlimpse(g: CanvasRenderingContext2D, yLo: number, yHi: number): void {
+    const p = this.palette
+    const lo = this.crestLow
+    const xA = this.faceLeft(lo)
+    const xB = this.faceRight(lo)
+    const water = p.night ? '#9fb6e8' : mix('#bfe6ff', p.skyGlow, 0.22)
+    const deep = mix(water, p.faceDark, 0.4)
+    // The lake's light above the rim (only above the crest: the face covers the rest).
+    const top = this.crestTop()
+    if (yHi >= top - 40) {
+      const glow = g.createLinearGradient(0, -(top + 46), 0, -(lo + 20))
+      glow.addColorStop(0, rgba(water, 0))
+      glow.addColorStop(1, rgba(mix(water, '#ffffff', 0.5), p.night ? 0.32 : 0.45))
+      g.save()
+      g.fillStyle = glow
+      g.beginPath()
+      g.moveTo(xA + 24, -this.crest(xA + 24))
+      for (let x = xA + 24; x <= xB - 24; x += 6) g.lineTo(x, -(this.crest(x) + 30 + 9 * Math.sin(x / 31)))
+      for (let x = xB - 24; x >= xA + 24; x -= 6) g.lineTo(x, -(this.crest(x) - 1))
+      g.closePath()
+      g.fill()
+      g.restore()
+    }
+    // The waterfall: on the side of the face with the most room near the top.
+    const left = this.waterfallLeft()
+    const wx = left ? xA + 9 : xB - 9
+    const wTop = this.crest(wx) + 1
+    const wBot = wTop - 300
+    if (yHi < wBot || yLo > wTop + 20) return
+    const w = 13
+    const rng = createRng(`${this.seed}:fall`)
+    g.save()
+    g.lineCap = 'round'
+    // The fall, bulging a little as it drops and fading into spray.
+    const fall = g.createLinearGradient(0, -wTop, 0, -wBot)
+    fall.addColorStop(0, rgba(water, 0.96))
+    fall.addColorStop(0.7, rgba(water, 0.85))
+    fall.addColorStop(1, rgba(water, 0))
+    const body = new Path2D()
+    body.moveTo(wx - w * 0.55, -wTop)
+    body.bezierCurveTo(wx - w * 0.6, -wTop + 40, wx - w * 0.8, -wBot - 80, wx - w * 0.95, -wBot)
+    body.lineTo(wx + w * 0.95, -wBot)
+    body.bezierCurveTo(wx + w * 0.8, -wBot - 80, wx + w * 0.6, -wTop + 40, wx + w * 0.55, -wTop)
+    body.closePath()
+    g.fillStyle = fall
+    g.fill(body)
+    g.save()
+    g.clip(body)
+    // Bands of light and shade running down it.
+    const shade = g.createLinearGradient(wx - w, 0, wx + w, 0)
+    shade.addColorStop(0, rgba(deep, 0.35))
+    shade.addColorStop(0.35, rgba(deep, 0))
+    shade.addColorStop(0.7, rgba('#ffffff', 0.18))
+    shade.addColorStop(1, rgba(deep, 0.3))
+    g.fillStyle = shade
+    g.fillRect(wx - w, -wTop - 4, w * 2, wTop - wBot + 8)
+    g.strokeStyle = rgba('#ffffff', 0.75)
+    g.lineWidth = 1.3
+    g.beginPath()
+    for (let i = 0; i < 7; i++) {
+      const x = wx + rng.range(-w * 0.45, w * 0.45)
+      const y = wTop - rng.range(0, 200)
+      g.moveTo(x, -y)
+      g.lineTo(x, -(y - rng.range(14, 46)))
+    }
+    g.stroke()
+    g.restore()
+    // White water pouring over the lip.
+    g.fillStyle = mix(water, '#ffffff', 0.6)
+    g.beginPath()
+    g.ellipse(wx, -wTop + 1.5, w * 0.75, 3.4, 0, 0, Math.PI * 2)
+    g.fill()
+    // Spray where it fades.
+    for (let i = 0; i < 9; i++) {
+      g.fillStyle = rgba(mix(water, '#ffffff', 0.6), rng.range(0.16, 0.32))
+      g.beginPath()
+      g.ellipse(wx + rng.range(-16, 16), -(wBot + rng.range(10, 70)), rng.range(9, 18), rng.range(5, 9), 0, 0, Math.PI * 2)
+      g.fill()
+    }
+    g.restore()
+  }
+
+  /** Which edge of the face the summit waterfall falls down: the side with fewer elements near it. */
+  private waterfallLeft(): boolean {
+    const yTop = this.crestLow
+    let l = 0
+    let r = 0
+    for (const el of this.level.elements) {
+      if (el.y < yTop - 320) continue
+      const x0 = el.kind === 'ledge' ? el.x : el.x - 14
+      const x1 = el.kind === 'ledge' ? el.x + el.w : el.x + 14
+      if (x0 < 24) l++
+      if (x1 > WORLD_W - 24) r++
+    }
+    return l <= r
   }
 
   /** Zone touches on the face: moss and vines, snow patches, wisps, little holes. */
   private facePatches(g: CanvasRenderingContext2D, yLo: number, yHi: number, rng: Rng): void {
     const p = this.palette
     const zone = p.zone
-    const count = Math.round((yHi - yLo) / 55)
+    const count = Math.round((yHi - yLo) / 40)
     for (let i = 0; i < count; i++) {
       const x = rng.range(-10, WORLD_W + 10)
       const y = rng.range(yLo, yHi)
+      // Now and then something small and alive tucked into a crack.
+      if (rng.next() < 0.22) {
+        this.crackLife(g, x, y, rng)
+        continue
+      }
       switch (zone) {
         case 'meadow': {
           // Little ivy sprigs and specks of flowers on the rock.
@@ -817,6 +1001,91 @@ export class Terrain {
     g.globalAlpha = 1
   }
 
+  /** A tiny zone touch living in a crack of the face: flowers, glowing mushrooms, a desert bloom, icicles. */
+  private crackLife(g: CanvasRenderingContext2D, x: number, y: number, rng: Rng): void {
+    const p = this.palette
+    // The little ledge-less crack it grows from.
+    g.globalAlpha = 0.6
+    g.strokeStyle = p.faceEdge
+    g.lineWidth = 1.2
+    g.lineCap = 'round'
+    g.beginPath()
+    g.moveTo(x - 5, -y + 0.5)
+    g.quadraticCurveTo(x, -y + 2, x + 5, -y)
+    g.stroke()
+    g.globalAlpha = 1
+    switch (p.zone) {
+      case 'meadow':
+        for (let k = 0; k < 3; k++) flower(g, x - 3 + k * 3, -y, rng.range(3.5, 5.5), p.accents[rng.int(Math.min(3, p.accents.length))], p.facePatch)
+        break
+      case 'hollow': {
+        const cap = p.night ? '#9fe6ff' : '#8fdcff'
+        g.fillStyle = rgba(cap, 0.22)
+        g.beginPath()
+        g.arc(x, -y - 4, 9, 0, Math.PI * 2)
+        g.fill()
+        for (let k = 0; k < 2; k++) {
+          const mx = x - 2.5 + k * 6
+          const mh = k ? 4 : 6
+          const r = k ? 2.8 : 3.8
+          g.fillStyle = '#eef6ea'
+          g.beginPath()
+          g.ellipse(mx, -y - mh * 0.5, 1, mh * 0.5, 0, 0, Math.PI * 2)
+          g.fill()
+          g.fillStyle = cap
+          g.beginPath()
+          g.moveTo(mx - r, -y - mh + 0.6)
+          g.quadraticCurveTo(mx - r, -y - mh - r * 1.2, mx, -y - mh - r * 1.2)
+          g.quadraticCurveTo(mx + r, -y - mh - r * 1.2, mx + r, -y - mh + 0.6)
+          g.closePath()
+          g.fill()
+          g.fillStyle = '#ffffff'
+          g.beginPath()
+          g.arc(mx - r * 0.35, -y - mh - r * 0.6, 0.7, 0, Math.PI * 2)
+          g.fill()
+        }
+        break
+      }
+      case 'crumble': {
+        // A tough little desert bloom.
+        tuft(g, x, -y, rng.range(3, 5), p.tuft, rng.range(-0.3, 0.3))
+        g.fillStyle = p.accents[0]
+        g.beginPath()
+        g.arc(x + 1, -y - 4, 1.4, 0, Math.PI * 2)
+        g.fill()
+        break
+      }
+      case 'ridge':
+      case 'summit': {
+        // A snow pillow with icicles.
+        g.fillStyle = p.facePatch
+        g.beginPath()
+        g.ellipse(x, -y - 1, 7, 2.6, 0, 0, Math.PI * 2)
+        g.fill()
+        g.beginPath()
+        for (let k = 0; k < 3; k++) {
+          const ix = x - 4 + k * 4
+          g.moveTo(ix - 1.1, -y + 0.5)
+          g.lineTo(ix, -y + rng.range(3, 6))
+          g.lineTo(ix + 1.1, -y + 0.5)
+        }
+        g.fill()
+        break
+      }
+      default: {
+        // Cloud Steps: a few dewy sparkles.
+        g.fillStyle = '#ffffff'
+        g.globalAlpha = 0.7
+        for (let k = 0; k < 3; k++) {
+          g.beginPath()
+          g.arc(x + rng.range(-5, 5), -y - rng.range(0, 4), rng.range(0.6, 1.1), 0, Math.PI * 2)
+          g.fill()
+        }
+        g.globalAlpha = 1
+      }
+    }
+  }
+
   // -------------------------------------------------------------------------------------------
   // Ground at the foot of the pitch
 
@@ -859,7 +1128,7 @@ export class Terrain {
     const x0 = WORLD_W / 2 - halfW
     const w = halfW * 2
     const y1 = GROUND_TOP + 28
-    const y0 = GROUND_LOW - 70
+    const y0 = GROUND_LOW - 150
     const h = y1 - y0
     const k = Math.min(this.k, view.base * 1.5, MAX_STRIP_PX / w)
     const c = makeCanvas(w * k, h * k)
@@ -894,6 +1163,7 @@ export class Terrain {
       else g.lineTo(x, -surf(x) + 1.5)
     }
     g.stroke()
+    this.groundDressing(g, x0, w, y0, rng)
     // Speckles / pebbles.
     for (let i = 0; i < w * 0.5; i++) {
       g.globalAlpha = rng.range(0.1, 0.25)
@@ -930,6 +1200,127 @@ export class Terrain {
     return { canvas: c, x0, y1, w, h }
   }
 
+  /**
+   * The foreground at the foot of the pitch: soft mounds in two rows and a trail winding up to the
+   * first camp, with the zone's little things scattered about. Called clipped to the ground.
+   */
+  private groundDressing(g: CanvasRenderingContext2D, x0: number, w: number, y0: number, rng: Rng): void {
+    const p = this.palette
+    const startEl = this.level.elements.find((e) => e.id === this.level.route[0])
+    const startX = startEl ? (startEl.kind === 'ledge' ? startEl.x + startEl.w / 2 : startEl.x) : WORLD_W / 2
+    // Two rows of soft mounds: the nearer row lower down, a touch darker, with a lit top; both fade
+    // into the plain ground colour at the bottom of the strip.
+    for (let row = 0; row < 2; row++) {
+      const base = GROUND_TOP - 30 - row * 34
+      const mounds: number[] = []
+      for (let x = x0 - 60 + rng.range(0, 40); x < x0 + w + 60; ) {
+        const r = rng.range(24, 52) * (1 + row * 0.25)
+        mounds.push(x, r, r * rng.range(0.3, 0.46))
+        x += r * rng.range(1.2, 1.8)
+      }
+      const top = (x: number): number => {
+        let best = 0
+        for (let i = 0; i < mounds.length; i += 3) {
+          const d = (x - mounds[i]) / mounds[i + 1]
+          if (d <= -1 || d >= 1) continue
+          const v = mounds[i + 2] * Math.sqrt(1 - d * d)
+          if (v > best) best = v
+        }
+        return base + best
+      }
+      const path = new Path2D()
+      path.moveTo(x0 - 4, -(y0 - 4))
+      for (let x = x0 - 4; x <= x0 + w + 8; x += 3) path.lineTo(x, -top(x))
+      path.lineTo(x0 + w + 8, -(y0 - 4))
+      path.closePath()
+      const col = mix(p.ground, p.groundDark, 0.22 + row * 0.26)
+      g.save()
+      g.translate(0, -1.6)
+      g.fillStyle = mix(col, p.topLight, 0.35)
+      g.fill(path)
+      g.restore()
+      const fill = g.createLinearGradient(0, -(base + 20), 0, -y0)
+      fill.addColorStop(0, col)
+      fill.addColorStop(1, p.groundDark)
+      g.fillStyle = fill
+      g.fill(path)
+    }
+    // The trail to the mountain.
+    const trail = p.topKind === 'snow' ? mix(p.ground, p.groundDark, 0.45) : p.topKind === 'cloud' ? mix(p.ground, '#ffffff', 0.45) : mix(p.ground, '#e8cf9e', p.topKind === 'sand' ? 0.3 : 0.6)
+    const tp = new Path2D()
+    const yTop = GROUND_TOP - 5
+    const yBot = y0 - 4
+    const steps = 12
+    const side = startX < WORLD_W / 2 ? 1 : -1
+    const along = (k: number, half: number, sign: number) => {
+      const y = yTop + (yBot - yTop) * k
+      const x = startX + side * (Math.sin(k * 3.2) * 34 + k * 40) + sign * half
+      return { x, y }
+    }
+    let a = along(0, 9, -1)
+    tp.moveTo(a.x, -a.y)
+    for (let i = 1; i <= steps; i++) {
+      const k = i / steps
+      a = along(k, 9 + k * 26, -1)
+      tp.lineTo(a.x, -a.y)
+    }
+    for (let i = steps; i >= 0; i--) {
+      const k = i / steps
+      a = along(k, 9 + k * 26, 1)
+      tp.lineTo(a.x, -a.y)
+    }
+    tp.closePath()
+    g.fillStyle = mix(trail, p.groundDark, 0.35)
+    g.save()
+    g.translate(0, 1.2)
+    g.fill(tp)
+    g.restore()
+    g.fillStyle = trail
+    g.fill(tp)
+    // Stepping stones on the trail.
+    for (let i = 1; i < steps; i += 2) {
+      const k = (i + rng.range(-0.3, 0.3)) / steps
+      const c = along(k, 0, 1)
+      pebble(g, c.x + rng.range(-6, 6), -c.y, 2 + k * 3, mix(trail, '#ffffff', 0.3), mix(trail, p.ink, 0.4))
+    }
+    // Little things on the mounds.
+    for (let i = 0; i < w / 22; i++) {
+      const x = rng.range(x0, x0 + w)
+      const y = GROUND_TOP - rng.range(18, 90)
+      if (Math.abs(x - startX) < 60) continue
+      const near = (GROUND_TOP - y) / 90
+      switch (p.topKind) {
+        case 'grass':
+          if (rng.next() < 0.55) flower(g, x, -y, rng.range(5, 8) * (1 + near * 0.4), p.accents[rng.int(Math.min(3, p.accents.length))], p.tuft)
+          else tuft(g, x, -y, rng.range(5, 9), p.tuft, rng.range(-0.2, 0.2))
+          break
+        case 'moss':
+          if (rng.next() < 0.1) drawDecor(g, { kind: 'mushroom', x, y, scale: 0.8 + near * 0.4 }, p, 0.8 + near * 0.4, this.k)
+          else tuft(g, x, -y, rng.range(5, 9), p.tuft, rng.range(-0.2, 0.2))
+          break
+        case 'sand':
+          if (rng.next() < 0.5) pebble(g, x, -y, rng.range(2, 4.5), p.rockLight, p.rockInk)
+          else tuft(g, x, -y, rng.range(3, 6), p.tuft, 0)
+          break
+        case 'snow':
+          if (rng.next() < 0.35) tuft(g, x, -y, rng.range(3, 6), p.tuft, rng.range(-0.2, 0.2))
+          else {
+            g.fillStyle = mix(p.ground, '#ffffff', 0.7)
+            g.beginPath()
+            g.ellipse(x, -y, rng.range(4, 9), rng.range(1.5, 2.5), 0, 0, Math.PI * 2)
+            g.fill()
+          }
+          break
+        case 'cloud':
+          g.fillStyle = mix(p.ground, '#ffffff', 0.55)
+          g.beginPath()
+          g.arc(x, -y + 2, rng.range(4, 9), Math.PI, 0)
+          g.fill()
+          break
+      }
+    }
+  }
+
   private dropGround(): void {
     if (this.ground) freeCanvas(this.ground.canvas)
     this.ground = null
@@ -956,10 +1347,9 @@ export class Terrain {
     }
     // Rope anchors: a bolt and ring at each camp.
     view.applyWorld(ctx)
-    const p = this.palette
     for (const b of this.bolts) {
       if (b.y > top || b.y < bottom) continue
-      ctx.fillStyle = mix(p.faceDark, p.ink, 0.3)
+      ctx.fillStyle = this.inks.bolt
       ctx.beginPath()
       ctx.ellipse(b.x, -b.y, 3.2, 4.2, 0, 0, Math.PI * 2)
       ctx.fill()
@@ -1196,10 +1586,10 @@ export class Terrain {
         case 'flag':
         case 'summit':
         case 'pennant':
-          drawFlag(ctx, d, p, t, lean)
+          drawFlag(ctx, d, this.inks, t, lean)
           break
         case 'bunting':
-          drawBunting(ctx, d, p, t, lean)
+          drawBunting(ctx, d, this.inks, t, lean)
           break
       }
     }
@@ -1321,98 +1711,144 @@ export class Terrain {
     return sp
   }
 
+  /** The rope bridge's sag at x this frame (see drawBridge; no closures per frame). */
+  private bridgeDip(x: number): number {
+    const b = this.bridge
+    const span = (x - b.x0) / (b.x1 - b.x0)
+    const sag = Math.sin(Math.PI * span)
+    const d = (x - b.herX) / 34
+    const her = b.stood ? 3.2 * Math.exp(-(d * d)) : 0
+    return sag * (1.6 + Math.abs(b.gust) * 1.5) + her + b.bounce * sag
+  }
+
+  private bridgeHand(x: number): number {
+    const b = this.bridge
+    const span = (x - b.x0) / (b.x1 - b.x0)
+    return b.top - 24 + Math.sin(Math.PI * span) * (12 + this.bridgeDip(x) * 0.5)
+  }
+
   private drawBridge(ctx: CanvasRenderingContext2D, l: Ledge, session: ClimbSession, t: number, wind: WindLean | null): void {
-    const p = this.palette
+    const c = this.inks
+    const b = this.bridge
     const x0 = l.x
     const x1 = l.x + l.w
     const top = -l.y
-    const stood = session.elementId === l.id && session.phase !== 'flying' && session.phase !== 'roped'
-    const herX = session.body.x
+    b.x0 = x0
+    b.x1 = x1
+    b.top = top
+    b.stood = session.elementId === l.id && session.phase !== 'flying' && session.phase !== 'roped'
+    b.herX = session.body.x
     const sinceLand = session.t - session.lastLandAt
-    const bounce = stood ? Math.exp(-sinceLand * 2.2) * Math.sin(sinceLand * 11) * 2.2 : 0
-    const gust = wind ? wind.lean(l.x + l.w / 2, l.y + 10) : 0
-    const sway = gust * 2 + Math.sin(t * 1.6) * 0.5
-    const dip = (x: number) => {
-      const span = (x - x0) / (x1 - x0)
-      const base = Math.sin(Math.PI * span) * (1.6 + Math.abs(gust) * 1.5)
-      const her = stood ? 3.2 * Math.exp(-(((x - herX) / 34) ** 2)) : 0
-      return base + her + bounce * Math.sin(Math.PI * span)
-    }
-    // Posts.
-    const post = (x: number) => {
-      ctx.fillStyle = p.wood
-      ctx.strokeStyle = ink(p.wood)
+    b.bounce = b.stood ? Math.exp(-sinceLand * 2.2) * Math.sin(sinceLand * 11) * 2.2 : 0
+    b.gust = wind ? wind.lean(l.x + l.w / 2, l.y + 10) : 0
+    const sway = b.gust * 2 + Math.sin(t * 1.6) * 0.5
+    // Its shadow on the rock below, and the rock knobs the posts are bolted into.
+    ctx.fillStyle = this.palette.shadow
+    ctx.globalAlpha = 0.45
+    ctx.beginPath()
+    ctx.ellipse((x0 + x1) / 2 + 3, top + 12 + this.bridgeDip((x0 + x1) / 2), l.w * 0.48, 4.5, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalAlpha = 1
+    for (let e = 0; e < 2; e++) {
+      // A little rock shelf under each post, wearing the zone's cap.
+      const x = e === 0 ? x0 : x1
+      const dir = e === 0 ? -1 : 1
+      ctx.fillStyle = c.anchor
+      ctx.strokeStyle = c.anchorInk
       ctx.lineWidth = 1.3
       ctx.beginPath()
-      roundRect(ctx, x - 3.2, top - 30, 6.4, 46, 2.5)
+      ctx.moveTo(x - dir * 9, top + 1)
+      ctx.lineTo(x + dir * 12, top + 1)
+      ctx.quadraticCurveTo(x + dir * 15, top + 2, x + dir * 13, top + 9)
+      ctx.quadraticCurveTo(x + dir * 8, top + 19, x - dir * 1, top + 17)
+      ctx.quadraticCurveTo(x - dir * 9, top + 13, x - dir * 9, top + 1)
+      ctx.closePath()
       ctx.fill()
       ctx.stroke()
-      ctx.fillStyle = mix(p.wood, '#ffffff', 0.25)
+      ctx.fillStyle = c.anchorTop
+      ctx.strokeStyle = c.anchorTopInk
+      ctx.lineWidth = 0.9
       ctx.beginPath()
-      ctx.arc(x, top - 30, 3.6, 0, Math.PI * 2)
+      roundRect(ctx, Math.min(x - dir * 10, x + dir * 13), top - 1.5, 23, 4.2, 2)
       ctx.fill()
       ctx.stroke()
+      ctx.fillStyle = c.bolt
+      ctx.beginPath()
+      ctx.arc(x + dir * 6, top + 9, 1.5, 0, Math.PI * 2)
+      ctx.fill()
     }
-    // Rope colour: a sun-faded natural rope.
-    const rope = mix(p.wood, '#f3e2c0', 0.5)
     // Back hand rope.
-    ctx.strokeStyle = ink(rope)
+    ctx.strokeStyle = c.ropeInk
     ctx.lineWidth = 2
     ctx.beginPath()
     ctx.moveTo(x0, top - 26)
-    ctx.quadraticCurveTo((x0 + x1) / 2 + sway * 3, top - 12 + dip((x0 + x1) / 2), x1, top - 26)
+    ctx.quadraticCurveTo((x0 + x1) / 2 + sway * 3, top - 12 + this.bridgeDip((x0 + x1) / 2), x1, top - 26)
     ctx.stroke()
-    post(x0)
-    post(x1)
+    this.bridgePost(ctx, x0, top)
+    this.bridgePost(ctx, x1, top)
     // Deck: planks hung on two ropes.
     const n = Math.round(l.w / 13)
     const pw = l.w / n
+    const gaps = this.bridgeGaps
+    ctx.strokeStyle = c.woodInk
+    ctx.lineWidth = 1.1
     for (let i = 0; i < n; i++) {
+      if (gaps.length && gaps.indexOf(i) >= 0) continue
       const cx = x0 + (i + 0.5) * pw
-      const d = dip(cx)
-      const tilt = (dip(cx + 4) - dip(cx - 4)) / 8
+      const d = this.bridgeDip(cx)
+      const tilt = (this.bridgeDip(cx + 4) - this.bridgeDip(cx - 4)) / 8
       ctx.save()
       ctx.translate(cx + sway * 0.6 * Math.sin((Math.PI * (cx - x0)) / l.w), top + d - 0.5)
       ctx.rotate(Math.atan(tilt))
-      ctx.fillStyle = i % 3 === 1 ? mix(p.wood, '#ffffff', 0.15) : p.wood
-      ctx.strokeStyle = ink(p.wood)
-      ctx.lineWidth = 1.1
+      ctx.fillStyle = i % 3 === 1 ? c.plankLight : c.wood
       ctx.beginPath()
       roundRect(ctx, -pw / 2 + 1, -1, pw - 2, 5.5, 1.6)
       ctx.fill()
       ctx.stroke()
       ctx.restore()
     }
-    // Deck ropes and the front hand rope with hangers.
-    ctx.strokeStyle = rope
+    // Deck rope and the front hand rope with hangers.
+    ctx.strokeStyle = c.rope
     ctx.lineWidth = 1.4
     ctx.beginPath()
     for (let x = x0; x <= x1 + 0.1; x += 6) {
-      const y = top + dip(x) + 4.5
+      const y = top + this.bridgeDip(x) + 4.5
       if (x === x0) ctx.moveTo(x, y)
       else ctx.lineTo(x, y)
     }
     ctx.stroke()
-    ctx.strokeStyle = ink(rope)
+    ctx.strokeStyle = c.ropeInk
     ctx.lineWidth = 0.9
     ctx.beginPath()
-    const hand = (x: number) => {
-      const s = (x - x0) / (x1 - x0)
-      return top - 24 + Math.sin(Math.PI * s) * (12 + dip(x) * 0.5)
-    }
     for (let x = x0 + pw; x < x1 - 1; x += pw * 2) {
-      ctx.moveTo(x, hand(x))
-      ctx.lineTo(x, top + dip(x))
+      ctx.moveTo(x, this.bridgeHand(x))
+      ctx.lineTo(x, top + this.bridgeDip(x))
     }
     ctx.stroke()
-    ctx.strokeStyle = rope
+    ctx.strokeStyle = c.rope
     ctx.lineWidth = 2.2
     ctx.beginPath()
     for (let x = x0; x <= x1 + 0.1; x += 6) {
-      const y = hand(x)
+      const y = this.bridgeHand(x)
       if (x === x0) ctx.moveTo(x, y)
       else ctx.lineTo(x, y)
     }
+    ctx.stroke()
+  }
+
+  private bridgePost(ctx: CanvasRenderingContext2D, x: number, top: number): void {
+    const c = this.inks
+    ctx.fillStyle = c.wood
+    ctx.strokeStyle = c.woodInk
+    ctx.lineWidth = 1.3
+    ctx.beginPath()
+    roundRect(ctx, x - 3.2, top - 30, 6.4, 46, 2.5)
+    ctx.fill()
+    ctx.stroke()
+    ctx.fillStyle = c.woodLight
+    ctx.beginPath()
+    ctx.arc(x, top - 30, 3.6, 0, Math.PI * 2)
+    ctx.fill()
     ctx.stroke()
   }
 
@@ -1429,8 +1865,8 @@ export class Terrain {
     const pulse = wasHidden ? 0.15 * Math.sin(t * 3) : 0
     // Just revealed: the halo flares, then settles.
     const flare = scale < 1 || this.revealAt.has(h.id) ? 0.4 : 0
-    ctx.globalAlpha = Math.min(1, (this.palette.night || this.palette.zone === 'hollow' ? 0.55 : 0.5) + pulse + flare)
-    const gr = (25 + flare * 20) * Math.max(scale, 0.6)
+    ctx.globalAlpha = Math.min(1, (this.palette.night || this.palette.zone === 'hollow' ? 0.6 : 0.68) + pulse + flare)
+    const gr = (28 + flare * 20) * Math.max(scale, 0.6)
     ctx.drawImage(this.holdGlow, h.x - gr, -h.y - gr, gr * 2, gr * 2)
     ctx.globalAlpha = 1
     const rr = r * scale * HOLD_SCALE
@@ -1458,12 +1894,12 @@ export class Terrain {
     // Glow first (behind the post).
     if (!this.glow) this.glow = softDot(64, p.lanternGlow, 0.15)
     const flicker = 0.9 + 0.06 * Math.sin(t * 7.3 + d.seed) + 0.04 * Math.sin(t * 13.1 + d.seed * 2)
-    const gr = (p.night ? 40 : 24) * s * flicker
-    ctx.globalAlpha = p.night ? 0.75 : 0.5
+    const gr = (p.night ? 52 : 24) * s * flicker
+    ctx.globalAlpha = p.night ? 0.8 : 0.5
     ctx.drawImage(this.glow, x + 6 * s - gr, hy + 6 * s - gr, gr * 2, gr * 2)
     ctx.globalAlpha = 1
     // Post with a little arm.
-    ctx.strokeStyle = ink(p.wood)
+    ctx.strokeStyle = this.inks.woodInk
     ctx.lineWidth = 3.6 * s
     ctx.lineCap = 'round'
     ctx.beginPath()
@@ -1479,7 +1915,7 @@ export class Terrain {
     ctx.save()
     ctx.translate(x + 6 * s, hy - 2 * s)
     ctx.rotate(sw)
-    ctx.strokeStyle = ink(p.wood)
+    ctx.strokeStyle = this.inks.woodInk
     ctx.lineWidth = 0.8
     ctx.beginPath()
     ctx.moveTo(0, 0)
@@ -1558,6 +1994,63 @@ export class Terrain {
     this.release()
     this.session = null
     this.chunks.length = 0
+  }
+}
+
+// =============================================================================================
+// Colours the live bits use, mixed once per palette
+
+interface Inks {
+  wood: string
+  woodInk: string
+  woodLight: string
+  plankLight: string
+  rope: string
+  ropeInk: string
+  bolt: string
+  anchor: string
+  anchorInk: string
+  anchorTop: string
+  anchorTopInk: string
+  flagPole: string
+  flagPoleLight: string
+  flag: string
+  flagInk: string
+  pennant: string
+  pennantInk: string
+  summitSun: string
+  knob: string
+  bunting: string[]
+  buntingInk: string[]
+  buntingLine: string
+}
+
+function makeInks(p: ZonePalette): Inks {
+  const rope = mix(p.wood, '#f3e2c0', 0.5)
+  const bunting = [p.flag, p.tentStripe, p.accents[0]]
+  return {
+    wood: p.wood,
+    woodInk: ink(p.wood),
+    woodLight: mix(p.wood, '#ffffff', 0.25),
+    plankLight: mix(p.wood, '#ffffff', 0.15),
+    rope,
+    ropeInk: ink(rope),
+    bolt: mix(p.faceDark, p.ink, 0.3),
+    anchor: p.rock,
+    anchorTop: p.top,
+    anchorTopInk: ink(p.top),
+    anchorInk: p.rockInk,
+    flagPole: ink(p.wood),
+    flagPoleLight: mix(p.wood, '#ffffff', 0.2),
+    flag: p.flag,
+    flagInk: ink(p.flag),
+    pennant: p.tentStripe,
+    pennantInk: ink(p.tentStripe),
+    summitSun: p.tentStripe === '#ffffff' ? '#ffe9a8' : p.tentStripe,
+    knob: p.lantern,
+    bunting,
+    buntingInk: bunting.map((c) => ink(c)),
+    buntingLine: rgba(p.ink, 0.6),
   }
 }
 
@@ -2334,10 +2827,27 @@ function drawDecor(g: CanvasRenderingContext2D, d: Decor, p: ZonePalette, s: num
       break
     }
     case 'cloud': {
-      g.save()
-      g.globalAlpha = 0.92
-      paperCloud(g, x, y, 22 * s, 2.3, p.cloud, p.cloudShade, p.shadow, d.x * 0.37 + d.y * 0.11)
-      g.restore()
+      // A soft wisp of mist drifting past the rock: see-through and edgeless, so it never looks like
+      // something to stand on.
+      const puffs = 5
+      for (let i = 0; i < puffs; i++) {
+        const k = (i + 0.5) / puffs
+        const px = x + (k - 0.5) * 70 * s + rng.range(-4, 4)
+        const py = y + rng.range(-4, 4) * s
+        const rx = (16 + 12 * Math.sin(Math.PI * k)) * s
+        const ry = rx * 0.5
+        const grad = g.createRadialGradient(px, py, 0, px, py, rx)
+        grad.addColorStop(0, rgba(p.cloud, p.night ? 0.32 : 0.42))
+        grad.addColorStop(0.6, rgba(p.cloud, p.night ? 0.16 : 0.22))
+        grad.addColorStop(1, rgba(p.cloud, 0))
+        g.save()
+        g.translate(px, py)
+        g.scale(1, ry / rx)
+        g.translate(-px, -py)
+        g.fillStyle = grad
+        g.fillRect(px - rx, py - rx, rx * 2, rx * 2)
+        g.restore()
+      }
       break
     }
     case 'flag':
@@ -2389,8 +2899,8 @@ function drawTent(g: CanvasRenderingContext2D, x: number, y: number, s: number, 
   g.restore()
   g.strokeStyle = ink(canvas)
   g.stroke(front)
-  // Door: an open flap and a cosy dark inside.
-  g.fillStyle = mix(p.ink, '#2a1a22', 0.4)
+  // Door: an open flap and a cosy inside (lit warm at night).
+  g.fillStyle = p.night ? '#ffc766' : mix(p.ink, '#2a1a22', 0.4)
   g.beginPath()
   g.moveTo(x - 6.5 * s, y + 0.5)
   g.quadraticCurveTo(x - 2 * s, y - h * 0.55, x, y - h * 0.68)
@@ -2633,7 +3143,7 @@ function chalkMark(g: CanvasRenderingContext2D, x: number, y: number, w: number)
   g.restore()
 }
 
-function drawFlag(ctx: CanvasRenderingContext2D, d: Dyn, p: ZonePalette, t: number, lean: number): void {
+function drawFlag(ctx: CanvasRenderingContext2D, d: Dyn, c: Inks, t: number, lean: number): void {
   const summit = d.kind === 'summit'
   const pennant = d.kind === 'pennant'
   const s = d.scale * (summit ? 1.25 : pennant ? 0.6 : 1)
@@ -2642,22 +3152,22 @@ function drawFlag(ctx: CanvasRenderingContext2D, d: Dyn, p: ZonePalette, t: numb
   const poleH = (pennant ? 10 : summit ? 46 : 36) * s
   const top = base - poleH
   if (!pennant) {
-    ctx.strokeStyle = ink(p.wood)
+    ctx.strokeStyle = c.flagPole
     ctx.lineWidth = 3 * s
     ctx.lineCap = 'round'
     ctx.beginPath()
     ctx.moveTo(x, base + 1)
     ctx.lineTo(x, top)
     ctx.stroke()
-    ctx.strokeStyle = mix(p.wood, '#ffffff', 0.2)
+    ctx.strokeStyle = c.flagPoleLight
     ctx.lineWidth = 1.6 * s
     ctx.stroke()
-    ctx.fillStyle = p.lantern
+    ctx.fillStyle = c.knob
     ctx.beginPath()
     ctx.arc(x, top - 1.5 * s, 2.2 * s, 0, Math.PI * 2)
     ctx.fill()
   } else {
-    ctx.strokeStyle = ink(p.wood)
+    ctx.strokeStyle = c.flagPole
     ctx.lineWidth = 1.2
     ctx.beginPath()
     ctx.moveTo(x, base)
@@ -2669,59 +3179,59 @@ function drawFlag(ctx: CanvasRenderingContext2D, d: Dyn, p: ZonePalette, t: numb
   const strength = 0.35 + Math.abs(lean) * 0.65
   const fw = (summit ? 26 : pennant ? 14 : 18) * s
   const fh = (summit ? 16 : pennant ? 8 : 11) * s
-  const color = summit ? p.flag : pennant ? p.tentStripe : p.flag
+  const speed = 4 + strength * 7
+  const amp = (2.2 + strength * 2.5) * s
   const n = 5
-  ctx.fillStyle = color
-  ctx.strokeStyle = ink(color)
+  ctx.fillStyle = pennant ? c.pennant : c.flag
+  ctx.strokeStyle = pennant ? c.pennantInk : c.flagInk
   ctx.lineWidth = 1.1
   ctx.beginPath()
   ctx.moveTo(x, top)
   for (let i = 1; i <= n; i++) {
     const u = i / n
-    const wave = Math.sin(t * (4 + strength * 7) - u * 4 + d.seed) * u * (2.2 + strength * 2.5) * s
+    const wave = Math.sin(t * speed - u * 4 + d.seed) * u * amp
     const droop = (1 - strength) * u * u * 6 * s
-    ctx.lineTo(x + dir * u * fw, top + wave + droop + (pennant || !summit ? u * fh * 0.5 : 0))
+    ctx.lineTo(x + dir * u * fw, top + wave + droop + (summit ? 0 : u * fh * 0.5))
   }
   for (let i = n; i >= 0; i--) {
     const u = i / n
-    const wave = Math.sin(t * (4 + strength * 7) - u * 4 + d.seed) * u * (2.2 + strength * 2.5) * s
+    const wave = Math.sin(t * speed - u * 4 + d.seed) * u * amp
     const droop = (1 - strength) * u * u * 6 * s
     const h = summit ? fh : fh * (1 - u)
-    ctx.lineTo(x + dir * u * fw, top + wave + droop + h * (summit ? 1 : 0.5) + (summit ? 0 : u * fh * 0.0))
+    ctx.lineTo(x + dir * u * fw, top + wave + droop + h * (summit ? 1 : 0.5))
   }
   ctx.closePath()
   ctx.fill()
   ctx.stroke()
   if (summit) {
     // A little sun on the summit flag.
-    const wave = Math.sin(t * (4 + strength * 7) - 0.5 * 4 + d.seed) * 0.5 * (2.2 + strength * 2.5) * s
+    const wave = Math.sin(t * speed - 2 + d.seed) * 0.5 * amp
     const droop = (1 - strength) * 0.25 * 6 * s
-    ctx.fillStyle = p.tentStripe === '#ffffff' ? '#ffe9a8' : p.tentStripe
+    ctx.fillStyle = c.summitSun
     ctx.beginPath()
     ctx.arc(x + dir * fw * 0.5, top + wave + droop + fh * 0.5, fh * 0.26, 0, Math.PI * 2)
     ctx.fill()
   }
 }
 
-function drawBunting(ctx: CanvasRenderingContext2D, d: Dyn, p: ZonePalette, t: number, lean: number): void {
+function drawBunting(ctx: CanvasRenderingContext2D, d: Dyn, c: Inks, t: number, lean: number): void {
   const x = d.x
   const base = -d.y
   const top = base - 30
-  ctx.strokeStyle = ink(p.wood)
+  ctx.strokeStyle = c.flagPole
   ctx.lineWidth = 3
   ctx.lineCap = 'round'
   ctx.beginPath()
   ctx.moveTo(x, base + 1)
   ctx.lineTo(x, top)
   ctx.stroke()
-  ctx.strokeStyle = mix(p.wood, '#ffffff', 0.2)
+  ctx.strokeStyle = c.flagPoleLight
   ctx.lineWidth = 1.6
   ctx.stroke()
   // A string of three little triangles hanging toward the gap.
   const dir = d.dir
   const sway = Math.sin(t * 2.4 + d.seed) * 1.2 + lean * 2
-  const colors = [p.flag, p.tentStripe, p.accents[0]]
-  ctx.strokeStyle = rgba(p.ink, 0.6)
+  ctx.strokeStyle = c.buntingLine
   ctx.lineWidth = 0.8
   ctx.beginPath()
   ctx.moveTo(x, top + 1)
@@ -2731,8 +3241,8 @@ function drawBunting(ctx: CanvasRenderingContext2D, d: Dyn, p: ZonePalette, t: n
     const u = (i + 0.5) / 3
     const bx = x + dir * u * 18
     const by = top + 1 + Math.sin(Math.PI * u) * 6 + sway * u
-    ctx.fillStyle = colors[i]
-    ctx.strokeStyle = ink(colors[i])
+    ctx.fillStyle = c.bunting[i]
+    ctx.strokeStyle = c.buntingInk[i]
     ctx.beginPath()
     ctx.moveTo(bx - 3, by)
     ctx.lineTo(bx + 3, by)

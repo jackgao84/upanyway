@@ -46,6 +46,11 @@ export interface GoatContext {
   zone?: ZoneId
   /** The Looks Scary moment (looksScaryBefore / looksScaryAfter): unlocks its own lines. */
   scary?: LooksScaryKind
+  /**
+   * Only that moment's own lines (the first time she meets it, and inside its fear cards): she hears
+   * what the scary thing looks like, and what it turned out to be — never just a generic line.
+   */
+  scaryOnly?: boolean
   /** The kind of fall: rope-catch lines only for 'rope', and so on. */
   whipper?: WhipperKind
   /** The goat climbs beside her (night climbs after the summit), not in the backpack. */
@@ -190,6 +195,7 @@ export class GoatVoice {
     if (line.moral && (ctx.campKey === undefined || this.moralSaid.has(ctx.campKey))) return false
     if (line.zone !== undefined && line.zone !== ctx.zone) return false
     if (line.scary !== undefined && line.scary !== ctx.scary) return false
+    if (ctx.scaryOnly && line.scary === undefined) return false
     if (line.whipper !== undefined && line.whipper !== ctx.whipper) return false
     if (line.pack && ctx.goatOut) return false
     if (line.out && !ctx.goatOut) return false

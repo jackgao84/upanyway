@@ -1,7 +1,8 @@
 /**
  * Which pitches are open (Decision 5): pitches 1–2 are free; pitch n opens when the cairn holds n − 2
  * stones. No "previous pitch sent" gate. Unlocked pitches replay freely. Test mode opens everything;
- * after the summit every pitch is open at night.
+ * after the summit every pitch is open at night (the goat climbs beside her once it has climbed out
+ * of the pack at Sky Lake).
  */
 import type { SaveData } from '../storage/schema'
 import { PITCH_IDS, type LevelId } from '../game/types'
@@ -16,6 +17,15 @@ export function pitchRequirement(levelId: LevelId): number {
 
 export function isNightOpen(d: SaveData): boolean {
   return d.summit.reached || d.testMode
+}
+
+/**
+ * The goat has climbed out of the backpack: it does that for the very first time in the Sky Lake
+ * finale (summit.finaleSeen). Until then every drawing of it — camp, cards, wardrobe, a night climb —
+ * keeps it in (or peeking out of) the pack. Test mode shows everything.
+ */
+export function isGoatOut(d: SaveData): boolean {
+  return d.summit.finaleSeen || d.testMode
 }
 
 export function isPitchOpen(d: SaveData, levelId: LevelId, night = false): boolean {

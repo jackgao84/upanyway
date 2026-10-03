@@ -35,11 +35,18 @@ export class WindFx implements WindField, WindLean {
   private readonly zones: ZoneFx[]
   private t = 0
   private readonly rng = createRng('wind')
+  /** Colours mixed once (nothing is mixed per frame). */
+  private readonly bracket: string
+  private readonly poleInk: string
+  private readonly poleLight: string
 
   constructor(
     level: Level,
     private readonly palette: ZonePalette,
   ) {
+    this.bracket = mix(palette.faceDark, palette.ink, 0.3)
+    this.poleInk = ink(palette.wood)
+    this.poleLight = mix(palette.wood, '#ffffff', 0.25)
     this.zones = (level.wind ?? []).map((z) => ({
       z,
       amount: 0,
@@ -146,7 +153,6 @@ export class WindFx implements WindField, WindLean {
   drawSocks(ctx: CanvasRenderingContext2D, view: View, t: number): void {
     if (!this.zones.length) return
     view.applyWorld(ctx)
-    const p = this.palette
     const top = view.top + 40
     const bottom = view.bottom - 40
     for (const f of this.zones) {
@@ -157,18 +163,18 @@ export class WindFx implements WindField, WindLean {
       const base = -s.y
       const poleTop = base - 30
       // Pole on a little bracket plate.
-      ctx.fillStyle = mix(p.faceDark, p.ink, 0.3)
+      ctx.fillStyle = this.bracket
       ctx.beginPath()
       ctx.ellipse(x, base, 3, 2, 0, 0, Math.PI * 2)
       ctx.fill()
-      ctx.strokeStyle = ink(p.wood)
+      ctx.strokeStyle = this.poleInk
       ctx.lineWidth = 3
       ctx.lineCap = 'round'
       ctx.beginPath()
       ctx.moveTo(x, base)
       ctx.lineTo(x, poleTop)
       ctx.stroke()
-      ctx.strokeStyle = mix(p.wood, '#ffffff', 0.25)
+      ctx.strokeStyle = this.poleLight
       ctx.lineWidth = 1.6
       ctx.stroke()
       // Sock angle: limp (hanging) → fluttering → straight out downwind.
@@ -184,7 +190,6 @@ export class WindFx implements WindField, WindLean {
       const hx = x + dir * 2
       const hy = poleTop + 1
       const segs = 4
-      const colors = ['#ff7a5c', '#ffffff', '#ff7a5c', '#ffffff']
       for (let i = 0; i < segs; i++) {
         const u0 = i / segs
         const u1 = (i + 1) / segs
@@ -197,7 +202,7 @@ export class WindFx implements WindField, WindLean {
         const y1 = hy + ay * len * u1 + ax * wob * dir
         const nx = -ay
         const ny = ax * dir
-        ctx.fillStyle = colors[i]
+        ctx.fillStyle = i % 2 ? '#ffffff' : '#ff7a5c'
         ctx.strokeStyle = '#8a3b33'
         ctx.lineWidth = 0.9
         ctx.beginPath()

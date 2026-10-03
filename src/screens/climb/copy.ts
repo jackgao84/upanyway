@@ -47,6 +47,8 @@ export const CLIMB_COPY = {
     everyOne: 'Every leap got you here.',
     camp: 'Back to camp',
     next: 'Next pitch',
+    /** After the summit pitch: on to the Sky Lake finale. */
+    skyLake: 'On to Sky Lake',
     again: 'Climb again',
   },
   sunset: {

@@ -18,7 +18,7 @@ export const lesson: Level = {
   ],
   route: ['c0', 'c1'],
   decor: [
-    { kind: 'tree', x: 20, y: 40, scale: 1.1 },
+    { kind: 'tree', x: 38, y: 40, scale: 1.1 },
     { kind: 'flowers', x: 120, y: 40 },
     { kind: 'grass', x: 250, y: 130 },
     { kind: 'sign', x: 290, y: 130, text: 'Fall practice' },

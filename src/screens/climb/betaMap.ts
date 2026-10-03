@@ -2,7 +2,8 @@
  * The Beta Map card at the end of every pitch: the canvas shows the whole pitch with every failed
  * arc as faint chalk under the bright route that worked (the stage draws it); this card says how
  * many attempts it took — "Sent in 14 attempts. Every whipper got you here." — and offers Back to
- * camp / Next pitch / Climb again. No stars, no timers, no "fewer falls" anything.
+ * camp / Next pitch / Climb again. No stars, no timers, no "fewer falls" anything. After the summit
+ * pitch the way on is "On to Sky Lake" (the first time by day, the only button: the finale is next).
  *
  * Portrait: a card along the bottom, the pitch framed above it. Landscape (a phone on its side too):
  * a card on the right, the pitch in the middle.
@@ -20,6 +21,10 @@ export interface BetaMapCardOpts {
   onSeen: (word: GlossaryWord) => void
   /** Null when there is no next pitch to offer (summit, or not open yet). */
   onNext: (() => void) | null
+  /** The primary button's words when it isn't "Next pitch" (the summit: "On to Sky Lake"). */
+  nextLabel?: string
+  /** Offer only the way on (the first Sky Lake finale): no Climb again, no Back to camp. */
+  onlyNext?: boolean
   onAgain: () => void
   onCamp: () => void
   /** Top of the area the pitch may use (below the HUD row), CSS px. */
@@ -58,19 +63,22 @@ export function betaMapCard(opts: BetaMapCardOpts): BetaMapCard {
     })
   const next = opts.onNext
   const primary = next
-    ? button(c.next, { onClick: next, size: 'big', iconEnd: 'next', class: 'climb-map__next' })
+    ? button(opts.nextLabel ?? c.next, { onClick: next, size: 'big', iconEnd: 'next', class: 'climb-map__next' })
     : button(c.again, { onClick: opts.onAgain, size: 'big', icon: 'undo', class: 'climb-map__again' })
-  const secondary = [
-    next ? button(c.again, { onClick: opts.onAgain, variant: 'secondary', icon: 'undo', class: 'climb-map__again' }) : null,
-    button(c.camp, { onClick: opts.onCamp, variant: 'secondary', icon: 'tent', class: 'climb-map__camp' }),
-  ]
+  const secondary =
+    next && opts.onlyNext
+      ? []
+      : [
+          next ? button(c.again, { onClick: opts.onAgain, variant: 'secondary', icon: 'undo', class: 'climb-map__again' }) : null,
+          button(c.camp, { onClick: opts.onCamp, variant: 'secondary', icon: 'tent', class: 'climb-map__camp' }),
+        ]
   const el = h(
     'section',
     { class: 'climb-map', role: 'dialog', 'aria-modal': 'false', 'aria-label': 'Beta map' },
     h('h2', { class: 'climb-map__title' }, c.title),
     line,
     notes.length ? h('div', { class: 'climb-map__words' }, ...notes) : null,
-    h('div', { class: 'climb-map__actions' }, primary, h('div', { class: 'climb-map__row' }, ...secondary)),
+    h('div', { class: 'climb-map__actions' }, primary, secondary.length ? h('div', { class: 'climb-map__row' }, ...secondary) : null),
   )
   const layout = () => el.classList.toggle('climb-map--side', wide())
   layout()

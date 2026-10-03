@@ -33,8 +33,19 @@ export interface ZonePalette {
   stars: number
   cloud: string
   cloudShade: string
-  /** Parallax mountain layers, far → near. */
+  /** Baked into the sky picture: a broad glow around the sun (or moon) and how strong it is. */
+  skyGlow: string
+  skyGlowAlpha: number
+  /** Long soft cloud streaks baked into the sky (null = a clear sky). */
+  streaks: string | null
+  /** Soft shafts of light from the sun (a fresh morning in the woods). */
+  rays: boolean
+  /** Parallax paper layers, far → near (five). */
   mountains: string[]
+  /** The light cut edge along the top of every paper layer. */
+  rim: string
+  /** What the receding rows inside each far layer deepen toward (valleys in shade). */
+  deep: string
   /** Snow caps on the far peaks (null = none). */
   snowcap: string | null
   hills: HillKind
@@ -97,16 +108,22 @@ const DAY: Record<ZoneId, DayPalette> = {
   // Sunrise: peach, pink and gold over green foothills.
   meadow: {
     sky: [
-      { at: 0, color: '#b3c9ea' },
-      { at: 0.32, color: '#e8c5dc' },
-      { at: 0.66, color: '#ffcdb5' },
-      { at: 1, color: '#ffe5b6' },
+      { at: 0, color: '#a3b9e8' },
+      { at: 0.34, color: '#dcc0e2' },
+      { at: 0.66, color: '#ffc8b2' },
+      { at: 1, color: '#ffe2a6' },
     ],
-    celestial: { kind: 'sun', color: '#fff3c9', glow: '#ffd27a', x: 0.86, y: 0.13, r: 30 },
+    celestial: { kind: 'sun', color: '#fff4cf', glow: '#ffd27a', x: 0.82, y: 0.2, r: 30 },
     stars: 0,
     cloud: '#fff4ec',
     cloudShade: '#f2cdd2',
-    mountains: ['#ecd2e2', '#c9a3c8', '#a8c99a', '#82b46e'],
+    skyGlow: '#ffcf8a',
+    skyGlowAlpha: 0.55,
+    streaks: '#ffd9d6',
+    rays: false,
+    mountains: ['#ebcfe2', '#d2a9d0', '#a9cd8a', '#82b866', '#5e9f4f'],
+    rim: '#fff3e6',
+    deep: '#5b8f58',
     snowcap: '#fff6f2',
     hills: 'meadow',
     haze: '#ffe2cc',
@@ -149,15 +166,21 @@ const DAY: Record<ZoneId, DayPalette> = {
   // Fresh morning greens outside; inside the hollow, a dark mossy cave.
   hollow: {
     sky: [
-      { at: 0, color: '#b9e1d8' },
-      { at: 0.45, color: '#d9f0d6' },
-      { at: 1, color: '#f6f6d2' },
+      { at: 0, color: '#8fd0ee' },
+      { at: 0.5, color: '#c9ecea' },
+      { at: 1, color: '#f6f3d2' },
     ],
-    celestial: { kind: 'sun', color: '#fffbe2', glow: '#f2efb0', x: 0.18, y: 0.38, r: 28 },
+    celestial: { kind: 'sun', color: '#fffbe2', glow: '#f6f1b4', x: 0.2, y: 0.17, r: 28 },
     stars: 0,
     cloud: '#f7fbef',
     cloudShade: '#d3e8d4',
-    mountains: ['#c2e0cb', '#98c6a7', '#6ca686', '#4c8a6b'],
+    skyGlow: '#fff3b0',
+    skyGlowAlpha: 0.38,
+    streaks: null,
+    rays: true,
+    mountains: ['#c4e2d6', '#97c7b1', '#6dab8c', '#4c8f70', '#336f57'],
+    rim: '#f2fff2',
+    deep: '#1f4a3c',
     snowcap: null,
     hills: 'forest',
     haze: '#e6f3dc',
@@ -200,15 +223,21 @@ const DAY: Record<ZoneId, DayPalette> = {
   // Warm late morning: sandstone stripes and ochre mesas.
   crumble: {
     sky: [
-      { at: 0, color: '#8ccbe8' },
-      { at: 0.5, color: '#c3e3ea' },
-      { at: 1, color: '#fbe6c2' },
+      { at: 0, color: '#79c0ea' },
+      { at: 0.5, color: '#bde1ee' },
+      { at: 1, color: '#fde2bb' },
     ],
-    celestial: { kind: 'sun', color: '#fffbe8', glow: '#ffe7a6', x: 0.78, y: 0.24, r: 30 },
+    celestial: { kind: 'sun', color: '#fffbe8', glow: '#ffe7a6', x: 0.78, y: 0.14, r: 30 },
     stars: 0,
     cloud: '#fffaf0',
     cloudShade: '#f0dcc4',
-    mountains: ['#f0d6b6', '#e3b98f', '#cf9b6e', '#b88058'],
+    skyGlow: '#fff0c4',
+    skyGlowAlpha: 0.45,
+    streaks: '#fff6ea',
+    rays: false,
+    mountains: ['#ead3d4', '#e6b99c', '#dc9c72', '#c87f56', '#b36a46'],
+    rim: '#fff4e2',
+    deep: '#a35f3f',
     snowcap: null,
     hills: 'mesa',
     haze: '#fbe8cc',
@@ -251,15 +280,21 @@ const DAY: Record<ZoneId, DayPalette> = {
   // Bright afternoon: blue sky, cool grey rock, snow.
   ridge: {
     sky: [
-      { at: 0, color: '#4ea4dc' },
-      { at: 0.5, color: '#86c6ea' },
-      { at: 1, color: '#d8f1fb' },
+      { at: 0, color: '#3d98d8' },
+      { at: 0.5, color: '#7ec0ea' },
+      { at: 1, color: '#d6effb' },
     ],
-    celestial: { kind: 'sun', color: '#ffffff', glow: '#fff4cc', x: 0.22, y: 0.16, r: 26 },
+    celestial: { kind: 'sun', color: '#ffffff', glow: '#fff4cc', x: 0.22, y: 0.13, r: 26 },
     stars: 0,
     cloud: '#ffffff',
     cloudShade: '#d6e5f2',
-    mountains: ['#c9dbec', '#a3bed8', '#7f9fbf', '#5f7f9f'],
+    skyGlow: '#fffbe6',
+    skyGlowAlpha: 0.4,
+    streaks: null,
+    rays: false,
+    mountains: ['#d6e5f2', '#adc7e0', '#86a7c8', '#5c8a9c', '#3f6f7c'],
+    rim: '#ffffff',
+    deep: '#35596e',
     snowcap: '#ffffff',
     hills: 'alpine',
     haze: '#e6f4fb',
@@ -280,7 +315,7 @@ const DAY: Record<ZoneId, DayPalette> = {
     topKind: 'snow',
     tuft: '#9cba6b',
     accents: ['#ffffff', '#ffd36b', '#ff9db0', '#b6e0ff'],
-    hold: { jug: '#8692a3', root: '#8a6a50', crystal: '#8fd6ff', knob: '#848fa0', glow: '#f2f9ff' },
+    hold: { jug: '#6b7a8e', root: '#8a6a50', crystal: '#7fcfff', knob: '#69788b', glow: '#f2f9ff' },
     wood: '#9a7656',
     tent: '#e8735a',
     tentStripe: '#ffffff',
@@ -290,7 +325,7 @@ const DAY: Record<ZoneId, DayPalette> = {
     chalk: '#ffffff',
     rope: '#e8735a',
     ropeLight: '#ffd2c2',
-    particles: ['leaves'],
+    particles: ['leaves', 'snow'],
     ambient: '#e6f4ff',
     ambientAlpha: 0.05,
     mist: '#f4fbff',
@@ -302,16 +337,22 @@ const DAY: Record<ZoneId, DayPalette> = {
   // Golden hour: amber light, lilac rock, soft fog.
   cloud: {
     sky: [
-      { at: 0, color: '#a99ad6' },
-      { at: 0.36, color: '#d9b0c9' },
-      { at: 0.72, color: '#f8c78f' },
-      { at: 1, color: '#ffe2aa' },
+      { at: 0, color: '#9a8cd4' },
+      { at: 0.34, color: '#d4a8cf' },
+      { at: 0.7, color: '#f8c48c' },
+      { at: 1, color: '#ffe0a0' },
     ],
-    celestial: { kind: 'sun', color: '#fff0c2', glow: '#ffc978', x: 0.8, y: 0.5, r: 32 },
+    celestial: { kind: 'sun', color: '#fff0c2', glow: '#ffc978', x: 0.8, y: 0.3, r: 32 },
     stars: 0,
     cloud: '#fff4ec',
     cloudShade: '#e5cbe0',
-    mountains: ['#e6cbdf', '#d0b0d2', '#b597c3', '#977cae'],
+    skyGlow: '#ffc06e',
+    skyGlowAlpha: 0.6,
+    streaks: '#ffe0b8',
+    rays: false,
+    mountains: ['#e9cadf', '#caa8d0', '#f7dccf', '#e8c6dc', '#d3b3d8'],
+    rim: '#fff3e0',
+    deep: '#a98bbd',
     snowcap: '#fff3ee',
     hills: 'cloudsea',
     haze: '#ffe6cf',
@@ -332,7 +373,7 @@ const DAY: Record<ZoneId, DayPalette> = {
     topKind: 'cloud',
     tuft: '#b0c47a',
     accents: ['#ffd28a', '#ffb3c7', '#ffffff', '#c9b6ff'],
-    hold: { jug: '#8d78a6', root: '#8e6a58', crystal: '#b9a2ff', knob: '#8a74a2', glow: '#fff3e2' },
+    hold: { jug: '#7a6496', root: '#8e6a58', crystal: '#a98cff', knob: '#765f96', glow: '#fff3e2' },
     wood: '#9d7b6a',
     tent: '#f5b83d',
     tentStripe: '#ffffff',
@@ -354,16 +395,22 @@ const DAY: Record<ZoneId, DayPalette> = {
   // Sunset: rose and violet, pink snow, the last light.
   summit: {
     sky: [
-      { at: 0, color: '#6c5aa8' },
-      { at: 0.34, color: '#a77ab9' },
-      { at: 0.7, color: '#ef95a2' },
-      { at: 1, color: '#ffc08a' },
+      { at: 0, color: '#5a4c9c' },
+      { at: 0.34, color: '#9c72b6' },
+      { at: 0.7, color: '#ed90a0' },
+      { at: 1, color: '#ffbc84' },
     ],
-    celestial: { kind: 'sun', color: '#ffe3b4', glow: '#ff9f8a', x: 0.16, y: 0.3, r: 36 },
+    celestial: { kind: 'sun', color: '#ffe3b4', glow: '#ff9f8a', x: 0.16, y: 0.24, r: 36 },
     stars: 8,
     cloud: '#ffdcdc',
     cloudShade: '#d99ab6',
-    mountains: ['#c993b8', '#a77aab', '#85619b', '#654c84'],
+    skyGlow: '#ff9a7a',
+    skyGlowAlpha: 0.65,
+    streaks: '#ffc4bd',
+    rays: false,
+    mountains: ['#cf97ba', '#ab7aad', '#87609d', '#eaaec2', '#c995bb'],
+    rim: '#ffe4ec',
+    deep: '#7d5794',
     snowcap: '#ffe9ef',
     hills: 'peaks',
     haze: '#ffc9b4',
@@ -384,7 +431,7 @@ const DAY: Record<ZoneId, DayPalette> = {
     topKind: 'snow',
     tuft: '#b8b07a',
     accents: ['#ffd36b', '#ffffff', '#ffb3c7', '#bfa6ff'],
-    hold: { jug: '#87698f', root: '#8a5e52', crystal: '#ffb3d6', knob: '#8a6e94', glow: '#fff1f6' },
+    hold: { jug: '#765580', root: '#8a5e52', crystal: '#ff9fcb', knob: '#755a82', glow: '#fff1f6' },
     wood: '#8f6a5a',
     tent: '#5aa6a0',
     tentStripe: '#ffe9b0',
@@ -441,18 +488,28 @@ const NIGHT_SKY: Record<ZoneId, SkyStop[]> = {
 
 const NIGHT_BLUE = '#1e2852'
 const MOON_BLUE = '#3a4a80'
+/** Night paper layers ramp from a moonlit haze far away to deep navy close by. */
+const NIGHT_FAR = '#5c6ca2'
+const NIGHT_NEAR = '#141a3a'
 
 function nightOf(zone: ZoneId, d: DayPalette): DayPalette {
   const dim = (c: string, k = 0.58) => mix(c, NIGHT_BLUE, k)
   const moonlit = (c: string, k = 0.42) => mix(c, MOON_BLUE, k)
+  const n = d.mountains.length
   return {
     ...d,
     sky: NIGHT_SKY[zone],
-    celestial: { kind: 'moon', color: '#fbf5de', glow: '#b9c7ff', x: 1 - d.celestial.x, y: 0.07, r: 24 },
+    celestial: { kind: 'moon', color: '#fbf5de', glow: '#b9c7ff', x: 1 - d.celestial.x, y: 0.12, r: 24 },
     stars: 110,
     cloud: dim(d.cloud, 0.62),
     cloudShade: dim(d.cloudShade, 0.7),
-    mountains: d.mountains.map((c, i) => dim(c, 0.6 + i * 0.07)),
+    skyGlow: '#a9bcff',
+    skyGlowAlpha: 0.32,
+    streaks: null,
+    rays: false,
+    mountains: d.mountains.map((c, i) => mix(mix(NIGHT_FAR, NIGHT_NEAR, i / Math.max(1, n - 1)), c, 0.16)),
+    rim: '#c3cfff',
+    deep: '#0d122c',
     snowcap: d.snowcap ? moonlit(d.snowcap, 0.45) : null,
     haze: dim(d.haze, 0.62),
     face: dim(d.face, 0.7),

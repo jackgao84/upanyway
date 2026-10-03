@@ -22,7 +22,7 @@ import { Renderer, type RenderFrame } from '../../game/render/renderer'
 import { TUNING } from '../../game/tuning'
 import type { Level, LevelElement } from '../../game/types'
 import type { ClimberLook } from '../../storage/schema'
-import { h } from '../../ui/dom'
+import { h, prefersReducedMotion } from '../../ui/dom'
 
 export interface StageOptions {
   level: Level
@@ -52,6 +52,14 @@ export interface StageOptions {
 export interface ClientPoint {
   x: number
   y: number
+}
+
+/** An altitude range (world units) the camera keeps in the picture while it looks at something. */
+export interface KeepInView {
+  lo: number
+  hi: number
+  /** Room (CSS px) to leave below the HUD at the top (default: the card band, targetTopPx). */
+  topPx?: number
 }
 
 /** Screen region (CSS px, top/bottom) the Beta Map should fit the pitch into. */
@@ -97,7 +105,7 @@ export class ClimbStage {
 
   // Camera framing state.
   private restCenter = 0
-  private look: { y: number; zoom: number; frac: number } | null = null
+  private look: { y: number; zoom: number; frac: number; keep: KeepInView | null } | null = null
   private map: BetaMapState | null = null
   /** The Big Leap she is in the air on (keeps the pull-back until she comes down). */
   private bigFlight: { from: string; to: string } | null = null
@@ -113,6 +121,8 @@ export class ClimbStage {
     this.opts = opts
     this.level = opts.level
     this.session = opts.session
+    // Reduce Motion: no screen shakes (the Crumble Cliffs rumble, and any later one).
+    this.camera.reducedMotion = prefersReducedMotion()
     this.canvas = h('canvas', { class: 'climb-stage__canvas', role: 'img', 'aria-label': opts.label })
     this.probe = h('div', { class: 'climb-stage__safe', 'aria-hidden': 'true' })
     this.el = h('div', { class: 'stage climb-stage' }, this.canvas, this.probe)
@@ -206,6 +216,14 @@ export class ClimbStage {
     return maxDragPxFor(this.camera.viewW, this.camera.viewH)
   }
 
+  /** Where a DOM element's top edge is, in the stage's own CSS px (null when it isn't laid out). */
+  topWithin(el: Element | null): number | null {
+    if (!el) return null
+    const r = el.getBoundingClientRect()
+    if (r.height <= 0) return null
+    return r.top - this.rectTop
+  }
+
   /** Seconds since the stage started (the render clock). */
   get time(): number {
     return this.clock
@@ -216,10 +234,12 @@ export class ClimbStage {
 
   /**
    * Ease the camera to a world altitude (a Looks Scary moment) until clearLook(). `frac` is where on
-   * screen it should sit (0 = top, 0.5 = middle): high up keeps it clear of a card in the middle.
+   * screen it should sit (0 = top, 0.5 = middle): high up keeps it clear of a card at the bottom.
+   * `keep`: an altitude range (her, from feet to head) that must stay in the picture — below the
+   * cards that slide in at the top and above the HUD at the bottom — even if that moves the point.
    */
-  lookAt(y: number, zoom = 1, frac = 0.5): void {
-    this.look = { y, zoom, frac }
+  lookAt(y: number, zoom = 1, frac = 0.5, keep: KeepInView | null = null): void {
+    this.look = { y, zoom, frac, keep }
   }
 
   clearLook(): void {
@@ -339,8 +359,18 @@ export class ClimbStage {
 
     if (this.look) {
       const lk = this.look
+      const sc = cam.baseScale * lk.zoom
       const screenCenter = cam.insets.top + (cam.viewH - cam.insets.top - cam.insets.bottom) / 2
-      cam.setTarget(lk.y - (screenCenter - lk.frac * cam.viewH) / (cam.baseScale * lk.zoom), lk.zoom)
+      let center = lk.y - (screenCenter - lk.frac * cam.viewH) / sc
+      if (lk.keep) {
+        const safePx = cam.viewH - cam.insets.top - cam.insets.bottom
+        const top = cam.insets.top + Math.min(lk.keep.topPx ?? this.opts.targetTopPx ?? 0, safePx / 3) + 12
+        const bottom = cam.viewH - cam.insets.bottom - 12
+        const lo = lk.keep.hi - (screenCenter - top) / sc
+        const hi = lk.keep.lo + (bottom - screenCenter) / sc
+        center = lo <= hi ? clamp(center, lo, hi) : (lo + hi) / 2
+      }
+      cam.setTarget(center, lk.zoom)
     } else {
       const big = this.bigLeapFocus()
       const zoom = (big ? TUNING.bigLeapZoom : 1) * this.zoomBase

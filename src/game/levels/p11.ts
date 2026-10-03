@@ -14,10 +14,13 @@ export const p11: Level = {
   title: 'The Wobbly Bridge',
   height: 2250,
   elements: [
-    camp('c0', 15, 40, 170),
-    ledge('a1', 150, 160, 110),
-    ledge('a2', 260, 280, 110),
-    ledge('a3', 150, 400, 110),
+    // The first screen climbs right to left, up to the far wall from the bridge: a3 is tucked under the
+    // camp and the last move is a tall pull straight up, so the bridge is out of reach until she stands
+    // on c1 (and gets her Fear Forecast).
+    camp('c0', 225, 40, 170),
+    ledge('a1', 170, 145, 110),
+    ledge('a2', 85, 250, 110),
+    ledge('a3', 0, 365, 110),
     camp('c1', 10, 520, 160),
     // The rope bridge: rickety-looking, swaying in the gusts, and very wide. She walks to its far end.
     ledge('bridge', 150, 620, 230, { bridge: true, standX: 330 }),
@@ -53,7 +56,7 @@ export const p11: Level = {
   ],
   looksScary: { kind: 'bridge', forecastAt: 'c1', revealAt: 'bridge', x: 265, y: 620 },
   decor: [
-    { kind: 'sign', x: 40, y: 40, text: 'Pitch 11' },
-    { kind: 'pine', x: 150, y: 40, scale: 0.8 },
+    { kind: 'sign', x: 250, y: 40, text: 'Pitch 11' },
+    { kind: 'pine', x: 360, y: 40, scale: 0.8 },
   ],
 }

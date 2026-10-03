@@ -24,6 +24,8 @@ export class Camera {
   /** World altitude at the centre of the safe rect. */
   centerY = 300
   insets: Insets = { top: 0, right: 0, bottom: 0, left: 0 }
+  /** The device asks for reduced motion: shake() does nothing (set by the screen; no DOM here). */
+  reducedMotion = false
 
   private targetY = 300
   private targetZoom = 1
@@ -75,8 +77,9 @@ export class Camera {
     this.zoom = this.targetZoom
   }
 
-  /** Gentle rumble (Looks Scary "rumbling cliff"). Visual only. */
+  /** Gentle rumble (Looks Scary "rumbling cliff"). Visual only; never with reduced motion. */
   shake(magnitude: number, seconds: number): void {
+    if (this.reducedMotion) return
     this.shakeMag = Math.max(this.shakeMag, magnitude)
     this.shakeT = Math.max(this.shakeT, seconds)
   }

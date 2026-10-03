@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="light" />
+    <title>Up Anyway — finale lab</title>
+    <style>
+      #lab-panel {
+        position: fixed;
+        left: 50%;
+        bottom: 6px;
+        transform: translateX(-50%);
+        z-index: 200;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 6px 8px;
+        border-radius: 10px;
+        background: rgba(30, 20, 30, 0.6);
+        color: #fff7ec;
+        font: 12px/1.2 system-ui, sans-serif;
+      }
+      #lab-panel button,
+      #lab-panel input {
+        font: inherit;
+        min-height: 28px;
+      }
+      #lab-panel input[type='range'] {
+        width: 220px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="./finale.ts"></script>
+  </body>
+</html>

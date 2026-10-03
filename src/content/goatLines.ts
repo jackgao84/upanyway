@@ -272,8 +272,9 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
 
   // A Big Leap tried and not landed: trying it counts, landed or not.
   bigLeapMissed: [
-    { text: "We tried the big one! That counts. Rope's got us.", whipper: 'rope' },
-    { text: 'A big leap, tried for real! The rope caught us.', whipper: 'rope' },
+    { text: "We tried the big one! That counts. Rope's got us.", whipper: 'rope', pack: true },
+    { text: 'A big leap, tried for real! The rope caught us.', whipper: 'rope', pack: true },
+    { text: 'You tried the big one! I saw it all from here.', out: true },
     { text: "We leapt the big gap! Landing is next time's job." },
     { text: 'Big leap tried! Now we know how far it is.' },
     { text: "We actually jumped it! That's the scary part done.", mood: 'happy' },
@@ -284,10 +285,11 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
 
   // A whipper (a fall). Silly, safe, and information.
   fall: [
-    { text: "WHEEE — rope's got us. Now we know.", whipper: 'rope' },
+    { text: "WHEEE — rope's got us. Now we know.", whipper: 'rope', pack: true },
+    { text: "Boing! Rope's got you. I'm cheering from up here!", whipper: 'rope', out: true },
     { text: "Boing! That's what the rope is for.", whipper: 'rope' },
     { text: 'AAAA— oh. The rope. Hi, rope!', whipper: 'rope' },
-    { text: 'Whoosh! The rope caught us. My ears are inside out.', whipper: 'rope' },
+    { text: 'Whoosh! The rope caught us. My ears are inside out.', whipper: 'rope', pack: true },
     { text: "I squeaked SO loud. The rope didn't even mind.", whipper: 'rope' },
     { text: '{pose}! Very dramatic. Ten out of ten.' },
     { text: '{pose}! My ears went everywhere.' },
@@ -295,9 +297,9 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: "Flop! That's information. Very bouncy information." },
     { text: 'Now we know where that one goes.', mood: 'calm' },
     { text: 'The chalk line shows exactly where we went. Handy!', mood: 'calm' },
-    { text: 'Down we go! Scared, wobbly and totally fine.' },
+    { text: 'Down we go! Scared, wobbly and totally fine.', pack: true },
     { text: "Ears up, tummy down. We're okay!" },
-    { text: "We fell, and we're fine. I keep being surprised.", mood: 'calm' },
+    { text: "We fell, and we're fine. I keep being surprised.", mood: 'calm', pack: true },
     { text: "That's one more attempt. Attempts are how mountains get climbed.", mood: 'calm' },
     { text: 'Plop! A lower spot caught us. Comfy, actually.', whipper: 'slip' },
     { text: 'Bump! Landed lower. Not lost, just lower.', whipper: 'slip', mood: 'calm' },
@@ -311,7 +313,8 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: 'Attempt {n}! The chalk lines are making a map.', mood: 'calm' },
     { text: '{n} goes at this one. Each chalk line shows us more.', mood: 'calm' },
     { text: 'My ears have flapped {n} times here. Strong ears!' },
-    { text: "The rope's caught us {n} times here. It never gets tired.", whipper: 'rope' },
+    { text: "The rope's caught us {n} times here. It never gets tired.", whipper: 'rope', pack: true },
+    { text: "The rope's caught you {n} times here. Still cheering!", whipper: 'rope', out: true },
     { text: "Again! I'm getting good at falling. So are you." },
     { text: "This one's tricky. Tricky means we're learning it.", mood: 'calm' },
     { text: "Look at all that chalk. We're working this out.", mood: 'calm' },
@@ -412,6 +415,11 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: 'It was just a sleepy bear, snoring! Shh, tiptoe.', scary: 'rumble' },
     { text: 'The bridge held! Wobbly, and totally fine.', scary: 'bridge', mood: 'happy' },
     { text: 'The giant was a fluffy marmot! Fluffier than me!', scary: 'shadow' },
+    { text: 'Up close, the giant gap was just a big step!', scary: 'bigleap', mood: 'happy' },
+    { text: "Fireflies! Not eyes at all. They're blinking hello!", scary: 'eyes' },
+    { text: 'The rumble was a bear, snoring! A sleepy, cozy bear.', scary: 'rumble' },
+    { text: 'It creaked and swayed, and it held us up!', scary: 'bridge' },
+    { text: 'The giant shadow? A marmot, sunbathing! So fluffy.', scary: 'shadow', mood: 'happy' },
   ],
 
   // At the camp hub. A few gentle morals; the picker allows one per camp arrival.

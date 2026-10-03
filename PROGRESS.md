@@ -6,14 +6,13 @@
 
 ## Status
 
-- **Current stage:** 4 — Mountain (Stages 1–3 committed)
-- **Stage 3 verified:** typecheck clean; vitest 315/315 (incl. all 16 pitches + lesson validated, engine
-  replays every saved solution with zero whippers); Playwright WebKit 18/18 on 820×1180, 1180×820, 390×844
-  (first run with the real lesson, send p01 by replaying saved solutions as touch drags, a fall counts,
-  Looks Scary shortcut). Zero console errors.
-- **Next:** (a) Big Leap bypass fix — apply `bypass-rule` (validator: no FORGIVING leap from a Big Leap's
-  take-off to any other element at/above it) and fix p02, p03, p13, p14, p15 so the Big Leap is the way on;
-  (b) Stage 4 workflow: Looks Scary set-pieces + fog, zone-art polish, Sky Lake finale, integration, e2e.
+- **Current stage:** 5 — Camp (+ 6 — Parent, run together); Stages 1–4 committed.
+- **Stage 4 verified:** typecheck clean; `npm run validate` 17/17 levels; vitest 362/362; Playwright WebKit
+  24/24 on 820×1180, 1180×820, 390×844 (first run + lesson, send p01 by replay, a fall counts, p02 Looks
+  Scary forecast → reveal → "Forecast 7. Really 2.", Sky Lake finale day + night). Zero console errors.
+- **Next:** Stages 5–6 workflow (scratchpad draft `stage56.js` — re-create from the Stages list if lost):
+  logging flow + ideas/Oops content + plans; cairn + weather station; hall of flops + letters + badges;
+  wardrobe + gear + trail map + camp hub; parent mode; e2e; review; fix. Then Stage 7.
 - **Machine note:** this Mac (16 GB) is shared with other sessions running Playwright; keep ≤ 3 agents that run
   dev servers/browsers at once, and Playwright workers ≤ 2 (`PW_WORKERS=2`).
 
@@ -653,7 +652,7 @@ Test mode never writes stats, poses, badges, stones or attempts.
 - [x] **3. Climb engine** — physics tuning, input, camera, rope, chalk, Big Leaps, crumble, wind, hidden
       holds, fall-pose rig (16 poses), sfx basics, validator, lesson + pitches 1–2. Exit: validator green
       for lesson/p01/p02; first-run e2e incl. lesson; send-p01 replay e2e.
-- [ ] **4. Mountain** — p03–p16 validated, zone art/palettes/particles/fog, Looks Scary moments, 80+ goat
+- [x] **4. Mountain** — p03–p16 validated, zone art/palettes/particles/fog, Looks Scary moments, 80+ goat
       lines + picker, beta hints + ghost, beta map, night mode, finale.
 - [ ] **5. Camp** — cairn + logging flow, plans, weather station, hall of flops, letters, wardrobe, trail
       map, badges, daily stone cap + climb-time sunset, ideas (≥ 30) + Oops (≥ 16) + chips + smaller
@@ -759,16 +758,54 @@ Test mode never writes stats, poses, badges, stones or attempts.
     slide-off point and the landing tolerance coincided, so flat leaps used to "hop" back. If the gap
     between a ledge and the wall is wider than she is, a flat leap toward the wall slides off and falls
     (an honest whipper); if the wall pins her on the ledge it's a neutral hop. Nothing ever freezes.
+40. **A Big Leap is the only forgiving way on from its take-off** (validator `bigLeapBypass`): no forgiving
+    leap from a Big Leap's camp may reach any other element at or above it. Lucky pinpoint shots are
+    allowed; easy detours are not. p02, p03, p13, p14, p15 were re-laid-out (tall wall steps after each
+    landing) to satisfy it.
+
+42. **A Looks Scary moment is never used up silently.** Meeting the reveal spot with no forecast given or on
+    record (she leapt past the forecast camp, or left before its card) asks the Fear Forecast right there
+    while the thing still looms, then plays the reveal and "How scary was it really?" as usual. And the
+    climb holds input (`'arrive'` freeze) until the arrival check for the spot she starts on has run
+    (≈ 1.1 s; released by onReady and by the sunset card), so a quick first leap can't skip the forecast.
+43. **The first Sky Lake finale can't be tapped past the goat's first time out.** On the day finale that
+    records the summit, taps do nothing during `out`, `edge`, `leap`, `splash` (timeline
+    `UNSKIPPABLE_BEATS`) and Skip shows only from `laugh` (`skipAllFrom()`). Replays and the night ending
+    skip freely (a tap = one beat, Skip after 3 s).
+44. **The goat names the scary thing.** The first meeting (the forecast card, the reveal, the "really" card)
+    uses only that moment's own lines (`GoatContext.scaryOnly`); each kind has ≥ 2 tagged
+    looksScaryBefore/After lines so the bag still varies. Replays use the generic lines too.
+45. **Night goat consistency.** Rope/fall lines that put the goat on the rope are `pack`; `out` lines cheer
+    from the ledge; a rope catch bleats 'happy' (not 'wheee') when the goat is outside; the bubble and the
+    climb cards draw its head without the backpack (`goatAvatar(look, { out })`, `GoatInfo.out`).
+46. **The rumbling cliff sounds like the bear it is:** cue `'rumble'` → `sfx.rumble()` (the snore's rhythm,
+    low-passed, no whistle, no pebbles), never `sfx.crumble()`, which means a crumbly ledge in that zone.
+47. **Reduce Motion: no screen shakes.** `Camera.reducedMotion` (set by ClimbStage from
+    `prefersReducedMotion()`) makes `shake()` a no-op; the pebbles, dust, Zzz and sounds stay.
+48. **Finale performance.** A crossfade paints its frozen outgoing scene into the layer once per fade
+    (then one blit a frame). The whole-mountain shot's six zone bands are one bitmap per screen size
+    (`STACK_BOX` −800…800 × −1080…120 pano units, ≤ 2048 px a side, ≈ 2048 × 1536), used while drawn at
+    ≤ 1.15× its scale (from ≈ 3.8 s on an iPad, earlier on phones); below y ≈ 60 the opaque valley hills
+    always cover the bands. The vector path skips bands below the picture. Measured in WebKit
+    (820×1180 @2): the camps-lighting hold 9–13 ms → 2–3 ms; a crossfade frame ≈ 19 ms → 3 ms.
+    The picture is framed above the goat's bubble while it shows (measured), so the foot's camps never
+    light up behind it on a phone held sideways.
+49. **An owed finale wins every climb route too:** the guard sends `/climb/*` (like `/`, `/camp`, `/map`) to
+    `/finale` while the summit is reached but Sky Lake not seen (a reload on the summit pitch's Beta Map).
+50. **The Fear Forecast camp of each Looks Scary pitch can't be skipped** (supersedes the broader Stage-4 rule that also guarded every Big Leap take-off from below; p02, p11, p14 re-laid) (validator `routeSkips`): no forgiving
+    leap from further down may land past it on the route, so the forecast → gentle reveal → "really" moment
+    always happens. Ordinary Big Leap landings may be reached from further down: that shortcut is her
+    choice and still a big leap. (If she somehow arrives without a forecast, the screen asks it there.)
 
 ## Difficulty ramp (validator report, mean success % of the searched input space / min margin)
 
 | zone | pitches | mean success | min margin |
 |---|---|---|---|
-| Meadow | p01 9.1 · p02 8.9 · p03 8.6 | ≈ 8.9 | ×1.25 |
+| Meadow | p01 9.1 · p02 9.1 · p03 8.5 | ≈ 8.9 | ×1.25 |
 | Firefly Hollow | p04 9.0 · p05 9.3 · p06 8.7 | ≈ 9.0 | ×1.00 (p05) |
 | Crumble Cliffs | p07 8.1 · p08 7.9 · p09 6.9 | ≈ 7.6 | ×1.00 |
-| Gusty Ridge | p10 6.7 · p11 6.2 · p12 5.7 | ≈ 6.2 | ×1.00 |
-| Cloud Steps | p13 7.3 · p14 6.9 · p15 6.3 | ≈ 6.8 | ×1.00 |
+| Gusty Ridge | p10 6.7 · p11 6.4 · p12 5.7 | ≈ 6.3 | ×1.00 |
+| Cloud Steps | p13 7.3 · p14 7.3 · p15 6.3 | ≈ 7.0 | ×1.00 |
 | Summit | p16 7.9 | 7.9 | ×1.25 |
 
 Holds make Firefly Hollow about as forgiving as the meadow (holds catch from any direction); wind makes Gusty
@@ -776,9 +813,5 @@ Ridge the hardest zone by this metric, and the fog zone's Big Leaps are delibera
 for her also comes from the mechanic (crumbles, gust timing, hidden landings), which this metric can't see.
 
 ## Known issues
-
-- Big Leaps can be skipped with a forgiving leap to the ledge after the landing (p02 c1→b1/b2, p03 c2→d1,
-  p13 ×3, p14 ×3, p15 c2→h2; measured by the solver). The screen copes (the Looks Scary reveal plays on the
-  next spot), but the Big Leap should be the way on — fixing in Stage 4 with a validator rule.
 
 - `src/screens/building.ts` (Stage 2 interim screen for routes built in later stages) must be gone by Stage 5.

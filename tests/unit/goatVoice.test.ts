@@ -499,6 +499,37 @@ describe('GoatVoice', () => {
     expect(sawOut).toBe(true)
   })
 
+  it('names the Looks Scary thing itself the first time (scaryOnly), with some variety', () => {
+    const v = voice(33)
+    for (const kind of SCARY_KINDS) {
+      for (const m of ['looksScaryBefore', 'looksScaryAfter'] as const) {
+        const own = GOAT_LINES[m].filter((l) => l.scary === kind)
+        expect(own.length, `${m}: ${kind}`).toBeGreaterThanOrEqual(2)
+        const said = new Set<string>()
+        for (let k = 0; k < 40; k++) {
+          const t = v.line(m, {}, { scary: kind, scaryOnly: true })
+          expect(lineOf(m, t).scary, `${m} ${kind}: ${t}`).toBe(kind)
+          said.add(t)
+        }
+        expect(said.size, `${m}: ${kind}`).toBe(own.length)
+      }
+    }
+  })
+
+  it('never says the goat rode the rope while it waits on the ledge (night), and has lines for that', () => {
+    const v = voice(8)
+    for (const m of ['fall', 'bigLeapMissed', 'repeatFall'] as const) {
+      let sawOut = false
+      for (let k = 0; k < 200; k++) {
+        const l = lineOf(m, v.line(m, { pose: 'The Pancake', n: 3 }, { whipper: 'rope', goatOut: true }), { pose: 'The Pancake', n: 3 })
+        expect(l.pack, `${m}: ${l.text}`).toBeUndefined()
+        expect(l.text, m).not.toMatch(/(rope's got us|rope caught us|rope's caught us)/i)
+        if (l.out) sawOut = true
+      }
+      expect(sawOut, m).toBe(true)
+    }
+  })
+
   it('says curly apostrophes and a known mood', () => {
     const v = voice(4)
     for (const m of ALL_MOMENTS) {

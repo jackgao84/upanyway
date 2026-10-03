@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { PITCH_IDS } from '../../src/game/types'
 import { addBraveThing } from '../../src/model/stones'
 import {
+  isGoatOut,
   isNightOpen,
   isPitchOpen,
   nextLockedPitch,
@@ -66,6 +67,19 @@ describe('pitch unlocks', () => {
     expect(isNightOpen(d)).toBe(true)
     expect(isPitchOpen(d, 'p16', true)).toBe(true)
     expect(stonesToOpen(d, 'p16')).toBe(0)
+  })
+
+  it('the goat stays in the pack until it climbs out at Sky Lake (the finale seen)', () => {
+    const d = fresh()
+    expect(isGoatOut(d)).toBe(false)
+    d.summit.reached = true
+    expect(isNightOpen(d)).toBe(true)
+    expect(isGoatOut(d)).toBe(false)
+    d.summit.finaleSeen = true
+    expect(isGoatOut(d)).toBe(true)
+    const t = fresh()
+    t.testMode = true
+    expect(isGoatOut(t)).toBe(true)
   })
 
   it('night opens every pitch after the summit, and none before', () => {

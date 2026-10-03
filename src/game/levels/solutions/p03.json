@@ -1,6 +1,6 @@
 {
  "levelId": "p03",
- "levelHash": "fcde746d",
+ "levelHash": "d12e50ee",
  "steps": [
   {
    "from": "c0",
@@ -86,56 +86,47 @@
   {
    "from": "b4",
    "to": "c2",
-   "angle": 101,
-   "power": 0.65,
+   "angle": 104,
+   "power": 0.73,
+   "launchTime": 0,
+   "marginAngle": 12,
+   "marginPower": 0.18
+  },
+  {
+   "from": "c2",
+   "to": "hop",
+   "angle": 44,
+   "power": 0.71,
    "launchTime": 0,
    "marginAngle": 8,
    "marginPower": 0.12
   },
   {
-   "from": "c2",
-   "to": "hop",
-   "angle": 50,
-   "power": 0.72,
-   "launchTime": 0,
-   "marginAngle": 11,
-   "marginPower": 0.165
-  },
-  {
    "from": "hop",
    "to": "d1",
-   "angle": 124,
-   "power": 0.8,
+   "angle": 84,
+   "power": 0.79,
    "launchTime": 0,
-   "marginAngle": 7,
-   "marginPower": 0.105
+   "marginAngle": 8,
+   "marginPower": 0.12
   },
   {
    "from": "d1",
    "to": "d2",
-   "angle": 119,
-   "power": 0.71,
+   "angle": 121,
+   "power": 0.74,
    "launchTime": 0,
-   "marginAngle": 5,
-   "marginPower": 0.075
+   "marginAngle": 6,
+   "marginPower": 0.09
   },
   {
    "from": "d2",
-   "to": "d3",
-   "angle": 59,
-   "power": 0.77,
+   "to": "c3",
+   "angle": 76,
+   "power": 0.78,
    "launchTime": 0,
    "marginAngle": 7,
    "marginPower": 0.105
-  },
-  {
-   "from": "d3",
-   "to": "c3",
-   "angle": 69,
-   "power": 0.76,
-   "launchTime": 0,
-   "marginAngle": 10,
-   "marginPower": 0.15
   },
   {
    "from": "c3",
@@ -178,6 +169,6 @@
  "difficulty": {
   "minMargin": 1.25,
   "minSuccessFraction": 0.0645,
-  "meanSuccessFraction": 0.0859
+  "meanSuccessFraction": 0.0854
  }
 }

@@ -372,6 +372,42 @@
   color: var(--ink-faint);
 }
 
+/* A phone on its side: the Looks Scary cards become a low strip along the bottom, so the scary thing
+   (framed above it by play.ts) stays in sight. The goat said its line in the HUD a moment before, so
+   the card leaves it out. */
+@media (max-height: 499px) and (orientation: landscape) {
+  .modal.climb-prompt--fear,
+  .modal.climb-prompt--compare {
+    /* Wide enough for the eleven weathers in one row (fearScale's one-row width). */
+    width: min(690px, 100%);
+    padding: 12px 18px 10px;
+  }
+  .modal.climb-prompt--fear .modal__title,
+  .modal.climb-prompt--compare .modal__title {
+    margin-bottom: 8px;
+    font-size: var(--fs-xl);
+  }
+  .modal.climb-prompt--fear .climb-prompt__goat,
+  .modal.climb-prompt--fear .climb-prompt__sub,
+  .modal.climb-prompt--fear .fear__ends {
+    display: none;
+  }
+  .modal.climb-prompt--fear .fear__tile {
+    min-height: 64px;
+    padding: 5px 0 4px;
+  }
+  .modal.climb-prompt--compare .modal__art {
+    margin-bottom: 4px;
+  }
+  .modal.climb-prompt--compare .modal__actions {
+    margin-top: 10px;
+  }
+  .climb-compare__tile {
+    width: 60px;
+    height: 66px;
+  }
+}
+
 /* ---- The lesson (setup/lesson.ts): title, steps and the goat at the top; the drag below ------- */
 
 .lesson .lesson__top {

@@ -17,7 +17,7 @@ import {
   simulateLeap,
   type WorldState,
 } from '../../src/game/physics'
-import { MIN_POWER, solveAnyStep, solveStep, type SolveContext, type Thresholds } from '../../src/game/solver'
+import { launchTimes, MIN_POWER, solveAnyStep, solveStep, type SolveContext, type Thresholds } from '../../src/game/solver'
 import { hashLevel, type LevelSolutions } from '../../src/game/levels/solutions'
 import type { Hold, Ledge, Level, LevelElement, StepSolution, ZoneId } from '../../src/game/types'
 
@@ -210,6 +210,95 @@ function checkSolutionExtras(level: Level, s: StepSolution, i: number, errors: s
   }
 }
 
+/**
+ * A Big Leap must be the way on: from its take-off, no FORGIVING leap may reach anything else at or
+ * above the take-off (other than the Big Leap's own landing). A pinpoint lucky shot is fine; an easy
+ * way around the moment is not.
+ */
+function bigLeapBypass(level: Level, from: string, to: string, i: number): string | null {
+  const idx = indexLevel(level)
+  const fromY = restPoint(idx.byId.get(from)!).y
+  const rope = ropeLineForStep(level, i)
+  const candidates = new Set<string>()
+  for (const world of worldsFor(level)) {
+    for (let a = -20; a <= 200; a += 2) {
+      for (let p = MIN_POWER; p <= 1.0001; p += 0.02) {
+        const c = simulateLeap(level, { fromId: from, t0: 0 }, a, p, { world, ropeLineY: rope }).contact
+        if (!c || c.kind === 'fall' || c.id === from || c.id === to) continue
+        if (restPoint(idx.byId.get(c.id)!).y >= fromY - TUNING.slipDrop) candidates.add(c.id)
+      }
+    }
+  }
+  for (const id of candidates) {
+    const r = solveStep({ level, fromId: from, toId: id, ropeLineY: rope, worlds: worldsFor(level), th: TH })
+    if (r.solution) return `${id} (forgiving: angle ${r.solution.angle}, power ${r.solution.power})`
+  }
+  return null
+}
+
+/**
+ * Ways to skip route element `k` entirely: a FORGIVING leap from any route element before it that lands
+ * on a route element after it. Used for the Fear Forecast camp (she must stand on it to be asked) and
+ * for each Big Leap's take-off (the leap can't be dodged from below either). Lucky pinpoint shots are
+ * allowed; easy ways around are not. Returns "from → to" for each, empty when `k` can't be skipped.
+ */
+export function routeSkips(level: Level, k: number): string[] {
+  const route = level.route
+  const worlds = worldsFor(level)
+  // A forgiving wind-timed solution lands across ±0.25 s, so sampling launch times every 0.25 s meets it.
+  const times = launchTimes(level, TH).filter((_, n) => n % 5 === 0)
+  const angles: number[] = []
+  for (let a = -20; a <= 200; a += 2) angles.push(a)
+  const powers: number[] = []
+  for (let p = MIN_POWER; p <= TH.maxPower + TH.powerTol + 1e-9; p += 0.02) powers.push(p)
+  const NP = powers.length
+  // A forgiving ±4° × ±0.06 box always contains a 4 × 6 block of these coarse cells.
+  const BA = 4
+  const BP = 6
+  const idx = indexLevel(level)
+  const restY = (id: string): number => restPoint(idx.byId.get(id)!).y
+  // Nothing can land more than this far above its launch (full power straight up, plus a hand's reach).
+  const v = (TH.maxPower + TH.powerTol) * TUNING.maxPower
+  const reach = (v * v) / (2 * TUNING.gravity) + TUNING.handOffset + TUNING.holdReach
+  const lowestAfter = Math.min(...route.slice(k + 1).map(restY))
+  const out: string[] = []
+  for (let i = 0; i < k; i++) {
+    if (restY(route[i]) + reach < lowestAfter) continue
+    const rope = ropeLineForStep(level, i)
+    // Coarse scan first (cheap, necessary condition), then prove each candidate with the real solver.
+    const candidates = new Set<number>()
+    for (const t0 of times) {
+      // hit[cell] = route index landed on in EVERY world variant, or -1.
+      const hit = new Int16Array(angles.length * NP).fill(-2)
+      for (const world of worlds) {
+        for (let ai = 0; ai < angles.length; ai++) {
+          for (let pj = 0; pj < NP; pj++) {
+            const cell = ai * NP + pj
+            if (hit[cell] === -1) continue
+            const c = simulateLeap(level, { fromId: route[i], t0 }, angles[ai], powers[pj], { world, ropeLineY: rope }).contact
+            const j = c && c.kind !== 'fall' ? route.indexOf(c.id) : -1
+            hit[cell] = j > k && (hit[cell] === -2 || hit[cell] === j) ? j : -1
+          }
+        }
+      }
+      for (let ai = 0; ai + BA <= angles.length; ai++) {
+        for (let pj = 0; pj + BP <= NP; pj++) {
+          const j = hit[ai * NP + pj]
+          if (j <= k || candidates.has(j)) continue
+          let all = true
+          for (let da = 0; da < BA && all; da++) for (let dp = 0; dp < BP && all; dp++) all = hit[(ai + da) * NP + pj + dp] === j
+          if (all) candidates.add(j)
+        }
+      }
+    }
+    for (const j of [...candidates].sort((a, b) => a - b)) {
+      const r = solveStep({ level, fromId: route[i], toId: route[j], ropeLineY: rope, worlds, th: TH })
+      if (r.solution) out.push(`${route[i]} → ${route[j]} (angle ${r.solution.angle}, power ${r.solution.power})`)
+    }
+  }
+  return out
+}
+
 /** Some failing leap from a route element passes the hidden hold (descending, above the rope line). */
 function hiddenRevealable(level: Level, holdEl: Hold): boolean {
   const r2 = TUNING.hiddenRevealRadius * TUNING.hiddenRevealRadius
@@ -266,6 +355,20 @@ export function validateLevel(level: Level): LevelReport {
       steps.push(report.solution)
       margins.push(report.solution.marginAngle / TH.angleTol)
       checkSolutionExtras(level, report.solution, i, errors)
+      if ((level.bigLeaps ?? []).some((b) => b.from === ctx.fromId && b.to === ctx.toId)) {
+        const bypass = bigLeapBypass(level, ctx.fromId, ctx.toId, i)
+        if (bypass) errors.push(`big leap ${ctx.fromId}→${ctx.toId} can be skipped: a leap from ${ctx.fromId} lands on ${bypass}`)
+      }
+    }
+  }
+
+  // The Looks Scary story moment must be met: no forgiving leap from below the Fear Forecast camp may land
+  // past it on the route (she'd skip the forecast and the gentle reveal). Ordinary Big Leap landings MAY be
+  // reached from further down — a shortcut is her choice, and still a big leap (Decision 41).
+  if (errors.length === 0 && level.looksScary) {
+    const id = level.looksScary.forecastAt
+    for (const skip of routeSkips(level, level.route.indexOf(id))) {
+      errors.push(`the Fear Forecast camp ${id} can be skipped: ${skip}`)
     }
   }
 

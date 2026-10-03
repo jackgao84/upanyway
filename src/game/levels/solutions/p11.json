@@ -1,12 +1,12 @@
 {
  "levelId": "p11",
- "levelHash": "02af4c1e",
+ "levelHash": "870fb4a6",
  "steps": [
   {
    "from": "c0",
    "to": "a1",
-   "angle": 66,
-   "power": 0.76,
+   "angle": 107,
+   "power": 0.68,
    "launchTime": 10.05,
    "marginAngle": 7,
    "marginPower": 0.105
@@ -14,29 +14,29 @@
   {
    "from": "a1",
    "to": "a2",
-   "angle": 67,
-   "power": 0.71,
-   "launchTime": 10.05,
-   "marginAngle": 5,
-   "marginPower": 0.075
-  },
-  {
-   "from": "a2",
-   "to": "a3",
-   "angle": 116,
-   "power": 0.77,
+   "angle": 107,
+   "power": 0.68,
    "launchTime": 10.05,
    "marginAngle": 7,
    "marginPower": 0.105
   },
   {
+   "from": "a2",
+   "to": "a3",
+   "angle": 101,
+   "power": 0.7,
+   "launchTime": 10.05,
+   "marginAngle": 8,
+   "marginPower": 0.12
+  },
+  {
    "from": "a3",
    "to": "c1",
-   "angle": 121,
-   "power": 0.79,
+   "angle": 94,
+   "power": 0.77,
    "launchTime": 10.05,
-   "marginAngle": 6,
-   "marginPower": 0.09
+   "marginAngle": 8,
+   "marginPower": 0.12
   },
   {
    "from": "c1",
@@ -178,6 +178,6 @@
  "difficulty": {
   "minMargin": 1.25,
   "minSuccessFraction": 0.0409,
-  "meanSuccessFraction": 0.062
+  "meanSuccessFraction": 0.064
  }
 }

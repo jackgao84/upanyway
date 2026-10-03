@@ -2,13 +2,14 @@
  * Shared end-to-end helpers: a `test` that fails on any console error, page error or off-site
  * request; human-paced taps that are counted; touch drags as Pointer Events; per-screen checks
  * (mute toggle, tap targets, sideways scroll, input font size); climbing by touch (one leap as a
- * drag, answering the climb's cards, replaying a pitch's saved solution); and a walker for the first
- * run, lesson included.
+ * drag, answering the climb's cards, replaying a pitch's saved solution); a walker for the first
+ * run, lesson included; and seeded saves (a climber past the first run, stones, a run at a camp).
  */
 import { readFileSync } from 'node:fs'
 import { test as base, expect, type Browser, type BrowserContext, type BrowserContextOptions, type Locator, type Page, type TestInfo } from '@playwright/test'
 import type { ClimbSnapshot } from '../src/debug'
-import type { SaveData } from '../src/storage/schema'
+import { KEYS } from '../src/storage/keys'
+import { defaultPitchProgress, defaultSave, type PitchRun, type SaveData } from '../src/storage/schema'
 
 export { expect }
 
@@ -704,4 +705,89 @@ export async function completeFirstRun(page: Page, opts: FirstRunOptions = {}): 
   expect(save.lessonDone).toBe(true)
   expect(save.flags.braveVsDangerousSeen).toBe(true)
   return { taps: tapCount(page), ms }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Seeded saves: start a spec somewhere in the middle of the game
+
+/**
+ * A save that has finished the first run (setup, lesson, words met) and climbed nothing yet. No
+ * daily limit, so no sunset interrupts a spec. Change it, then `seedSave` it.
+ */
+export function climberSave(now = new Date()): SaveData {
+  const d = defaultSave(now)
+  d.setup = { parentDone: true, lookDone: true, complete: true }
+  d.parent.names = [...DEFAULT_NAMES]
+  d.parent.dailyClimbMinutes = 0
+  d.profile.goatName = 'Pebble'
+  d.profile.mountainName = 'Mount Maybe'
+  d.lessonDone = true
+  d.flags = { ropeExplained: true, firstCampVisit: true, braveVsDangerousSeen: true, persistGranted: null }
+  d.glossarySeen = ['pitch', 'whipper', 'beta', 'send', 'cairn', 'chalk', 'hold']
+  return d
+}
+
+/** Add `n` done brave things with their stones placed (three a day, on past days): pitch n + 2 opens. */
+export function addStones(d: SaveData, n: number, now = new Date()): void {
+  for (let i = 0; i < n; i++) {
+    const day = new Date(now.getTime() - (Math.floor(i / 3) + 1) * 86_400_000)
+    const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
+    d.brave.push({
+      id: `seed-${i}`,
+      createdAt: day.toISOString(),
+      text: `Brave thing ${i + 1}`,
+      oops: false,
+      forecast: 6,
+      status: 'done',
+      notTodayCount: 0,
+      doneAt: day.toISOString(),
+      really: 3,
+      whatHappened: 'It went fine.',
+      outcome: 'wobbly',
+      stoneDay: key,
+    })
+  }
+}
+
+/** A run in progress that resumes at `campId` (its index in the level's route). */
+export function runAt(campId: string, routeIndex: number, night = false, now = new Date()): PitchRun {
+  return {
+    startedAt: now.toISOString(),
+    lastCampId: campId,
+    lastCampRouteIndex: routeIndex,
+    whippers: 0,
+    failedArcs: [],
+    routeArcs: [],
+    routePath: [campId],
+    fallsBySpot: {},
+    highestRouteIndex: routeIndex,
+    night,
+  }
+}
+
+/** A pitch record with a day (and/or night) run waiting at a camp. */
+export function pitchWithRuns(day: PitchRun | null, night: PitchRun | null = null): ReturnType<typeof defaultPitchProgress> {
+  return { ...defaultPitchProgress(), run: day, nightRun: night }
+}
+
+/**
+ * Put `save` in place before the app boots (the first load of a fresh context). Later reloads keep
+ * whatever the app has saved since.
+ */
+export async function seedSave(page: Page, save: SaveData): Promise<void> {
+  await page.addInitScript(
+    ({ key, json }) => {
+      try {
+        if (!localStorage.getItem(key)) localStorage.setItem(key, json)
+      } catch {
+        // Storage refused: the app starts fresh and the spec's own checks will say so.
+      }
+    },
+    { key: KEYS.save, json: JSON.stringify(save) },
+  )
+}
+
+/** The Looks Scary set-piece on the climb right now ('looming' | 'revealing' | 'revealed', or null). */
+export async function scaryPhase(page: Page): Promise<string | null> {
+  return page.evaluate(() => window.__upanyway?.climb.scaryPhase() ?? null)
 }
