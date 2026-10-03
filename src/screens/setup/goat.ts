@@ -4,12 +4,14 @@
  */
 import { animate, fitBox, releaseCanvas, save, update } from '../../app/context'
 import type { Screen } from '../../app/router'
-import { GOAT_SETUP, SETUP_COPY, fill } from '../../content/copy'
+import { SETUP_COPY } from '../../content/copy'
+import { SCRIPTED } from '../../content/goatLines'
 import { GOAT_NAMES, pickNames } from '../../content/names'
 import { drawPackWithGoat } from '../../game/art/climber'
 import type { GoatMood as ArtMood } from '../../game/art/goat'
 import { easeOutBack, clamp01 } from '../../game/art/rig'
 import { TUNING } from '../../game/tuning'
+import { scriptedLine } from '../../model/goatVoice'
 import { button, screenLayout } from '../../ui/components'
 import { h, prefersReducedMotion } from '../../ui/dom'
 import { goatBubble, type GoatMood } from '../../ui/goatBubble'
@@ -58,7 +60,8 @@ export const goatScreen: Screen = (root, ctx) => {
       if (!name) return
       tempMood = 'laugh'
       moodUntil = now + 1.2
-      bubble.say(fill(GOAT_SETUP.named.text, { goat: name }), { mood: GOAT_SETUP.named.mood, durationMs: 0 })
+      const named = scriptedLine('named', { vars: { goat: name } })
+      bubble.say(named.text, { mood: named.mood, durationMs: 0 })
       loop.redraw()
     },
     onEnter: () => finish(),
@@ -83,7 +86,7 @@ export const goatScreen: Screen = (root, ctx) => {
 
   function sayLine(i: number): void {
     line = i
-    const l = GOAT_SETUP.meet[i]
+    const l = scriptedLine('meet', { index: i })
     mood = ART_MOOD[l.mood]
     bubble.say(l.text, { mood: l.mood, durationMs: 0 })
     loop.redraw()
@@ -93,7 +96,7 @@ export const goatScreen: Screen = (root, ctx) => {
     if (phase === 'wiggle') return reveal()
     if (phase === 'lines') {
       if (line < 0) return sayLine(0)
-      if (line < GOAT_SETUP.meet.length - 1) return sayLine(line + 1)
+      if (line < SCRIPTED.meet.length - 1) return sayLine(line + 1)
       phase = 'name'
       mood = 'happy'
       nameBox.hidden = false

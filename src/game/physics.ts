@@ -44,10 +44,13 @@ export interface FlightContext {
   /** The take-off ledge while she is still on its surface: a flat or downward leap slides her off
    *  its edge instead of instantly re-landing. Cleared once she is airborne or past its edge. */
   surfaceId?: string | null
+  /** The take-off ledge she has just slid off the edge of: never re-landed on in the same flight
+   *  (unless she rises back above it). Without this the landing tolerance catches her on the edge. */
+  slidOffId?: string | null
 }
 
 /** Bump when physics behaviour changes: invalidates saved level solutions (see levels/solutions.ts). */
-export const PHYSICS_VERSION = 4
+export const PHYSICS_VERSION = 5
 
 const EMPTY: ReadonlySet<string> = new Set()
 export const NO_WORLD: WorldState = { crumbled: EMPTY, revealed: EMPTY }
@@ -192,7 +195,8 @@ export function stepFlight(body: Body, ctx: FlightContext, t: number): Contact |
       if (onSpan && body.y <= s.y) {
         body.y = s.y
         if (body.vy < 0) body.vy = 0
-      } else if (!onSpan || body.y > s.y + 0.5) {
+      } else {
+        if (!onSpan && body.y <= s.y + 0.5) ctx.slidOffId = s.id
         ctx.surfaceId = null
       }
     }
@@ -237,6 +241,10 @@ export function stepFlight(body: Body, ctx: FlightContext, t: number): Contact |
     if (!ledges) continue
     for (const ledge of ledges) {
       if (world.crumbled.has(ledge.id) || ledge.id === ctx.surfaceId) continue
+      if (ledge.id === ctx.slidOffId) {
+        if (body.y > ledge.y + 0.5) ctx.slidOffId = null
+        else continue
+      }
       const L = ledge.x
       const R = ledge.x + ledge.w
       const T = ledge.y

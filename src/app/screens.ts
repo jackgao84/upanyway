@@ -11,6 +11,7 @@
  */
 import { buildingScreen } from '../screens/building'
 import { campScreen } from '../screens/camp'
+import { climbScreen } from '../screens/climb'
 import { gateScreen } from '../screens/parent/gate'
 import { braveScreen } from '../screens/setup/brave'
 import { cheerScreen } from '../screens/setup/cheer'
@@ -42,9 +43,9 @@ export const ROUTES: Route[] = [
   { pattern: '/setup/brave', screen: braveScreen },
   { pattern: '/setup/cheer', screen: cheerScreen },
   { pattern: '/camp', screen: campScreen },
+  { pattern: '/climb/:id', screen: climbScreen, className: 'screen--climb' },
   // Built in later stages; until then a friendly "still being built" card with a way back to camp.
   { pattern: '/map', screen: buildingScreen },
-  { pattern: '/climb/:id', screen: buildingScreen },
   { pattern: '/log', screen: buildingScreen },
   { pattern: '/plans', screen: buildingScreen },
   { pattern: '/cairn', screen: buildingScreen },

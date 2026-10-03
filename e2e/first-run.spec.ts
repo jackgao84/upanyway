@@ -1,7 +1,9 @@
 /**
  * The first run, start to Pitch 1, on every project: grown-up PIN + names, hand-over, her climber,
- * the goat, the mountain, the lesson, brave vs dangerous, who cheers her on. Every screen is checked
- * for the mute toggle, finger-sized targets and sideways scrolling, and the whole run stays short.
+ * the goat, the mountain, the lesson (played for real: a touch-drag leap onto the ledge, a leap off
+ * it that the rope catches, then Next), brave vs dangerous, who cheers her on. Every screen is
+ * checked for the mute toggle, finger-sized targets and sideways scrolling, and the whole run stays
+ * short.
  */
 import {
   DEFAULT_PIN,
@@ -43,6 +45,27 @@ test('walks the whole first run to Pitch 1 in a few taps', async ({ page }, test
   expect(save.parent.pinHash, 'a PIN is saved (hashed)').toBeTruthy()
   expect(save.parent.pinHash).not.toBe(DEFAULT_PIN)
   expect(save.glossarySeen, 'the cheer screen explained "cairn"').toContain('cairn')
+
+  // The lesson's fall was a real whipper: counted, with its pose and the first-whipper badge, the
+  // rope explained, and the word met — but no run to resume and no send.
+  expect(save.stats.whippers, 'the lesson whipper counts').toBe(1)
+  expect(save.stats.sends).toBe(0)
+  expect(Object.keys(save.poses), 'one fall pose collected').toHaveLength(1)
+  expect(Object.keys(save.badges)).toContain('first-whipper')
+  expect(save.flags.ropeExplained).toBe(true)
+  expect(save.glossarySeen).toContain('whipper')
+  expect(save.pitches.lesson, 'no pitch record for the lesson (no run, no attempts, no send)').toBeUndefined()
+
+  // Pitch 3 needs a stone in the cairn: typed in by hand, its trail is hidden, with a way to camp.
+  await page.goto('./#/climb/p03')
+  await expect.poll(() => page.evaluate(() => window.__upanyway?.climb.pendingPrompt() ?? null), { message: 'the hidden-trail card' }).toBe('locked')
+  expect(await page.evaluate(() => window.__upanyway?.climb.levelId() ?? null)).toBe('p03')
+  expect(await page.evaluate(() => window.__upanyway?.climb.state() ?? null), 'no climb behind the card').toBeNull()
+  await expect(page.getByRole('dialog')).toContainText('The trail ahead is hidden.')
+  await checkScreen(page, 'climb p03 (locked)')
+  await tap(page.getByRole('button', { name: 'Back to camp', exact: true }))
+  await expectRoute(page, '/camp')
+  expect(await page.evaluate(() => window.__upanyway?.climb.pendingPrompt() ?? null)).toBeNull()
 })
 
 test('a reload part-way through comes back to the same step', async ({ page }) => {

@@ -24,7 +24,7 @@ import {
 } from './physics'
 import { Emitter, type WhipperKind } from './events'
 import { TUNING } from './tuning'
-import type { Hold, Ledge, Level, LevelElement, StepSolution } from './types'
+import { WORLD_W, type Hold, type Ledge, type Level, type LevelElement, type StepSolution } from './types'
 
 export type Phase = 'ready' | 'flying' | 'settling' | 'roped' | 'flopped' | 'sent'
 
@@ -58,6 +58,8 @@ interface Flight {
   steps: number
   crumbleFall: boolean
   bigLeap: boolean
+  /** The Big Leap's landing ledge when this leap started from a Big Leap spot. */
+  bigLeapTo: string | null
   pendingReveal: Set<string>
   launch: { angle: number; power: number } | null
   gusted: boolean
@@ -78,6 +80,8 @@ export interface RopeAnim {
 }
 
 const PATH_EVERY = 3
+/** Sliding along the take-off ledge slower than this (units/s) ends the leap as a hop straight away. */
+const PINNED_SPEED = 60
 
 export class ClimbSession {
   readonly level: Level
@@ -176,9 +180,14 @@ export class ClimbSession {
     return this.el(this.elementId).kind === 'hold' && this.phase !== 'flying' && this.phase !== 'roped'
   }
 
-  /** The next route element she is heading for (beta target). */
+  /**
+   * The next route element she is heading for from where she is (camera framing, beta target). On a
+   * route element that is the one after it, even when she has been higher before and the rope (or a
+   * slip) brought her back down; off the route it is the one after her highest point.
+   */
   nextTargetId(): string | null {
-    const next = this.level.route[this.highestRouteIndex + 1]
+    const here = this.routeIndexOf(this.elementId)
+    const next = this.level.route[(here ?? this.highestRouteIndex) + 1]
     return next ?? null
   }
 
@@ -327,6 +336,7 @@ export class ClimbSession {
       steps: 0,
       crumbleFall: false,
       bigLeap: bl !== null,
+      bigLeapTo: bl ? bl.to : null,
       pendingReveal: new Set(),
       launch: { angle, power },
       gusted: false,
@@ -360,6 +370,15 @@ export class ClimbSession {
     f.steps++
     if (f.steps % PATH_EVERY === 0 || contact) f.path.push(round1(this.body.x), round1(this.body.y))
     this.checkReveal(f)
+    if (!contact && !f.crumbleFall && this.pinnedOnTakeOff(f)) {
+      // A leap straight down into the ledge she stands on (a "swipe up"), or a flat one into the pitch
+      // wall: the ledge holds her and nothing moves her off it, so it is a neutral hop, not a 6 s
+      // freeze that ends as a whipper she never took.
+      this.flight = null
+      this.events.emit('hop', { id: f.launchId })
+      this.arrive(this.el(f.launchId), this.body.x, false)
+      return
+    }
     if (!contact && f.steps * TUNING.dt > TUNING.maxFlightTime) {
       this.endAsWhipper(f, f.crumbleFall ? 'crumble' : 'rope', null)
       return
@@ -390,6 +409,11 @@ export class ClimbSession {
       return
     }
     this.endAsSuccess(f, target, contact.x)
+  }
+
+  /** Still on the take-off ledge's surface and (almost) not moving along it. */
+  private pinnedOnTakeOff(f: Flight): boolean {
+    return f.ctx.surfaceId === f.launchId && this.body.vy === 0 && Math.abs(this.body.vx) < PINNED_SPEED
   }
 
   private checkReveal(f: Flight): void {
@@ -427,7 +451,8 @@ export class ClimbSession {
       isCamp: isCamp(target),
       isTop,
       arc,
-      bigLeap: f.bigLeap,
+      // Only a landing on the Big Leap's own far side is "the Big Leap landed" (not a shortcut).
+      bigLeap: f.bigLeapTo !== null && target.id === f.bigLeapTo,
       newCamp,
     })
     if (isTop) {
@@ -548,15 +573,27 @@ export class ClimbSession {
     const reel = TUNING.ropeReelTime
     const len = Math.max(30, Math.hypot(r.fromX - r.anchorX, r.fromY - r.anchorY))
     const a0 = Math.atan2(r.fromX - r.anchorX, r.anchorY - r.fromY)
+    // The rope is taken in as she swings, so the bottom of the swing stays near where it caught her
+    // (never far below the camp or the ground) and she stays in view. Render-only: physics never
+    // reads the body while she's on the rope.
+    const lowest = Math.min(r.fromY, r.toY) - 24
+    const lenMin = Math.min(len, Math.max(30, r.anchorY - lowest))
+    const ropeLen = (k: number): number => {
+      const q = Math.min(1, k * 3)
+      return lenMin + (len - lenMin) * (1 - q * q * (3 - 2 * q))
+    }
+    const hw = TUNING.bodyHalfWidth
+    const inWalls = (x: number): number => Math.min(WORLD_W - hw, Math.max(hw, x))
     if (r.t <= swing) {
       const k = r.t / swing
       const a = a0 * Math.cos(k * Math.PI * 1.5) * (1 - 0.55 * k)
-      return { x: r.anchorX + Math.sin(a) * len, y: r.anchorY - Math.cos(a) * len }
+      const l = ropeLen(k)
+      return { x: inWalls(r.anchorX + Math.sin(a) * l), y: r.anchorY - Math.cos(a) * l }
     }
     const kEnd = 1
     const aEnd = a0 * Math.cos(kEnd * Math.PI * 1.5) * 0.45
-    const sx = r.anchorX + Math.sin(aEnd) * len
-    const sy = r.anchorY - Math.cos(aEnd) * len
+    const sx = inWalls(r.anchorX + Math.sin(aEnd) * lenMin)
+    const sy = r.anchorY - Math.cos(aEnd) * lenMin
     const k = Math.min(1, (r.t - swing) / reel)
     const e = 1 - (1 - k) * (1 - k)
     return { x: sx + (r.toX - sx) * e, y: sy + (r.toY - sy) * e + Math.sin(k * Math.PI) * 18 }
@@ -628,11 +665,16 @@ export class ClimbSession {
       this.crumbleTimers.delete(id)
       this.crumbled.add(id)
       this.events.emit('crumbled', { id })
-      const standingHere = this.elementId === id && (this.phase === 'ready' || this.phase === 'settling')
+      // Standing on it — or flopped onto it after a slip, its timer still running from an earlier
+      // landing — means it gives way under her.
+      const standingHere =
+        this.elementId === id && (this.phase === 'ready' || this.phase === 'settling' || this.phase === 'flopped')
       if (standingHere) {
         this.cancelAim()
         this.pendingLaunch = null
         this.settle = null
+        this.flop = null
+        this.poseId = null
         this.body.vx = 0
         this.body.vy = 0
         this.flight = {
@@ -643,6 +685,7 @@ export class ClimbSession {
           steps: 0,
           crumbleFall: true,
           bigLeap: false,
+          bigLeapTo: null,
           pendingReveal: new Set(),
           launch: null,
           gusted: false,

@@ -1,9 +1,10 @@
 /** First run, kid step 5: one screen on brave vs dangerous. */
 import { goatAvatar, releaseCanvas, save, update } from '../../app/context'
 import type { Screen } from '../../app/router'
-import { GOAT_SETUP, SETUP_COPY } from '../../content/copy'
+import { SETUP_COPY } from '../../content/copy'
 import { idle, wobble } from '../../game/art/poses'
 import { animateClimberPreview } from '../../game/art/preview'
+import { scriptedLine } from '../../model/goatVoice'
 import { button, screenLayout } from '../../ui/components'
 import { h } from '../../ui/dom'
 import { goatBubble } from '../../ui/goatBubble'
@@ -47,7 +48,8 @@ export const braveScreen: Screen = (root, ctx) => {
     pose: (t) => wobble(t, idle(t), 0.4),
     goat: { mood: 'nervous', t: 0, inBackpack: true },
   })
-  const timer = setTimeout(() => bubble.say(GOAT_SETUP.brave.text, { mood: GOAT_SETUP.brave.mood, durationMs: 0 }), 600)
+  const goatSays = scriptedLine('brave')
+  const timer = setTimeout(() => bubble.say(goatSays.text, { mood: goatSays.mood, durationMs: 0 }), 600)
   return () => {
     clearTimeout(timer)
     stop()

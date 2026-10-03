@@ -1,9 +1,10 @@
 /** First run, kid step 6: one line about who cheers her on, then "Let's climb!" → Pitch 1. */
 import { goatAvatar, markWordSeen, releaseCanvas, requestPersistenceOnce, save, update } from '../../app/context'
 import type { Screen } from '../../app/router'
-import { GOAT_SETUP, SETUP_COPY, joinNames } from '../../content/copy'
+import { SETUP_COPY, joinNames } from '../../content/copy'
 import { cheer } from '../../game/art/poses'
 import { animateClimberPreview } from '../../game/art/preview'
+import { scriptedLine } from '../../model/goatVoice'
 import { button, screenLayout } from '../../ui/components'
 import { h } from '../../ui/dom'
 import { goatBubble } from '../../ui/goatBubble'
@@ -58,7 +59,8 @@ export const cheerScreen: Screen = (root, ctx) => {
     pose: cheer,
     goat: { mood: 'happy', t: 0, inBackpack: true },
   })
-  const timer = setTimeout(() => bubble.say(GOAT_SETUP.cheer.text, { mood: GOAT_SETUP.cheer.mood, durationMs: 0 }), 900)
+  const goatSays = scriptedLine('cheer')
+  const timer = setTimeout(() => bubble.say(goatSays.text, { mood: goatSays.mood, durationMs: 0 }), 900)
   return () => {
     clearTimeout(timer)
     stop()

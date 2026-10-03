@@ -1,8 +1,9 @@
 /** First run, kid step 3: name your mountain (pre-filled, idea chips). The sign on the picture follows. */
 import { goatAvatar, save, update } from '../../app/context'
 import type { Screen } from '../../app/router'
-import { GOAT_SETUP, SETUP_COPY } from '../../content/copy'
+import { SETUP_COPY } from '../../content/copy'
 import { MOUNTAIN_NAMES, pickNames } from '../../content/names'
+import { scriptedLine } from '../../model/goatVoice'
 import { button, screenLayout } from '../../ui/components'
 import { h, svg } from '../../ui/dom'
 import { goatBubble } from '../../ui/goatBubble'
@@ -127,7 +128,8 @@ export const mountainScreen: Screen = (root, ctx) => {
       footer: [button(c.done, { onClick: finish, size: 'big', iconEnd: 'next' })],
     }),
   )
-  const timer = setTimeout(() => bubble.say(GOAT_SETUP.mountain.text, { mood: GOAT_SETUP.mountain.mood, durationMs: 0 }), 350)
+  const goatSays = scriptedLine('mountain')
+  const timer = setTimeout(() => bubble.say(goatSays.text, { mood: goatSays.mood, durationMs: 0 }), 350)
   return () => {
     clearTimeout(timer)
     bubble.destroy()

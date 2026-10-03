@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Up Anyway — sound lab</title>
+    <style>
+      :root {
+        --paper: #fbf3e4;
+        --card: #fff9ef;
+        --ink: #4a3040;
+        --muted: #8a7480;
+        --line: #ead9c3;
+        --ok: #4f8f4a;
+        --bad: #c2563f;
+        --wave: #6d8fb8;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 14px/1.35 system-ui, -apple-system, sans-serif;
+        -webkit-tap-highlight-color: transparent;
+      }
+      main {
+        padding: max(16px, env(safe-area-inset-top)) 16px 40px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0 0 10px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      section {
+        margin: 0 0 18px;
+        padding: 12px;
+        border-radius: 14px;
+        background: var(--card);
+        box-shadow: 0 1px 0 var(--line);
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      button {
+        min-height: 48px;
+        min-width: 48px;
+        padding: 0 16px;
+        border: 0;
+        border-radius: 14px;
+        background: #f1d9b5;
+        color: var(--ink);
+        font: inherit;
+        font-weight: 650;
+        touch-action: manipulation;
+      }
+      button.on {
+        background: #b9d99a;
+      }
+      button.night {
+        background: #4a4f75;
+        color: #f4ecff;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 10px;
+      }
+      .sound {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 1px 0 var(--line);
+      }
+      .sound button {
+        width: 100%;
+      }
+      .sound canvas {
+        width: 100%;
+        height: 56px;
+        display: block;
+        border-radius: 8px;
+        background: #f5eee3;
+      }
+      .stats {
+        font: 12px/1.3 ui-monospace, Menlo, monospace;
+        color: var(--muted);
+      }
+      .pass {
+        color: var(--ok);
+      }
+      .fail {
+        color: var(--bad);
+        font-weight: 700;
+      }
+      #status {
+        font: 13px/1.4 ui-monospace, Menlo, monospace;
+      }
+      .amb-row {
+        margin-top: 12px;
+      }
+      .amb canvas {
+        width: 100%;
+        height: 40px;
+        display: block;
+        border-radius: 8px;
+        background: #f5eee3;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="lab">
+      <h1>Up Anyway — sound lab</h1>
+      <p>Dev only. Tap anything once to wake the audio. Every waveform below is rendered offline (2 s window, drawn ×2.5; ambient 24 s, drawn ×6). The red line marks 1.5 s.</p>
+    </main>
+    <script type="module" src="./sound.ts"></script>
+  </body>
+</html>

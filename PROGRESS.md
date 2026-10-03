@@ -6,16 +6,16 @@
 
 ## Status
 
-- **Current stage:** 3 — Climb engine (Stage 2 done and committed)
-- **Ahead of schedule:** the Stage 3 engine core (physics, solver, validator, engine, camera, input, beta) and
-  ALL 16 pitches + the lesson are written and validated (`npm run validate` green; engine replays every saved
-  solution with zero whippers — tests/game/engine.test.ts).
-- **Next:** Stage 3 workflow (scratchpad draft `stage3.js` — re-create from the Stages list if lost): world
-  renderer, character animator, 16 fall poses, sound, goat voice → climb screen + real lesson → e2e replay → review.
-- **Stage 2 verified:** typecheck clean; vitest 226/226; Playwright WebKit 9/9 (first run on 820×1180,
-  1180×820, 390×844: 23 taps ≈ 13 s scripted, reload resumes, mute remembered, zero console errors).
+- **Current stage:** 4 — Mountain (Stages 1–3 committed)
+- **Stage 3 verified:** typecheck clean; vitest 315/315 (incl. all 16 pitches + lesson validated, engine
+  replays every saved solution with zero whippers); Playwright WebKit 18/18 on 820×1180, 1180×820, 390×844
+  (first run with the real lesson, send p01 by replaying saved solutions as touch drags, a fall counts,
+  Looks Scary shortcut). Zero console errors.
+- **Next:** (a) Big Leap bypass fix — apply `bypass-rule` (validator: no FORGIVING leap from a Big Leap's
+  take-off to any other element at/above it) and fix p02, p03, p13, p14, p15 so the Big Leap is the way on;
+  (b) Stage 4 workflow: Looks Scary set-pieces + fog, zone-art polish, Sky Lake finale, integration, e2e.
 - **Machine note:** this Mac (16 GB) is shared with other sessions running Playwright; keep ≤ 3 agents that run
-  dev servers/browsers at once, and Playwright workers ≤ 3.
+  dev servers/browsers at once, and Playwright workers ≤ 2 (`PW_WORKERS=2`).
 
 ## How to resume
 
@@ -452,8 +452,12 @@ Rules (all validator-enforced):
   power `p = clamp(|D| / maxDragPx, 0, 1)`, `maxDragPx = clamp(0.28·min(vw, vh), 110, 190)`.
   **Cancel** when `|D| < cancelPx` OR the release point P is within the climber's on-screen hit radius
   (`clamp(halfHeightPx, 22, 44)`) — i.e. dragging back onto the climber. While a release would cancel,
-  the band and preview are hidden. `pointercancel`/`lostpointercapture`/second finger → cancel, never
-  launch. Only the first `pointerId` is tracked; `setPointerCapture` is try/caught. Input only in `ready`.
+  the band and preview are hidden. `pointercancel`/`lostpointercapture`/second finger during a real drag
+  → cancel, never launch; a second finger while the tracked one only rests (< `cancelPx`) takes over
+  (a thumb on the screen edge). Only one `pointerId` is tracked; `setPointerCapture` is try/caught.
+  Aiming only in `ready`; a touch that starts while she is `settling`/`flopped` is held and aims once she
+  is ready on that same landing. An aim the session cancels itself (crumble, freeze) ends the gesture —
+  the finger must lift and touch again (Decision 38).
 - Ledges are solid rectangles: feet crossing the top while descending within
   `[x − landTol − halfW, x + w + landTol + halfW]` → land; box overlap → side contact sets `vx = 0`;
   underside sets `vy ≤ 0`; pitch walls are side contact.
@@ -473,7 +477,9 @@ Rules (all validator-enforced):
   element more than `slipDrop` (40) units below the launch point that isn't the next route element, OR a
   crumble collapse. Every whipper: chalk arc (launch → rest), fall pose (rope catch: during the swing;
   slip: a flop-landing), `whippers++`, `fallsBySpot[launchId]++`. Landing back on the launch element is a
-  neutral hop (no count). Rope catch: swing (`ropeSwingTime`) + reel to camp (`ropeReelTime`), ready again
+  neutral hop (no count) — so is a leap that leaves her pinned on the take-off ledge (straight down into
+  it, or flat into a pitch wall: on its surface with `vy = 0` and `|vx| < 60`), ended at once by the
+  engine instead of a 6 s freeze. Rope catch: swing (`ropeSwingTime`) + reel to camp (`ropeReelTime`), ready again
   < 0.9 s, routeArcs truncated back to that camp, crumbled ledges restored.
 - **Preview**: dotted arc of the first `previewFraction` (0.40; Big Leap 0.18) of
   `T_ref = max(2·vy/g, previewMinTime)` — always before the apex for upward leaps; cut at first contact;
@@ -644,7 +650,7 @@ Test mode never writes stats, poses, badges, stones or attempts.
       PIN pad, keyboard avoidance, term helper, goat bubble), climber + goat art (needed by first run),
       first run (lesson route wired; engine lands in Stage 3), parent PIN gate. Exit: first-run e2e passes
       up to the lesson on all three viewports.
-- [ ] **3. Climb engine** — physics tuning, input, camera, rope, chalk, Big Leaps, crumble, wind, hidden
+- [x] **3. Climb engine** — physics tuning, input, camera, rope, chalk, Big Leaps, crumble, wind, hidden
       holds, fall-pose rig (16 poses), sfx basics, validator, lesson + pitches 1–2. Exit: validator green
       for lesson/p01/p02; first-run e2e incl. lesson; send-p01 replay e2e.
 - [ ] **4. Mountain** — p03–p16 validated, zone art/palettes/particles/fog, Looks Scary moments, 80+ goat
@@ -740,6 +746,20 @@ Test mode never writes stats, poses, badges, stones or attempts.
 37. **Stored `unlocked` list removed** from SaveData (unlockables are derived — Decision 25). Schema v1 has
     not shipped, so no migration; normalize drops the old field.
 
+38. **Stage 3 review fixes (feel + flow).** A pinned take-off is a neutral hop (engine-only check, never
+    a validator solution). The render loop snaps each frame's delta to whole 1/120 s steps when within
+    2 ms (`game/clock.ts`), because Safari's whole-ms rAF times otherwise give 1/2/3 steps a frame and
+    visible judder (no render interpolation). `nextTargetId()` is the route element after the one she
+    stands on (after a rope catch the camera, hint and "bumped" flag aim at the real next step). A Looks
+    Scary reveal also plays on the first route spot past `revealAt` while a "really" is still owed.
+    Landscape phones (height < 500): the climb HUD and cards sit in the gutters beside the rock
+    (`--climb-gutter`, `html.is-climbing`) and the Beta Map uses its side card from 640 px wide. Words
+    the goat says first ("beta" at the first offer, "send" at the send) get their card at once.
+39. **Sliding off the take-off ledge never re-lands on its edge** (`slidOffId`, PHYSICS_VERSION 5): the
+    slide-off point and the landing tolerance coincided, so flat leaps used to "hop" back. If the gap
+    between a ledge and the wall is wider than she is, a flat leap toward the wall slides off and falls
+    (an honest whipper); if the wall pins her on the ledge it's a neutral hop. Nothing ever freezes.
+
 ## Difficulty ramp (validator report, mean success % of the searched input space / min margin)
 
 | zone | pitches | mean success | min margin |
@@ -757,8 +777,8 @@ for her also comes from the mechanic (crumbles, gust timing, hidden landings), w
 
 ## Known issues
 
+- Big Leaps can be skipped with a forgiving leap to the ledge after the landing (p02 c1→b1/b2, p03 c2→d1,
+  p13 ×3, p14 ×3, p15 c2→h2; measured by the solver). The screen copes (the Looks Scary reveal plays on the
+  next spot), but the Big Leap should be the way on — fixing in Stage 4 with a validator rule.
+
 - `src/screens/building.ts` (Stage 2 interim screen for routes built in later stages) must be gone by Stage 5.
-- First-run and camp goat lines live in `content/copy.ts` (`GOAT_SETUP`, `GOAT_CAMP`) until Stage 4 creates
-  `content/goatLines.ts`: move them into its meet/lesson/campIdle/firstCamp moments, have `screens/camp.ts`
-  use the `model/goatVoice.ts` shuffle-bag instead of its local `idleBag`, and point
-  `tests/unit/content.test.ts` (banned phrases, ≤ 12 words, no empty lists) at goatLines.ts too.

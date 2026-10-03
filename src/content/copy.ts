@@ -1,14 +1,8 @@
 /**
  * Words on the first-run, grown-ups' gate and camp screens. Narrator copy states no morals: any
- * "why" is said by the goat, in GOAT_SETUP / GOAT_CAMP (each line ≤ 12 words, scared is allowed
- * and named, going anyway is the move). Templates: {goat}, {mountain}, {names}.
+ * "why" is said by the goat, and every goat line lives in content/goatLines.ts (read through
+ * model/goatVoice.ts). Templates: {goat}, {mountain}, {names}.
  */
-import type { GoatMood } from '../ui/goatBubble'
-
-export interface GoatSays {
-  text: string
-  mood: GoatMood
-}
 
 export const SETUP_COPY = {
   hello: {
@@ -138,38 +132,6 @@ export const BUILDING_COPY = {
   text: 'The trail crew is busy here. Head back to camp for now.',
   back: 'Back to camp',
 } as const
-
-/** Everything the goat says during the first run. */
-export const GOAT_SETUP = {
-  meet: [
-    { text: 'Oh! Hello. I’m a baby mountain goat.', mood: 'happy' },
-    { text: 'Funny thing about me: I’m scared of heights.', mood: 'scared' },
-    { text: 'But I want to see the top. Can I come anyway?', mood: 'happy' },
-  ] as GoatSays[],
-  named: { text: '{goat}? I love it!', mood: 'giggly' } as GoatSays,
-  mountain: { text: 'Whoa, that’s tall. My knees are wobbling already.', mood: 'wobbly' } as GoatSays,
-  lesson: [
-    { text: 'Drag back, then let go. That’s how we leap!', mood: 'happy' },
-    { text: 'The rope catches us. That’s why climbers can try hard moves!', mood: 'calm' },
-  ] as GoatSays[],
-  brave: { text: 'Like me in your backpack: scared, but safe.', mood: 'calm' } as GoatSays,
-  cheer: { text: 'My knees are knocking. Let’s go up anyway?', mood: 'wobbly' } as GoatSays,
-}
-
-/** What the goat says at camp. */
-export const GOAT_CAMP = {
-  firstVisit: { text: 'See the very top? That’s Sky Lake. That’s where we’re going.', mood: 'happy' } as GoatSays,
-  idle: [
-    { text: 'The fire’s warm. My legs have nearly stopped wobbling.', mood: 'calm' },
-    { text: 'I like camp. The ground stays exactly where it is.', mood: 'giggly' },
-    { text: 'The mountain looks very tall today. Let’s go anyway?', mood: 'wobbly' },
-    { text: 'My hooves are ready. My tummy is still deciding.', mood: 'scared' },
-    { text: 'Your backpack is the comfiest spot on the whole mountain.', mood: 'happy' },
-    { text: 'I peeked up the trail. Still high. Still coming.', mood: 'calm' },
-    { text: 'Sitting by the fire is my best skill.', mood: 'giggly' },
-    { text: 'Somewhere up there is Sky Lake. I wonder if it’s splashy.', mood: 'happy' },
-  ] as GoatSays[],
-}
 
 /** "Mum", "Mum and Dad", "Mum, Dad and Nana". */
 export function joinNames(names: readonly string[]): string {

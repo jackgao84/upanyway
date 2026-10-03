@@ -84,8 +84,9 @@ export class Camera {
   update(dt: number, levelHeight: number): void {
     const k = 1 - Math.exp(-TUNING.cameraFollow * dt)
     this.zoom += (this.targetZoom - this.zoom) * k
-    const half = this.worldViewH / 2
-    // Don't show much below the pitch's foot or far above its top.
+    // Don't show much below the pitch's foot or far above its top — measured on the safe rect (the
+    // part of the screen the HUD doesn't cover), so the foot of a pitch never sits under the HUD.
+    const half = (this.viewH - this.insets.top - this.insets.bottom) / this.scale / 2
     const minY = half - 90
     const maxY = Math.max(minY, levelHeight + 160 - half)
     const target = Math.min(maxY, Math.max(minY, this.targetY))

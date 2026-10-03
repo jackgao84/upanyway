@@ -1,24 +1,22 @@
 /**
  * Content rules for every word she reads so far: no banned phrases anywhere, every goat line ≤ 12
  * words (with its slots filled), glossary definitions ≤ 12 words, no empty strings or lists.
+ * The goat's own rules (groups, moral cap, picker) are in goatVoice.test.ts.
  */
 import { describe, expect, it } from 'vitest'
-import {
-  BUILDING_COPY,
-  CAMP_COPY,
-  GATE_COPY,
-  GOAT_CAMP,
-  GOAT_SETUP,
-  SETUP_COPY,
-  fill,
-  joinNames,
-  type GoatSays,
-} from '../../src/content/copy'
+import { BUILDING_COPY, CAMP_COPY, GATE_COPY, SETUP_COPY, fill, joinNames } from '../../src/content/copy'
+import { GOAT_LINES, GOAT_MOMENTS, MOMENT_MOOD, SCRIPTED, type GoatLine } from '../../src/content/goatLines'
 import { GLOSSARY_WORDS, glossary } from '../../src/content/glossary'
 import { GOAT_NAMES, MOUNTAIN_NAMES } from '../../src/content/names'
 import { MAX_GOAT_WORDS, bannedIn, wordCount } from './voice'
 
-const SLOTS = { goat: 'Butterscotch', mountain: 'Mount Anyway', names: joinNames(['Mum', 'Dad', 'Nana']) }
+const SLOTS = {
+  goat: 'Butterscotch',
+  mountain: 'Mount Anyway',
+  names: joinNames(['Mum', 'Dad', 'Nana']),
+  pose: 'The Spaghetti Arms',
+  n: '14',
+}
 
 /**
  * Every string in a content object as [path, text]. Templates are called with numbers and a word;
@@ -38,12 +36,13 @@ function strings(value: unknown, path: string, out: [string, string][] = []): [s
   return out
 }
 
-/** Every goat line in a goat-lines object (single lines and lists). */
-function goatLines(value: Record<string, GoatSays | GoatSays[]>, name: string): [string, GoatSays][] {
-  const out: [string, GoatSays][] = []
-  for (const [k, v] of Object.entries(value)) {
-    if (Array.isArray(v)) v.forEach((line, i) => out.push([`${name}.${k}[${i}]`, line]))
-    else out.push([`${name}.${k}`, v])
+/** Every goat line: each moment's lines, and the scripted story beats. */
+function goatLines(): [string, GoatLine][] {
+  const out: [string, GoatLine][] = []
+  for (const m of GOAT_MOMENTS) GOAT_LINES[m].forEach((line, i) => out.push([`GOAT_LINES.${m}[${i}]`, line]))
+  for (const [k, v] of Object.entries(SCRIPTED)) {
+    if (typeof v === 'string') out.push([`SCRIPTED.${k}`, { text: v }])
+    else v.forEach((text: string, i: number) => out.push([`SCRIPTED.${k}[${i}]`, { text }]))
   }
   return out
 }
@@ -53,20 +52,20 @@ const COPY = {
   GATE_COPY,
   CAMP_COPY,
   BUILDING_COPY,
-  GOAT_SETUP,
-  GOAT_CAMP,
+  GOAT_LINES,
+  SCRIPTED,
   glossary,
   GOAT_NAMES,
   MOUNTAIN_NAMES,
 }
 const ALL = Object.entries(COPY).flatMap(([name, v]) => strings(v, name))
-const GOAT = [...goatLines(GOAT_SETUP, 'GOAT_SETUP'), ...goatLines(GOAT_CAMP, 'GOAT_CAMP')]
+const GOAT = goatLines()
 const MOODS = ['calm', 'happy', 'scared', 'giggly', 'wobbly']
 
 describe('content voice', () => {
   it('finds the copy it checks', () => {
     expect(ALL.length).toBeGreaterThan(100)
-    expect(GOAT.length).toBeGreaterThanOrEqual(15)
+    expect(GOAT.length).toBeGreaterThanOrEqual(80)
   })
 
   it('never uses a banned phrase', () => {
@@ -82,12 +81,13 @@ describe('content voice', () => {
       const text = fill(line.text, SLOTS)
       expect(text, path).not.toMatch(/[{}]/)
       expect(wordCount(text), `${path}: ${text}`).toBeLessThanOrEqual(MAX_GOAT_WORDS)
-      expect(MOODS, path).toContain(line.mood)
+      if (line.mood) expect(MOODS, path).toContain(line.mood)
     }
+    for (const m of GOAT_MOMENTS) expect(MOODS, m).toContain(MOMENT_MOOD[m])
   })
 
   it('says why the rope is there the first time it catches a fall', () => {
-    const rope = GOAT_SETUP.lesson[1].text.toLowerCase()
+    const rope = SCRIPTED.ropeFirst.toLowerCase()
     expect(rope).toContain('rope')
     expect(rope).toContain('why')
   })

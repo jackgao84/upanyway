@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Up Anyway — fall poses lab</title>
+    <style>
+      :root {
+        --paper: #fbf3e4;
+        --ink: #4a3040;
+        --muted: #8a7480;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 14px/1.3 system-ui, -apple-system, sans-serif;
+      }
+      main {
+        padding: 16px 20px 40px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0 0 8px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      section {
+        margin: 0 0 18px;
+        padding: 12px;
+        border-radius: 14px;
+        background: #fff9ef;
+        box-shadow: 0 1px 0 #ead9c3;
+      }
+      .grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: flex-start;
+      }
+      .strip {
+        display: grid;
+        grid-template-columns: 130px repeat(9, 100px);
+        gap: 4px 4px;
+        align-items: center;
+      }
+      .strip .label {
+        font-size: 12px;
+        font-weight: 600;
+      }
+      figure {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+      }
+      figcaption {
+        font-size: 11px;
+        color: var(--muted);
+        max-width: 150px;
+        text-align: center;
+      }
+      figcaption b {
+        display: block;
+        color: var(--ink);
+        font-size: 12px;
+      }
+      canvas {
+        display: block;
+      }
+      .sky canvas {
+        border-radius: 8px;
+        background: linear-gradient(#cfe8f3, #f7e3cf);
+      }
+      .night canvas {
+        border-radius: 8px;
+        background: linear-gradient(#26304f, #4a3f63);
+      }
+      .card canvas {
+        border-radius: 16px;
+        box-shadow: 0 2px 0 #e2c4a4;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="lab">
+      <h1>Up Anyway — the 16 fall poses</h1>
+      <p>Dev only. <code>?still=1</code> freezes everything at each pose's still frame; <code>?t=0.5</code> freezes at a time.</p>
+    </main>
+    <script type="module" src="./poses.ts"></script>
+  </body>
+</html>

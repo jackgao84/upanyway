@@ -56,7 +56,7 @@ describe('the rope', () => {
   test('a missed leap is caught and she is in play again in under a second', () => {
     const level = getLevel('p01')!
     const { s, log } = session(level)
-    s.launch(180, 0.3) // off the left of the start camp: nothing to land on
+    s.launch(20, 0.5) // far too flat, under everything: nothing to land on
     s.fixedStep()
     expect(s.phase).toBe('flying')
     while (s.phase === 'flying') s.fixedStep()
@@ -77,6 +77,16 @@ describe('the rope', () => {
     expect(s.elementId).toBe('c0')
   })
 
+  test('a flat leap slides off the edge of the take-off ledge instead of re-landing on it', () => {
+    for (const [angle, power] of [[0, 0.45], [-10, 0.8], [180, 0.45]] as const) {
+      const { s, log } = session(getLevel('p01')!, 'a1')
+      s.launch(angle, power)
+      runUntilReady(s)
+      expect(log.some((l) => l.startsWith('whipper')), `${angle},${power}: ${log.join(' ')}`).toBe(true)
+      expect(log).not.toContain('hop:a1')
+    }
+  })
+
   test('falls are deterministic: same input, same result', () => {
     const level = getLevel('p02')!
     const a = session(level)
@@ -87,5 +97,138 @@ describe('the rope', () => {
     }
     expect(a.log).toEqual(b.log)
     expect(a.s.body).toEqual(b.s.body)
+  })
+})
+
+describe('a leap the take-off ledge swallows is a neutral hop', () => {
+  // A "swipe up" launches straight down into her own ledge; a flat leap into a pitch wall from a
+  // ledge that reaches it gets stopped by the wall. Neither may freeze her and end as a whipper.
+  const hw = TUNING.bodyHalfWidth
+  const reach = TUNING.landTolerance + hw
+  for (const level of ALL_LEVELS) {
+    test(`${level.id}: straight down, near-vertical and into the wall from every ledge`, () => {
+      for (const el of level.elements) {
+        if (el.kind !== 'ledge') continue
+        const tries: [number, number][] = [
+          [-90, 0.5],
+          [-80, 0.3],
+          [-100, 0.3],
+        ]
+        if (el.x - reach <= hw) tries.push([180, 0.3], [190, 0.3], [185, 0.6])
+        if (el.x + el.w + reach >= 400 - hw) tries.push([0, 0.3], [-10, 0.3], [-5, 0.6])
+        for (const [angle, power] of tries) {
+          const { s, log } = session(level, el.id)
+          expect(s.launch(angle, power)).toBe(true)
+          const took = runUntilReady(s, 3)
+          const what = `${level.id} ${el.id} ${angle}°/${power}: ${log.join(' ')}`
+          // Never a freeze: every leap resolves quickly (a whipper includes the fall, rope/flop and settle).
+          const fell = log.some((l) => l.startsWith('whipper'))
+          expect(took, what).toBeLessThan(angle < -45 ? 0.6 : fell ? 3 : 1.2)
+          if (angle < -45) {
+            // Straight down into her own ledge: always a neutral hop.
+            expect(log.filter((l) => l.startsWith('whipper') || l === 'rope'), what).toEqual([])
+            expect(s.elementId, what).toBe(el.id)
+          } else if (s.elementId === el.id) {
+            // Stopped by the wall without leaving her ledge: neutral, not a whipper.
+            expect(log.filter((l) => l.startsWith('whipper')), what).toEqual([])
+          } else {
+            // Slid off through the gap to the wall (wider than she is): an honest whipper.
+            expect(log.some((l) => l.startsWith('whipper')), what).toBe(true)
+          }
+        }
+      }
+    })
+  }
+})
+
+describe('where she is heading', () => {
+  test('after a fall back to a camp she has climbed past, the target is the next step from that camp', () => {
+    const level = getLevel('p01')!
+    const sol = solutionsFor('p01')!
+    const campIdx = level.route.indexOf('c1')
+    const upPast = (): ReturnType<typeof session> => {
+      const x = session(level)
+      // Up to two steps past c1.
+      for (const step of sol.steps.slice(0, campIdx + 2)) {
+        x.s.launch(step.angle, step.power)
+        runUntilReady(x.s)
+      }
+      return x
+    }
+    // A leap from up there that ends back on c1 (a slip onto it, or the rope).
+    let fall: [number, number] | null = null
+    for (let angle = -20; angle <= 200 && !fall; angle += 4) {
+      for (let power = 0.3; power <= 1 && !fall; power += 0.1) {
+        const x = upPast()
+        x.s.launch(angle, power)
+        runUntilReady(x.s)
+        if (x.s.elementId === 'c1' && x.log.some((l) => l.startsWith('whipper'))) fall = [angle, power]
+      }
+    }
+    expect(fall, 'a fall from two steps past c1 back onto c1').not.toBeNull()
+    const { s } = upPast()
+    expect(s.elementId).toBe(level.route[campIdx + 2])
+    expect(s.nextTargetId()).toBe(level.route[campIdx + 3])
+    s.launch(fall![0], fall![1])
+    runUntilReady(s)
+    expect(s.elementId).toBe('c1')
+    expect(s.highestRouteIndex).toBe(campIdx + 2)
+    expect(s.nextTargetId()).toBe(level.route[campIdx + 1])
+  })
+
+  test('a Big Leap only counts as landed on its own far side', () => {
+    const level = getLevel('p02')!
+    const big = level.bigLeaps![0]
+    const solBig = solutionsFor('p02')!.steps.find((st) => st.from === big.from)!
+    const landed: { id: string; bigLeap: boolean }[] = []
+    const a = session(level, big.from)
+    a.s.events.on('land', (e) => landed.push({ id: e.id, bigLeap: e.bigLeap }))
+    a.s.launch(solBig.angle, solBig.power)
+    runUntilReady(a.s)
+    expect(landed).toEqual([{ id: big.to, bigLeap: true }])
+    // Any other landing from the Big Leap's start (straight up onto a ledge above) is not "the Big Leap".
+    for (let angle = 80; angle <= 100; angle += 1) {
+      for (let power = 0.5; power <= 0.95; power += 0.05) {
+        const b = session(level, big.from)
+        const seen: { id: string; bigLeap: boolean }[] = []
+        b.s.events.on('land', (e) => seen.push({ id: e.id, bigLeap: e.bigLeap }))
+        b.s.launch(angle, power)
+        runUntilReady(b.s)
+        for (const l of seen) expect(l.bigLeap, `${angle}°/${power.toFixed(2)} → ${l.id}`).toBe(l.id === big.to)
+      }
+    }
+  })
+})
+
+describe('crumbly ledges', () => {
+  test('a crumbly ledge that gives way while she lies there after a slip drops her (she never stands on thin air)', () => {
+    const level = getLevel('p07')!
+    // Find a leap from a4 that slips back down onto the crumbly a3.
+    let slip: [number, number] | null = null
+    for (let angle = -20; angle <= 200 && !slip; angle += 2) {
+      for (let power = 0.24; power <= 0.9 && !slip; power += 0.02) {
+        const probe = session(level, 'a4')
+        let landedOn: string | null = null
+        probe.s.events.on('whipper', (e) => {
+          if (e.kind === 'slip') landedOn = e.landedId
+        })
+        probe.s.launch(angle, power)
+        runUntilReady(probe.s, 3)
+        if (landedOn === 'a3') slip = [angle, power]
+      }
+    }
+    expect(slip, 'a slip from a4 onto a3').not.toBeNull()
+    const { s, log } = session(level, 'a4')
+    s.launch(slip![0], slip![1])
+    while (s.phase !== 'flopped') s.fixedStep()
+    expect(s.elementId).toBe('a3')
+    // Its timer (still running from an earlier landing) runs out during the flop.
+    s.crumbleTimers.set('a3', TUNING.crumbleDelay - 0.05)
+    for (let i = 0; i < 20; i++) s.fixedStep()
+    expect(s.crumbled.has('a3')).toBe(true)
+    expect(s.phase).toBe('flying')
+    runUntilReady(s)
+    expect(log).toContain('whipper:crumble:a3')
+    expect(s.elementId).not.toBe('a3')
   })
 })
