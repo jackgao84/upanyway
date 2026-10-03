@@ -1,5 +1,6 @@
 /**
  * Deterministic climb physics. Pure functions, fixed timestep (TUNING.dt), no randomness.
+ * Ledges are solid from the top and sides and soft from below (she can leap up through them).
  * The engine (game/engine.ts), the runtime ghost-beta and the level validator all step flights
  * through `stepFlight`, so "same input, same result" holds everywhere.
  *
@@ -36,7 +37,17 @@ export interface FlightContext {
   launchId: string | null
   /** Below this altitude the rope catches her (last camp top − ropeSlack). */
   ropeLineY: number
+  /** Records the ids of ledges whose sides were touched ('wall' for the pitch walls). */
+  bump?: { sides: string[] }
+  /** Ledges she is currently passing up through from below (soft undersides). Reset per flight. */
+  passing: Set<string>
+  /** The take-off ledge while she is still on its surface: a flat or downward leap slides her off
+   *  its edge instead of instantly re-landing. Cleared once she is airborne or past its edge. */
+  surfaceId?: string | null
 }
+
+/** Bump when physics behaviour changes: invalidates saved level solutions (see levels/solutions.ts). */
+export const PHYSICS_VERSION = 4
 
 const EMPTY: ReadonlySet<string> = new Set()
 export const NO_WORLD: WorldState = { crumbled: EMPTY, revealed: EMPTY }
@@ -171,13 +182,31 @@ export function stepFlight(body: Body, ctx: FlightContext, t: number): Contact |
   body.x += body.vx * dt
   body.y += body.vy * dt
 
+  // Still on the take-off ledge's surface: it holds her up until she leaves it.
+  if (ctx.surfaceId) {
+    const s = index.byId.get(ctx.surfaceId)
+    if (!s || s.kind !== 'ledge' || world.crumbled.has(s.id)) ctx.surfaceId = null
+    else {
+      const reach = landTolerance + hw
+      const onSpan = body.x >= s.x - reach && body.x <= s.x + s.w + reach
+      if (onSpan && body.y <= s.y) {
+        body.y = s.y
+        if (body.vy < 0) body.vy = 0
+      } else if (!onSpan || body.y > s.y + 0.5) {
+        ctx.surfaceId = null
+      }
+    }
+  }
+
   // Side walls of the pitch: side contact stops horizontal motion.
   if (body.x - hw < 0) {
     body.x = hw
     body.vx = 0
+    if (ctx.bump) ctx.bump.sides.push('wall')
   } else if (body.x + hw > WORLD_W) {
     body.x = WORLD_W - hw
     body.vx = 0
+    if (ctx.bump) ctx.bump.sides.push('wall')
   }
 
   // Holds: the hand's swept path passing within reach of a hold catches it.
@@ -200,13 +229,14 @@ export function stepFlight(body: Body, ctx: FlightContext, t: number): Contact |
     }
   }
 
-  // Ledges: solid rectangles. Land on top; side contact stops vx; underside stops upward motion.
+  // Ledges: solid from the top and the sides, soft from below — she can leap up through a ledge and
+  // land on it on the way down. Side contact stops horizontal motion (no pinball bouncing).
   const lb = Math.floor(body.y / BUCKET)
   for (let b = lb - 1; b <= lb + 1; b++) {
     const ledges = index.ledgeBuckets.get(b)
     if (!ledges) continue
     for (const ledge of ledges) {
-      if (world.crumbled.has(ledge.id)) continue
+      if (world.crumbled.has(ledge.id) || ledge.id === ctx.surfaceId) continue
       const L = ledge.x
       const R = ledge.x + ledge.w
       const T = ledge.y
@@ -223,39 +253,27 @@ export function stepFlight(body: Body, ctx: FlightContext, t: number): Contact |
           body.y = T
           body.vx = 0
           body.vy = 0
+          ctx.passing.delete(ledge.id)
           return { kind: 'land', id: ledge.id, x, y: T }
         }
       }
 
-      // Box overlap → resolve against the side we came from.
       const overlaps = body.x + hw > L && body.x - hw < R && body.y + bh > B && body.y < T
-      if (!overlaps) continue
-      if (px + hw <= L) {
-        body.x = L - hw
-        body.vx = 0
-      } else if (px - hw >= R) {
-        body.x = R + hw
-        body.vx = 0
-      } else if (py + bh <= B) {
-        body.y = B - bh
-        if (body.vy > 0) body.vy = 0
-      } else {
-        // Already overlapping (numerical corner case): push out along the shallowest axis.
-        const pushL = body.x + hw - L
-        const pushR = R - (body.x - hw)
-        const pushDown = body.y + bh - B
-        const m = Math.min(pushL, pushR, pushDown)
-        if (m === pushDown) {
-          body.y = B - bh
-          if (body.vy > 0) body.vy = 0
-        } else if (m === pushL) {
-          body.x = L - hw
-          body.vx = 0
-        } else {
-          body.x = R + hw
-          body.vx = 0
-        }
+      if (!overlaps) {
+        ctx.passing.delete(ledge.id)
+        continue
       }
+      if (ctx.passing.has(ledge.id)) continue
+      const wasLeft = px + hw <= L
+      const wasRight = px - hw >= R
+      if (!wasLeft && !wasRight) {
+        // Entered from below (or was already inside): pass through until she's clear of it.
+        ctx.passing.add(ledge.id)
+        continue
+      }
+      body.x = wasLeft ? L - hw : R + hw
+      body.vx = 0
+      if (ctx.bump) ctx.bump.sides.push(ledge.id)
     }
   }
 
@@ -283,6 +301,8 @@ export interface SimOptions {
   targetId?: string
   /** Stop after this many seconds of flight (preview). */
   maxTime?: number
+  /** With targetId: give up as soon as the flight bumps anything (solver wants clean leaps). */
+  cleanOnly?: boolean
 }
 
 export interface SimResult {
@@ -290,6 +310,9 @@ export interface SimResult {
   /** Flight time (s). */
   time: number
   path: number[]
+  /** Not a clean leap: touched the side of a ledge other than the target (scraping up the target's own
+   *  side and mantling on, or sliding down a pitch wall, is fine). */
+  bumped: boolean
 }
 
 export function startBody(level: Level, fromId: string, angleDeg: number, power: number): Body {
@@ -309,12 +332,16 @@ export function simulateLeap(
 ): SimResult {
   const index = indexLevel(level)
   const body = startBody(level, start.fromId, angleDeg, power)
+  const bump = { sides: [] as string[] }
   const ctx: FlightContext = {
     level,
     index,
     world: opts.world ?? NO_WORLD,
     launchId: start.fromId,
     ropeLineY: opts.ropeLineY,
+    bump,
+    passing: new Set(),
+    surfaceId: indexLevel(level).byId.get(start.fromId)?.kind === 'ledge' ? start.fromId : null,
   }
   const sampleEvery = opts.sampleEvery ?? 3
   const path: number[] = opts.record ? [body.x, body.y] : []
@@ -325,15 +352,17 @@ export function simulateLeap(
     const contact = stepFlight(body, ctx, t)
     t += TUNING.dt
     if (opts.record && (i % sampleEvery === 0 || contact)) path.push(body.x, body.y)
-    if (contact) return { contact, time: i * TUNING.dt, path }
-    if (target && body.vy < 0) {
-      // Descending and already below what could still reach the target → it's a miss.
+    const bumped = bump.sides.some((id) => id !== 'wall' && id !== opts.targetId)
+    if (contact) return { contact, time: i * TUNING.dt, path, bumped }
+    if (target && (body.vy < 0 || (opts.cleanOnly && bumped))) {
+      // A bump already spoils a clean leap; descending below the target is a miss.
       const limit = target.kind === 'ledge' ? target.y : target.y - TUNING.handOffset - TUNING.holdReach
-      if (body.y < limit - 1) return { contact: null, time: i * TUNING.dt, path }
+      if (body.y < limit - 1 || (opts.cleanOnly && bumped)) return { contact: null, time: i * TUNING.dt, path, bumped }
     }
   }
-  if (opts.maxTime !== undefined) return { contact: null, time: maxSteps * TUNING.dt, path }
-  return { contact: { kind: 'fall' }, time: maxSteps * TUNING.dt, path }
+  const bumped = bump.sides.some((id) => id !== 'wall' && id !== opts.targetId)
+  if (opts.maxTime !== undefined) return { contact: null, time: maxSteps * TUNING.dt, path, bumped }
+  return { contact: { kind: 'fall' }, time: maxSteps * TUNING.dt, path, bumped }
 }
 
 /** Reference flight time used by the dotted preview: time to come back to launch height. */

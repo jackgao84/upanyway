@@ -82,12 +82,17 @@ export interface PitchRun {
   startedAt: string
   /** Highest camp reached this run; she resumes here. */
   lastCampId: string
+  /** Index of lastCampId in level.route (0 = the start camp). */
+  lastCampRouteIndex: number
   whippers: number
   /** Failed leaps this run (capped at MAX_STORED_ARCS; oldest dropped, `whippers` keeps the count). */
   failedArcs: Arc[]
   /** Successful leaps since the start — truncated back to the last camp on every rope catch, so at the
    *  send it is exactly the chain that worked (the bright line on the beta map). */
   routeArcs: Arc[]
+  /** Element ids along that chain: routePath[0] is where the run started and routePath[i + 1] is where
+   *  routeArcs[i] landed (always routeArcs.length + 1 long), so truncation back to a camp is exact. */
+  routePath: string[]
   /** Launch element id → falls from there this run (beta hint after 3, ghost after 6). */
   fallsBySpot: Record<string, number>
   /** Highest index in level.route she has reached this run (beta target = the next one). */
@@ -132,6 +137,8 @@ export interface SaveData {
   setup: {
     /** Grown-up part done (PIN + names). */
     parentDone: boolean
+    /** She has saved a look in the designer ("Looks like me!"). */
+    lookDone: boolean
     /** Whole first run done (she has reached Pitch 1). */
     complete: boolean
   }
@@ -174,8 +181,6 @@ export interface SaveData {
   glossarySeen: string[]
   looksScary: Partial<Record<ZoneId, LooksScaryRecord>>
   climbTime: { day: DayKey; seconds: number }
-  /** Post-summit decorations/gear, in unlock order. */
-  unlocked: string[]
   summit: { reached: boolean; at?: string; finaleSeen: boolean }
   flags: {
     ropeExplained: boolean
@@ -223,7 +228,7 @@ export function defaultSave(now: Date = new Date()): SaveData {
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     createdAt: now.toISOString(),
-    setup: { parentDone: false, complete: false },
+    setup: { parentDone: false, lookDone: false, complete: false },
     parent: { pinHash: '', pinSalt: '', names: [], dailyClimbMinutes: DEFAULT_DAILY_MINUTES },
     settings: { muted: false, music: true },
     profile: { look: defaultLook(), goatName: '', mountainName: '' },
@@ -239,7 +244,6 @@ export function defaultSave(now: Date = new Date()): SaveData {
     glossarySeen: [],
     looksScary: {},
     climbTime: { day: '', seconds: 0 },
-    unlocked: [],
     summit: { reached: false, finaleSeen: false },
     flags: { ropeExplained: false, firstCampVisit: false, braveVsDangerousSeen: false, persistGranted: null },
     testMode: false,

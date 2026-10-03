@@ -6,6 +6,13 @@ import { clear } from '../ui/dom'
 
 export type Unmount = () => void
 
+/**
+ * Fired on window for every route change (push, replace, back/forward, guard redirects), just
+ * before the old screen unmounts. Overlays and the glossary listen to it: a replace navigation
+ * fires no 'hashchange'.
+ */
+export const ROUTE_CHANGE_EVENT = 'upanyway:route'
+
 export interface RouteMatch {
   path: string
   params: Record<string, string>
@@ -44,15 +51,35 @@ export function matchPattern(pattern: string, path: string): Record<string, stri
   if (p.length !== s.length) return null
   const params: Record<string, string> = {}
   for (let i = 0; i < p.length; i++) {
-    if (p[i].startsWith(':')) params[p[i].slice(1)] = decodeURIComponent(s[i])
-    else if (p[i] !== s[i]) return null
+    if (p[i].startsWith(':')) {
+      let v: string
+      try {
+        v = decodeURIComponent(s[i])
+      } catch {
+        return null // a malformed escape like '%E0' matches nothing (→ not found)
+      }
+      params[p[i].slice(1)] = v
+    } else if (p[i] !== s[i]) return null
   }
   return params
 }
 
+/** In-app history depth, kept in history.state so it survives reloads and follows back/forward. */
+interface HistoryState {
+  upDepth?: number
+}
+
+function depthNow(): number {
+  const d = (history.state as HistoryState | null)?.upDepth
+  return typeof d === 'number' && d > 0 ? d : 0
+}
+
 export class Router {
   private current: { unmount?: Unmount; el: HTMLElement } | null = null
-  private depth = 0
+  /** The hash the current screen was rendered for (back/forward to the same hash is a no-op). */
+  private renderedHash: string | null = null
+  /** Bumped by every render, so a render that a screen's own mount navigated away from can tell. */
+  private renderId = 0
   private started = false
 
   constructor(
@@ -65,32 +92,34 @@ export class Router {
   start(): void {
     if (this.started) return
     this.started = true
-    window.addEventListener('hashchange', () => this.render())
+    // Back/forward and typed URLs. Both events can fire for one traversal: render once per hash.
+    const onLocation = () => {
+      if (location.hash !== this.renderedHash) this.render()
+    }
+    window.addEventListener('hashchange', onLocation)
+    window.addEventListener('popstate', onLocation)
     this.render()
   }
 
   navigate(path: string, opts: { replace?: boolean } = {}): void {
     const target = '#' + (path.startsWith('/') ? path : '/' + path)
-    if (location.hash === target) {
-      this.render()
-      return
+    if (location.hash !== target) {
+      const cur = depthNow()
+      try {
+        if (opts.replace) history.replaceState({ upDepth: cur }, '', target)
+        else history.pushState({ upDepth: cur + 1 }, '', target)
+      } catch {
+        // Safari throttles history calls (100 per 30 s); a plain hash change still navigates.
+        if (opts.replace) location.replace(target)
+        else location.hash = target
+      }
     }
-    if (opts.replace) {
-      history.replaceState(history.state, '', target)
-      this.render()
-    } else {
-      this.depth++
-      location.hash = target
-    }
+    this.render()
   }
 
   back(fallback = '/camp'): void {
-    if (this.depth > 0) {
-      this.depth--
-      history.back()
-    } else {
-      this.navigate(fallback, { replace: true })
-    }
+    if (depthNow() > 0) history.back()
+    else this.navigate(fallback, { replace: true })
   }
 
   currentPath(): string {
@@ -98,6 +127,8 @@ export class Router {
   }
 
   private render(): void {
+    const id = ++this.renderId
+    this.renderedHash = location.hash
     const { path, query } = parseHash(location.hash)
     let found: { route: Route; params: Record<string, string> } | null = null
     for (const route of this.routes) {
@@ -118,6 +149,7 @@ export class Router {
       return
     }
 
+    window.dispatchEvent(new Event(ROUTE_CHANGE_EVENT))
     if (this.current) {
       try {
         this.current.unmount?.()
@@ -139,6 +171,16 @@ export class Router {
       back: (f) => this.back(f),
     }
     const unmount = found.route.screen(el, ctx) ?? undefined
+    if (id !== this.renderId) {
+      // The screen navigated while mounting: the newer render owns the page now.
+      try {
+        unmount?.()
+      } catch (err) {
+        console.warn('[upanyway] unmount failed', err)
+      }
+      el.remove()
+      return
+    }
     this.current = { el, unmount }
     el.scrollTop = 0
   }

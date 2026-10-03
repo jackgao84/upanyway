@@ -1,0 +1,81 @@
+/* Camp hub: the picture and the goat on top (or on the left in wide landscape), big tiles below. */
+
+.camp .layout__body {
+  max-width: calc(980px + 2 * var(--gutter));
+}
+.camp__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.camp__left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.camp__scene {
+  height: clamp(210px, 30vh, 400px);
+  cursor: pointer;
+}
+.camp__canvas {
+  width: 100%;
+  height: 100%;
+}
+.camp__bubble {
+  min-height: 84px;
+}
+.camp__right {
+  min-width: 0;
+}
+.camp__tiles {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.camp__climb.tile--wide {
+  grid-column: 1 / -1;
+  justify-content: center;
+}
+.camp__grownups {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+@media (max-width: 560px) {
+  .camp__tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .camp__log.tile--wide {
+    grid-column: auto;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    min-height: 124px;
+    padding: 16px 10px 14px;
+    font-size: var(--fs-md);
+    text-align: center;
+  }
+  .camp__log.tile--wide .tile__art {
+    width: 68px;
+    height: 68px;
+  }
+}
+@media (min-width: 900px) and (orientation: landscape) {
+  .camp .layout__body {
+    max-width: calc(1220px + 2 * var(--gutter));
+  }
+  .camp__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 28px;
+  }
+  .camp__left {
+    position: -webkit-sticky;
+    position: sticky;
+    top: calc(var(--safe-top) + 96px);
+  }
+  .camp__scene {
+    height: min(52vh, 460px);
+  }
+}

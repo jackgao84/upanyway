@@ -6,9 +6,16 @@
 
 ## Status
 
-- **Current stage:** 2 — Shell (starting)
-- **Next:** Stage 2 workflow: PWA, storage+model, UI kit, art, first run, e2e harness
-- **Last commit:** (none yet)
+- **Current stage:** 3 — Climb engine (Stage 2 done and committed)
+- **Ahead of schedule:** the Stage 3 engine core (physics, solver, validator, engine, camera, input, beta) and
+  ALL 16 pitches + the lesson are written and validated (`npm run validate` green; engine replays every saved
+  solution with zero whippers — tests/game/engine.test.ts).
+- **Next:** Stage 3 workflow (scratchpad draft `stage3.js` — re-create from the Stages list if lost): world
+  renderer, character animator, 16 fall poses, sound, goat voice → climb screen + real lesson → e2e replay → review.
+- **Stage 2 verified:** typecheck clean; vitest 226/226; Playwright WebKit 9/9 (first run on 820×1180,
+  1180×820, 390×844: 23 taps ≈ 13 s scripted, reload resumes, mute remembered, zero console errors).
+- **Machine note:** this Mac (16 GB) is shared with other sessions running Playwright; keep ≤ 3 agents that run
+  dev servers/browsers at once, and Playwright workers ≤ 3.
 
 ## How to resume
 
@@ -242,6 +249,10 @@ Sky Lake with real brave things opening the way, every check above passing.
   (production only). Screens are statically imported (no lazy chunks → no chunk-load failures offline).
 - **Hash router** (`#/camp`, `#/climb/p03?night=1`) — works on GitHub Pages with no 404 tricks and inside
   the SW app shell. Each screen exports `(root: HTMLElement, ctx: ScreenContext) => Unmount | void`.
+  Navigation uses `pushState`/`replaceState` and renders synchronously; the in-app depth for `ctx.back()`
+  lives in `history.state.upDepth`. Every route change (push, replace, back/forward, guard redirect) fires
+  `ROUTE_CHANGE_EVENT` ('upanyway:route') on window before the old screen unmounts — overlays and the
+  glossary listen to that, never to 'hashchange'. A screen may navigate while mounting (render token).
 - **Store** (`storage/store.ts`, written): one JSON document at `upanyway:save`; `store().update(fn)`
   mutates, debounces a save (150 ms; flush on `pagehide`/`visibilitychange`), notifies subscribers.
   Writes are try/caught (quota) and surfaced in parent mode. `upanyway:save:backup` holds the previous
@@ -262,7 +273,10 @@ Sky Lake with real brave things opening the way, every check above passing.
   `upanyway:`-prefixed caches that aren't current; navigations within scope answer with cached
   `index.html` (ignoreSearch); requests outside the scope are never touched. Registered with
   `scope: import.meta.env.BASE_URL`. Manifest (`public/manifest.webmanifest`): `start_url: "./"`,
-  `scope: "./"`, `id: "./"`, `display: "standalone"`, no orientation lock, relative icon URLs.
+  `scope: "./"`, `id: "upanyway"` (resolved against the origin → `https://<host>/upanyway`, unique on the
+  shared origin and unchanged if `VITE_BASE` moves the path — never change it once installed),
+  `display: "standalone"`, no orientation lock, relative icon URLs.
+- **Dialogs** are always in-DOM (`ui/components.ts` modal/confirm) — never `window.confirm/alert/prompt`.
 - **Debug hook** for e2e: `window.__upanyway` exposes read-only state + coordinate helpers
   (`climb.state()`, `climb.climberClient()`, `climb.maxDragPx()`, `climb.worldToClient(x,y)`).
 - **Platform floor**: iPadOS/iOS 15+. `build.target: 'safari15'`. Never use `crypto.randomUUID`,
@@ -277,14 +291,20 @@ Sky Lake with real brave things opening the way, every check above passing.
 - Angles in degrees: 0° = right, 90° = straight up, 180° = left. Power = fraction of `TUNING.maxPower`.
 
 ### iPad/touch rules (base.css + ui/keyboard.ts)
-- `html { touch-action: manipulation }`, `canvas { touch-action: none }`. `html, body { position: fixed;
-  inset: 0; overflow: hidden; overscroll-behavior: none }`, height `100dvh` with a `--vh` fallback from
-  `innerHeight`. Each scrollable screen has its own `overflow-y: auto; overscroll-behavior: contain`
-  container. `-webkit-user-select: none; -webkit-touch-callout: none` everywhere except text inputs.
+- `touch-action: manipulation` on `html` AND on every scroll container (`.screen`, `.modal__scroll`,
+  `.sheet__scroll`): WebKit restarts touch-action at each `overflow: auto` element. `touch-action: none`
+  only on the play surface: `.stage > canvas` (the climb + lesson canvas must sit in a `.stage`; `AimInput`
+  also sets it on its canvas) — decorative canvases (camp scene, designer, portraits) let the page scroll.
+  `html, body { position: fixed; inset: 0; overflow: hidden; overscroll-behavior: none }`, height `100dvh`
+  with a `--vh` fallback from `innerHeight`. Each scrollable screen has its own `overflow-y: auto;
+  overscroll-behavior: contain` container. `-webkit-user-select: none; -webkit-touch-callout: none` everywhere except text inputs.
   `-webkit-tap-highlight-color: transparent`. `:hover` styles only inside `@media (hover: hover)`.
-- Safe areas: `env(safe-area-inset-*)` padding on the shell, HUD and every screen.
+- Safe areas: `env(safe-area-inset-*)` padding on the shell, HUD and every screen. The climb canvas is
+  full-bleed but the HUD sits inside the insets and the camera keeps the climber + next target inside the
+  inset-reduced rect.
 - Targets ≥ 48×48 px (CSS var `--tap: 56px` for primary buttons). Inputs/textarea font-size ≥ 16 px (no
-  focus zoom). `gesturestart` is prevented (no pinch zoom).
+  focus zoom; the rule sits after `font: inherit` so it wins). `gesturestart` is prevented (no pinch zoom).
+  Dismissible dialogs put their close button top-LEFT (the mute toggle owns the top-right corner).
 - Keyboard: `visualViewport` resize/scroll → `--kb-inset`; one-question screens put the input in the top
   half; on focus the input scrolls into view inside the screen's scroll container; on blur
   `window.scrollTo(0, 0)`. The PIN uses a custom on-screen pad (no keyboard).
@@ -352,14 +372,18 @@ interface BraveThing { id; createdAt; text; ideaId?; oops: boolean; forecast: nu
 interface Letter { id; createdAt; from: string; text; openedAt?; stoneDay: DayKey | null }
 interface GrownupFlop { id; createdAt; who; what; learned }
 interface CustomIdea { id; createdAt; text; oops: boolean }
-interface PitchRun { startedAt; lastCampId; whippers; failedArcs: Arc[] /*≤ 200*/
+interface PitchRun { startedAt; lastCampId; lastCampRouteIndex /*index of lastCampId in level.route*/
+  whippers; failedArcs: Arc[] /*≤ 200*/
   routeArcs: Arc[] /*truncated back to the last camp on every rope catch*/
+  routePath: string[] /*element ids: [start, landing of routeArcs[0], …] — always routeArcs.length + 1*/
   fallsBySpot: Record<elementId, number>; highestRouteIndex: number; night: boolean }
+interface SendRecord { at; attempts; failedArcs: Arc[]; routeArcs: Arc[]; night: boolean }
 interface PitchProgress { sends; nightSends; totalAttempts; firstSentAt?
   run: PitchRun | null; nightRun: PitchRun | null; lastSend: SendRecord | null
   revealedHolds: string[]            // persists per pitch (a found shortcut stays found)
   foundCrumbles: string[] }          // crumbly ledges she has landed on: drawn cracked from then on
-interface SaveData { schemaVersion; createdAt; setup: { parentDone; complete }
+interface SaveData { schemaVersion; createdAt
+  setup: { parentDone; lookDone /*she saved a look in the designer*/; complete }
   parent: { pinHash; pinSalt; names: string[]; dailyClimbMinutes /*default 20; 0 = no limit*/ }
   settings: { muted: boolean /*master: kid toggle + parent*/; music: boolean /*ambient, parent*/ }
   profile: { look; goatName; mountainName }; lessonDone
@@ -480,8 +504,13 @@ For each level (lesson + p01–p16) and each route step `route[i] → route[i+1]
    Record<elementId, StepSolution> (every non-route element → nearest route element above),
    difficulty: { minSuccessFraction, meanSuccessFraction } }`. Rewritten only when changed.
    `scripts/check-solutions.mjs` (prebuild) fails the build if a level hash is stale.
-7. Ramp check (asserted): p01 is the most forgiving pitch, and zone means of `meanSuccessFraction` don't
-   increase from zone 1 to zone 5 (later zones are never easier than earlier ones).
+7. Ramp (reported, checked by eye in the Stage 4/7 reports — not hard-asserted, so levels aren't bent to a
+   metric): per-pitch smallest forgiving margin + success fraction; p01 should be the most forgiving and
+   later zones should not be more forgiving than earlier ones.
+8. Also asserted: level ids are exactly lesson + p01–p16; zones p01–03 meadow, p04–06 hollow, p07–09
+   crumble, p10–12 ridge, p13–15 cloud, p16 summit; every route has ≥ 2 steps; each step's rope line is the
+   last route camp at or before `route[i]`; the lesson's fall spot reaches nothing (every non-cancelled
+   release from it ends in a rope catch); `looksScary.kind` matches its zone.
 Failing pitch → edit the LEVEL. Never the validator, thresholds or tolerances.
 
 ---
@@ -594,6 +623,9 @@ Test mode never writes stats, poses, badges, stones or attempts.
   content rules (goat lines, banned phrases, ≥ 30 ideas, ≥ 16 oops, 16 poses, ≥ 40 unlockables, glossary
   definitions ≤ 12 words, no empty arrays), beta classification, goat picker (moral cap, no fear input),
   and the level validator.
+- **`npm run check:stubs`** (Stage 7): scans src/, index.html, public/, tests/, e2e/ case-insensitively for
+  TODO|FIXME|lorem|coming soon|TBD|`.skip(`|`.only(`|`.todo(` and empty content arrays; "placeholder" hits are
+  reviewed by hand (HTML input `placeholder=` attributes are legitimate).
 - **Playwright** (webkit, `hasTouch`) against `vite preview` of the production build at `/upanyway/`,
   projects 820×1180, 1180×820, 390×844. Drags = dispatched `PointerEvent`s (`pointerType: 'touch'`) that
   start just outside the climber's hit radius; taps via `locator.tap()`. Every test fails on any
@@ -607,7 +639,7 @@ Test mode never writes stats, poses, badges, stones or attempts.
 ## Stages
 
 - [x] **1. Plan** — this file (architecture, schema, level format, file layout), audited against the brief.
-- [ ] **2. Shell** — Vite/TS, PWA (SW, manifest, icons, deploy workflow), storage + migrations + backup +
+- [x] **2. Shell** — Vite/TS, PWA (SW, manifest, icons, deploy workflow), storage + migrations + backup +
       model rules + unit tests, router + guard, shell + mute + audio unlock, UI kit (components, fear scale,
       PIN pad, keyboard avoidance, term helper, goat bubble), climber + goat art (needed by first run),
       first run (lesson route wired; engine lands in Stage 3), parent PIN gate. Exit: first-run e2e passes
@@ -681,7 +713,52 @@ Test mode never writes stats, poses, badges, stones or attempts.
 27. **"What actually happened?" is required but quick** (chips + free text); worry and learned are
     optional as the brief marks them.
 28. **Single JS bundle, `build.target: 'safari15'`, iPadOS 15+ floor.**
+29. **Ledges are solid from the top and sides, soft from below** (she can leap up through a ledge and
+    land on it on the way down). Head-bonks under unseen ledges were the most frustrating thing in the
+    solver data; side contact still stops horizontal motion ("no pinball").
+30. **Validator solutions must be clean leaps**: no touching the side of a ledge other than the target.
+    Scraping up the target's own side and mantling on, or sliding down a pitch wall, is fine (that is the
+    forgiving "side contact stops horizontal motion" rule doing its job).
+31. **The take-off ledge holds her until she leaves it**, so a flat or downward leap slides her off the
+    edge instead of instantly re-landing. `PHYSICS_VERSION` is part of each level's hash.
+32. **Tuning: gravity 980, maxPower 885** (range at full power ≈ 800 units). The ratio maxPower²/gravity
+    sets the geometry; raising power made ±6% windows *less* forgiving, so typical steps use 60–80%
+    power. Design bands (from solver sweeps): rises 80–120 with dx 100–120 on 110–130 ledges ≈ ×1.25–2.5
+    forgiving; rises > 170 are only possible with holds; long traverses (dx > 200) are hard.
+33. **Level layout rule** (for every pitch): the next-next element must not sit low above a take-off
+    point unless it is ≥ 250 higher; "swing" patterns (3 steps one way, then back) work well.
+34. **First-run progress uses explicit flags, never "is the value still the default?"** —
+    `setup.lookDone` is set by "Looks like me!" (the default look is a look she can pick). Saves without
+    the flag count as past the designer once the goat has a name.
+35. **Router: pushState + synchronous render + `ROUTE_CHANGE_EVENT`.** Replace navigations fire no
+    'hashchange', so overlays/glossary listen to the router's own event; back-depth lives in
+    `history.state` so OS back gestures can't desync it; a screen that navigates while mounting is
+    unmounted at once (render token); a malformed `%` escape in a route param is "not found", not a crash.
+36. **Interim lesson sets `flags.ropeExplained`** (its fall step is the goat's rope line, which says WHY:
+    the rope is why climbers can try hard moves). Stage 3's real lesson must play the rope line on its first
+    rope catch and set the flag there.
+37. **Stored `unlocked` list removed** from SaveData (unlockables are derived — Decision 25). Schema v1 has
+    not shipped, so no migration; normalize drops the old field.
+
+## Difficulty ramp (validator report, mean success % of the searched input space / min margin)
+
+| zone | pitches | mean success | min margin |
+|---|---|---|---|
+| Meadow | p01 9.1 · p02 8.9 · p03 8.6 | ≈ 8.9 | ×1.25 |
+| Firefly Hollow | p04 9.0 · p05 9.3 · p06 8.7 | ≈ 9.0 | ×1.00 (p05) |
+| Crumble Cliffs | p07 8.1 · p08 7.9 · p09 6.9 | ≈ 7.6 | ×1.00 |
+| Gusty Ridge | p10 6.7 · p11 6.2 · p12 5.7 | ≈ 6.2 | ×1.00 |
+| Cloud Steps | p13 7.3 · p14 6.9 · p15 6.3 | ≈ 6.8 | ×1.00 |
+| Summit | p16 7.9 | 7.9 | ×1.25 |
+
+Holds make Firefly Hollow about as forgiving as the meadow (holds catch from any direction); wind makes Gusty
+Ridge the hardest zone by this metric, and the fog zone's Big Leaps are deliberately generous. Real difficulty
+for her also comes from the mechanic (crumbles, gust timing, hidden landings), which this metric can't see.
 
 ## Known issues
 
-(none yet)
+- `src/screens/building.ts` (Stage 2 interim screen for routes built in later stages) must be gone by Stage 5.
+- First-run and camp goat lines live in `content/copy.ts` (`GOAT_SETUP`, `GOAT_CAMP`) until Stage 4 creates
+  `content/goatLines.ts`: move them into its meet/lesson/campIdle/firstCamp moments, have `screens/camp.ts`
+  use the `model/goatVoice.ts` shuffle-bag instead of its local `idleBag`, and point
+  `tests/unit/content.test.ts` (banned phrases, ≤ 12 words, no empty lists) at goatLines.ts too.

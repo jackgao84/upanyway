@@ -9,9 +9,9 @@ export const TUNING = {
   dt: 1 / 120,
 
   /** Downward acceleration (units/s²). */
-  gravity: 1150,
+  gravity: 980,
   /** Launch speed at full drag (units/s). */
-  maxPower: 960,
+  maxPower: 885,
 
   /** Drag length (CSS px) that means full power: clamp(fraction × min(viewW, viewH), min, max). */
   maxDragFraction: 0.28,

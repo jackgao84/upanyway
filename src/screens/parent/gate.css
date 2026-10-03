@@ -1,0 +1,46 @@
+/* Grown-ups' gate: the PIN pad and the press-and-hold "Forgot PIN?" button. */
+
+.gate .layout__body {
+  justify-content: center;
+  padding-bottom: max(6vh, 32px);
+}
+
+/* The times-table question: two short lines (see GATE_COPY.challengeTitle), a little smaller. */
+.gate.is-challenge .pin__title {
+  font-size: var(--fs-xl);
+  white-space: pre-line;
+}
+
+.gate__forgot {
+  margin-top: 4px;
+}
+
+.hold {
+  overflow: hidden;
+  isolation: isolate;
+  min-width: 220px;
+  font-size: var(--fs-md);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.hold__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  z-index: -1;
+  background: linear-gradient(90deg, var(--sun-soft), #fbd88a);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+.hold.is-holding {
+  transform: translateY(3px);
+  box-shadow:
+    0 2px 0 var(--btn-edge),
+    inset 0 0 0 1.5px rgba(226, 196, 164, 0.7);
+}
+.hold__hint {
+  min-height: 1.4em;
+}

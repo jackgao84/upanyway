@@ -62,7 +62,7 @@ export interface SolveContext {
   th: Thresholds
 }
 
-/** Does this exact input land on the target in every world variant? */
+/** Does this exact input land CLEANLY (no side/underside bumps) on the target in every world variant? */
 export function lands(ctx: SolveContext, angle: number, power: number, t0: number): boolean {
   const worlds = ctx.worlds && ctx.worlds.length > 0 ? ctx.worlds : [NO_WORLD]
   for (const world of worlds) {
@@ -70,9 +70,10 @@ export function lands(ctx: SolveContext, angle: number, power: number, t0: numbe
       world,
       ropeLineY: ctx.ropeLineY,
       targetId: ctx.toId,
+      cleanOnly: true,
     })
     const c = r.contact
-    if (!c || c.kind === 'fall' || c.id !== ctx.toId) return false
+    if (!c || c.kind === 'fall' || c.id !== ctx.toId || r.bumped) return false
   }
   return true
 }

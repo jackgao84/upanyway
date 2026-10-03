@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Up Anyway — art lab</title>
+    <style>
+      :root {
+        --paper: #fbf3e4;
+        --ink: #4a3040;
+        --muted: #8a7480;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 14px/1.3 system-ui, -apple-system, sans-serif;
+      }
+      main {
+        padding: 16px 20px 40px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0 0 8px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      section {
+        margin: 0 0 18px;
+        padding: 12px;
+        border-radius: 14px;
+        background: #fff9ef;
+        box-shadow: 0 1px 0 #ead9c3;
+      }
+      .grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: flex-end;
+      }
+      figure {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+      figcaption {
+        font-size: 11px;
+        color: var(--muted);
+        max-width: 120px;
+        text-align: center;
+      }
+      canvas {
+        display: block;
+        border-radius: 10px;
+        background: linear-gradient(#cfe8f3, #f7e3cf);
+      }
+      .night canvas {
+        background: linear-gradient(#26304f, #4a3f63);
+      }
+      .meadow canvas {
+        background: linear-gradient(#bfe0a8, #8fbf72);
+      }
+      .plain canvas {
+        background: transparent;
+        outline: 1px dashed #e4d3bd;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="lab">
+      <h1>Up Anyway — climber &amp; goat art lab</h1>
+      <p>Dev only. Add <code>?animate=1</code> to animate every cell.</p>
+    </main>
+    <script type="module" src="./art.ts"></script>
+  </body>
+</html>

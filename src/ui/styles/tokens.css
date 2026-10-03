@@ -1,0 +1,141 @@
+/* Design tokens. Cozy storybook: warm sunrise paper, rounded shapes, soft paper-cut shadows. */
+
+:root {
+  /* Paper + ink */
+  --paper: #fff7ec;
+  --paper-2: #fcefdf;
+  --paper-3: #f6e2c9;
+  --card: #fffcf6;
+  --dawn: #ffe2c6;
+  --dawn-2: #ffd3c2;
+  --ink: #3d2a24;
+  --ink-soft: #6c5048;
+  --ink-faint: #9c857a;
+  --line: #ecd8c0;
+  --edge: #e2c4a4;
+  --edge-deep: #c9a582;
+
+  /* Sunrise palette */
+  --coral: #e8735a;
+  --coral-2: #f08c70;
+  --coral-deep: #c4573f;
+  --coral-soft: #fcd9cd;
+  --sun: #f5b83d;
+  --sun-deep: #d99520;
+  --sun-soft: #fde9b6;
+  --sky: #8cc3d9;
+  --sky-deep: #4c8fac;
+  --sky-soft: #dcf0f6;
+  --leaf: #7fb069;
+  --leaf-deep: #5a8c46;
+  --leaf-soft: #e1f0d6;
+  --plum: #8a6bb0;
+  --plum-soft: #ece4f6;
+  --brick: #c4493a;
+  --brick-deep: #9c3529;
+  --brick-soft: #f8d8d2;
+  --white: #ffffff;
+
+  /* Zone accents (camp screens, map, chips, card tones) */
+  --zone-meadow: #7fb069;
+  --zone-meadow-soft: #e3f1d8;
+  --zone-hollow: #5d6bb0;
+  --zone-hollow-soft: #e2e5f6;
+  --zone-crumble: #c97c4b;
+  --zone-crumble-soft: #f6e0cf;
+  --zone-ridge: #5a9fb4;
+  --zone-ridge-soft: #d9eef4;
+  --zone-cloud: #9d8bcb;
+  --zone-cloud-soft: #ece7f8;
+  --zone-summit: #ee8a5c;
+  --zone-summit-soft: #fde0d2;
+  --sky-lake: #4fb0c6;
+
+  /* Focus ring */
+  --focus: #4c8fac;
+
+  /* Type */
+  --font: 'Nunito Variable', 'Nunito', ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', system-ui, sans-serif;
+  --fs-xs: 0.8rem;
+  --fs-sm: 0.9rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.2rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 1.85rem;
+  --fs-3xl: 2.3rem;
+
+  /* Radii */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 24px;
+  --r-xl: 32px;
+  --r-pill: 999px;
+
+  /* Spacing */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+  --gutter: 16px;
+  --content-w: 720px;
+
+  /* Touch targets */
+  --tap: 56px;
+  --tap-min: 48px;
+  --tap-big: 68px;
+
+  /* Paper-cut shadows: a crisp offset "edge" plus a soft lift */
+  --shadow-edge: 0 4px 0 var(--edge);
+  --shadow-paper: 0 3px 0 var(--edge), 0 10px 22px -12px rgba(110, 62, 34, 0.35);
+  --shadow-lift: 0 5px 0 var(--edge), 0 18px 30px -16px rgba(110, 62, 34, 0.42);
+  --shadow-float: 0 4px 0 rgba(201, 165, 130, 0.9), 0 22px 44px -18px rgba(80, 44, 24, 0.5);
+  --shadow-press: 0 1px 0 var(--edge), 0 4px 10px -8px rgba(110, 62, 34, 0.35);
+  --shadow-inset: inset 0 2px 0 rgba(110, 62, 34, 0.08);
+
+  /* Paper grain (two offset dot fields, very faint) */
+  --grain-a: radial-gradient(rgba(150, 96, 52, 0.07) 0.7px, transparent 1.1px);
+  --grain-b: radial-gradient(rgba(150, 96, 52, 0.05) 0.7px, transparent 1.2px);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --t-fast: 120ms;
+  --t-med: 240ms;
+  --t-slow: 420ms;
+
+  /* Layers */
+  --z-screen: 1;
+  --z-hud: 20;
+  --z-bubble: 30;
+  --z-toast: 60;
+  --z-sheet: 70;
+  --z-modal: 80;
+  --z-shell: 100;
+
+  /* Safe areas */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* Space the persistent mute toggle occupies at the top right (screens keep clear of it) */
+  --shell-top: calc(var(--safe-top) + 10px);
+  --shell-right: calc(var(--safe-right) + 12px);
+  --shell-reserve: calc(var(--tap) + 24px);
+
+  /* Set by ui/keyboard.ts */
+  --kb-inset: 0px;
+  --vh: 1vh;
+}
+
+@media (min-width: 700px) {
+  :root {
+    --gutter: 28px;
+  }
+}

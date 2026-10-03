@@ -1,0 +1,95 @@
+/**
+ * Cloud Steps 3 — above the sea of clouds. Bigger Big Leaps (they climb as they cross), steeper rock
+ * steps, and long sideways reaches to rock knobs; the last one (e2 → h3) is the crux of the zone.
+ * A hidden crystal hold glints in the first fog gap for anyone who falls past it: from it she can
+ * pull straight up to b1 and skip the far landing.
+ */
+import type { Level } from '../types'
+import { camp, hold, ledge } from './build'
+
+export const p15: Level = {
+  id: 'p15',
+  index: 15,
+  zone: 'cloud',
+  title: 'Above the Clouds',
+  height: 2400,
+  elements: [
+    camp('c0', 10, 40, 180),
+    ledge('a1', 150, 170, 100),
+    ledge('a2', 265, 300, 100),
+    ledge('a3', 150, 430, 100),
+    camp('c1', 0, 560, 150),
+    hold('hh1', 205, 665, { hidden: true, style: 'crystal' }),
+    ledge('g1', 260, 630, 140),
+    ledge('b1', 150, 760, 100),
+    ledge('b2', 30, 890, 100),
+    ledge('b3', 150, 1020, 100),
+    camp('c2', 250, 1140, 150),
+    ledge('g2', 0, 1220, 140),
+    ledge('d1', 130, 1350, 100),
+    hold('h2', 362, 1410, { style: 'knob' }),
+    ledge('d2', 285, 1530, 100),
+    ledge('d3', 150, 1640, 100),
+    camp('c3', 0, 1740, 150),
+    ledge('g3', 250, 1810, 140),
+    ledge('e1', 150, 1940, 100),
+    ledge('e2', 20, 2070, 100),
+    hold('h3', 280, 2130, { style: 'knob' }),
+    camp('c4', 60, 2190, 160),
+    camp('top', 110, 2310, 180),
+  ],
+  route: [
+    'c0', 'a1', 'a2', 'a3', 'c1', 'g1', 'b1', 'b2', 'b3', 'c2', 'g2',
+    'd1', 'h2', 'd2', 'd3', 'c3', 'g3', 'e1', 'e2', 'h3', 'c4', 'top',
+  ],
+  bigLeaps: [
+    { from: 'c1', to: 'g1' },
+    { from: 'c2', to: 'g2' },
+    { from: 'c3', to: 'g3' },
+  ],
+  decor: [
+    { kind: 'rock', x: 28, y: 40 },
+    { kind: 'snow', x: 62, y: 40 },
+    { kind: 'sign', x: 165, y: 40, text: 'Pitch 15' },
+    { kind: 'cloud', x: 330, y: 80, scale: 1.4 },
+    { kind: 'cloud', x: 80, y: 150, scale: 1.2 },
+    { kind: 'snow', x: 240, y: 170 },
+    { kind: 'grass', x: 350, y: 300 },
+    { kind: 'cloud', x: 60, y: 360, scale: 1.1 },
+    { kind: 'crystal', x: 165, y: 430 },
+    // Camp 1 and the first Big Leap; the crystal hold hides in this gap.
+    { kind: 'tent', x: 28, y: 560 },
+    { kind: 'lantern', x: 135, y: 560 },
+    { kind: 'cloud', x: 210, y: 560, scale: 2 },
+    { kind: 'cloud', x: 320, y: 655, scale: 1.4 },
+    { kind: 'snow', x: 380, y: 630 },
+    { kind: 'rock', x: 235, y: 760 },
+    { kind: 'cloud', x: 330, y: 820, scale: 1.2 },
+    { kind: 'snow', x: 45, y: 890 },
+    { kind: 'grass', x: 165, y: 1020 },
+    // Camp 2 and the second Big Leap.
+    { kind: 'tent', x: 380, y: 1140 },
+    { kind: 'lantern', x: 268, y: 1140 },
+    { kind: 'cloud', x: 190, y: 1130, scale: 2 },
+    { kind: 'cloud', x: 80, y: 1250, scale: 1.4 },
+    { kind: 'flowers', x: 20, y: 1220 },
+    { kind: 'rock', x: 215, y: 1350 },
+    { kind: 'cloud', x: 260, y: 1420, scale: 1.1 },
+    { kind: 'snow', x: 370, y: 1530 },
+    { kind: 'crystal', x: 165, y: 1640 },
+    // Camp 3 and the third Big Leap.
+    { kind: 'tent', x: 28, y: 1740 },
+    { kind: 'lantern', x: 135, y: 1740 },
+    { kind: 'cloud', x: 200, y: 1735, scale: 2 },
+    { kind: 'cloud', x: 320, y: 1840, scale: 1.4 },
+    { kind: 'rock', x: 375, y: 1810 },
+    { kind: 'snow', x: 235, y: 1940 },
+    { kind: 'cloud', x: 330, y: 2000, scale: 1.2 },
+    { kind: 'grass', x: 40, y: 2070 },
+    { kind: 'tent', x: 85, y: 2190 },
+    { kind: 'lantern', x: 200, y: 2190 },
+    { kind: 'cloud', x: 330, y: 2200, scale: 1.4 },
+    { kind: 'snow', x: 130, y: 2310 },
+    { kind: 'flag', x: 272, y: 2310 },
+  ],
+}

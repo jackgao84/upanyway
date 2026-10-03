@@ -98,8 +98,9 @@ export class Store {
     }
   }
 
-  /** Copy the currently stored save to the backup key. */
+  /** Copy the currently stored save to the backup key (writing any pending change first). */
   writeBackup(): void {
+    if (this.timer) this.flush()
     try {
       const current = this.storage.getItem(KEYS.save)
       if (current) this.storage.setItem(KEYS.backup, current)

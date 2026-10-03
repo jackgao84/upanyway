@@ -1,0 +1,93 @@
+/**
+ * Cloud Steps 1 — Big Leaps through fog. Each camp sits at the edge of a cloud bank; the landing on
+ * the far side is hidden in the fog and the dotted preview stops short. Every landing is a wide,
+ * nearly level ledge backed by the far wall, so a leap that's a bit too strong still lands.
+ * Between the leaps: small rock steps swinging back across the face, a little steeper than Meadow.
+ */
+import type { Level } from '../types'
+import { camp, ledge } from './build'
+
+export const p13: Level = {
+  id: 'p13',
+  index: 13,
+  zone: 'cloud',
+  title: 'Into the Clouds',
+  height: 2200,
+  elements: [
+    camp('c0', 10, 40, 180),
+    ledge('a1', 150, 155, 110),
+    ledge('a2', 260, 270, 110),
+    ledge('a3', 150, 385, 110),
+    camp('c1', 0, 500, 160),
+    ledge('g1', 250, 525, 140),
+    ledge('b1', 145, 640, 110),
+    ledge('b2', 35, 755, 110),
+    ledge('b3', 145, 870, 110),
+    camp('c2', 230, 985, 170),
+    ledge('g2', 10, 1010, 140),
+    ledge('d1', 145, 1125, 110),
+    ledge('d2', 255, 1240, 110),
+    ledge('d3', 145, 1355, 110),
+    camp('c3', 0, 1470, 160),
+    ledge('g3', 250, 1495, 140),
+    ledge('e1', 145, 1610, 110),
+    ledge('e2', 35, 1725, 110),
+    ledge('e3', 145, 1840, 110),
+    camp('c4', 230, 1955, 170),
+    camp('top', 110, 2070, 180),
+  ],
+  route: [
+    'c0', 'a1', 'a2', 'a3', 'c1', 'g1', 'b1', 'b2', 'b3', 'c2', 'g2',
+    'd1', 'd2', 'd3', 'c3', 'g3', 'e1', 'e2', 'e3', 'c4', 'top',
+  ],
+  bigLeaps: [
+    { from: 'c1', to: 'g1' },
+    { from: 'c2', to: 'g2' },
+    { from: 'c3', to: 'g3' },
+  ],
+  decor: [
+    { kind: 'rock', x: 28, y: 40 },
+    { kind: 'grass', x: 60, y: 40 },
+    { kind: 'sign', x: 165, y: 40, text: 'Pitch 13' },
+    { kind: 'cloud', x: 330, y: 90, scale: 1.2 },
+    { kind: 'flowers', x: 245, y: 155 },
+    { kind: 'cloud', x: 60, y: 250, scale: 1.1 },
+    { kind: 'snow', x: 352, y: 270 },
+    { kind: 'grass', x: 165, y: 385 },
+    // Camp 1, and the first Big Leap: the landing is lost in the cloud bank.
+    { kind: 'tent', x: 32, y: 500 },
+    { kind: 'lantern', x: 142, y: 500 },
+    { kind: 'cloud', x: 205, y: 470, scale: 1.8 },
+    { kind: 'cloud', x: 300, y: 560, scale: 1.5 },
+    { kind: 'rock', x: 375, y: 525 },
+    { kind: 'grass', x: 160, y: 640 },
+    { kind: 'cloud', x: 340, y: 740, scale: 1.2 },
+    { kind: 'snow', x: 55, y: 755 },
+    { kind: 'flowers', x: 240, y: 870 },
+    // Camp 2, the second Big Leap back across.
+    { kind: 'tent', x: 380, y: 985 },
+    { kind: 'lantern', x: 248, y: 985 },
+    { kind: 'cloud', x: 195, y: 955, scale: 1.8 },
+    { kind: 'cloud', x: 95, y: 1045, scale: 1.4 },
+    { kind: 'rock', x: 25, y: 1010 },
+    { kind: 'grass', x: 240, y: 1125 },
+    { kind: 'crystal', x: 350, y: 1240 },
+    { kind: 'cloud', x: 60, y: 1250, scale: 1.1 },
+    { kind: 'snow', x: 160, y: 1355 },
+    // Camp 3, the third Big Leap.
+    { kind: 'tent', x: 25, y: 1470 },
+    { kind: 'lantern', x: 145, y: 1470 },
+    { kind: 'cloud', x: 210, y: 1440, scale: 1.8 },
+    { kind: 'cloud', x: 315, y: 1530, scale: 1.4 },
+    { kind: 'flowers', x: 375, y: 1495 },
+    { kind: 'rock', x: 240, y: 1610 },
+    { kind: 'snow', x: 50, y: 1725 },
+    { kind: 'cloud', x: 340, y: 1730, scale: 1.2 },
+    { kind: 'grass', x: 240, y: 1840 },
+    { kind: 'tent', x: 382, y: 1955 },
+    { kind: 'lantern', x: 245, y: 1955 },
+    { kind: 'cloud', x: 70, y: 1990, scale: 1.3 },
+    { kind: 'snow', x: 130, y: 2070 },
+    { kind: 'flag', x: 272, y: 2070 },
+  ],
+}
