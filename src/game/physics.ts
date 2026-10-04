@@ -50,7 +50,7 @@ export interface FlightContext {
 }
 
 /** Bump when physics behaviour changes: invalidates saved level solutions (see levels/solutions.ts). */
-export const PHYSICS_VERSION = 5
+export const PHYSICS_VERSION = 6
 
 const EMPTY: ReadonlySet<string> = new Set()
 export const NO_WORLD: WorldState = { crumbled: EMPTY, revealed: EMPTY }
@@ -355,10 +355,11 @@ export function simulateLeap(
   const path: number[] = opts.record ? [body.x, body.y] : []
   const maxSteps = Math.ceil((opts.maxTime ?? TUNING.maxFlightTime) / TUNING.dt)
   const target = opts.targetId ? index.byId.get(opts.targetId) : undefined
-  let t = start.t0
+  // The pitch clock in whole fixed steps, exactly as the engine keeps it (steps × dt), so a gust
+  // edge falls on the same step here as in the game.
+  const step0 = Math.round(start.t0 / TUNING.dt)
   for (let i = 1; i <= maxSteps; i++) {
-    const contact = stepFlight(body, ctx, t)
-    t += TUNING.dt
+    const contact = stepFlight(body, ctx, (step0 + i - 1) * TUNING.dt)
     if (opts.record && (i % sampleEvery === 0 || contact)) path.push(body.x, body.y)
     const bumped = bump.sides.some((id) => id !== 'wall' && id !== opts.targetId)
     if (contact) return { contact, time: i * TUNING.dt, path, bumped }

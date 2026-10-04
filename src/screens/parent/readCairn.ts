@@ -1,7 +1,8 @@
 /**
  * Read the cairn (#/parent/cairn): her brave things in her own words, read-only — so grown-ups can
  * notice the try and cheer. Done brave things show the forecast → how scary it really was, how it
- * went, what happened and what she learned. Plans show their words and forecast only: never a date,
+ * went, what she was worried might happen, what happened and what she learned. Plans show their
+ * words, forecast and worry only: never a date,
  * never how often she said "Not today" (notTodayCount is not read here at all), never a nudge.
  * A gentle card points to How to cheer before any of it.
  */
@@ -47,9 +48,16 @@ function doneItem(b: BraveThing, today: Date): HTMLElement {
       h('span', { class: 'pp-compare__arrow', 'aria-hidden': 'true' }, icon('next', 26)),
       typeof b.really === 'number' ? weather(c.really, b.really) : h('div', { class: 'pp-weather pp-weather--none' }, c.noReally),
     ),
+    worried(b),
     b.whatHappened?.trim() ? h('p', { class: 'pp-brave__story' }, h('strong', null, c.happened), ' ', b.whatHappened.trim()) : null,
     b.learned?.trim() ? h('p', { class: 'pp-brave__story pp-brave__learned' }, h('strong', null, c.learned), ' ', b.learned.trim()) : null,
   )
+}
+
+/** Her answer to "What are you worried might happen?", when she gave one (her cairn shows it too). */
+function worried(b: BraveThing): HTMLElement | null {
+  const w = b.worry?.trim()
+  return w ? h('p', { class: 'pp-brave__story pp-brave__worry' }, h('strong', null, c.worried), ' ', w) : null
 }
 
 function planItem(b: BraveThing): HTMLElement {
@@ -68,6 +76,7 @@ function planItem(b: BraveThing): HTMLElement {
         b.oops ? h('span', { class: 'pp-plan__tag' }, ' · ', c.oops) : null,
         b.smallerOf ? h('span', { class: 'pp-plan__tag' }, ' · ', c.smaller) : null,
       ),
+      worried(b),
     ),
   )
 }

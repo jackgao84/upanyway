@@ -25,6 +25,7 @@ import {
   type SendRecord,
 } from '../storage/schema'
 import { PITCH_IDS, type LevelId, type ZoneId } from '../game/types'
+import { totalStones } from './stones'
 
 /** The pitch whose first day send reaches the summit (Sky Lake). */
 export const SUMMIT_PITCH: LevelId = PITCH_IDS[PITCH_IDS.length - 1]
@@ -113,6 +114,7 @@ export function newRun(startCampId: string, night: boolean, now: Date): PitchRun
     routeArcs: [],
     routePath: [startCampId],
     fallsBySpot: {},
+    lastMissBySpot: {},
     highestRouteIndex: 0,
     night,
   }
@@ -197,6 +199,10 @@ export interface WhipperInfo {
   kind: 'rope' | 'slip' | 'crumble'
   /** Slips: the element she ended up on, so the bright route can be cut back if it's on it. */
   restId?: string | null
+  /** For the beta hint (kept per spot as the run's last miss there). */
+  launch?: { angle: number; power: number } | null
+  bumped?: boolean
+  gusted?: boolean
 }
 
 /** A whipper: counts as an attempt. Returns this run's whipper count and the falls from this spot. */
@@ -215,7 +221,15 @@ export function recordWhipper(
   run.whippers++
   const falls = (run.fallsBySpot[info.spotId] ?? 0) + 1
   run.fallsBySpot[info.spotId] = falls
-  run.failedArcs.push(downsampleArc(info.arc))
+  const arc = downsampleArc(info.arc)
+  run.lastMissBySpot[info.spotId] = {
+    kind: info.kind,
+    launch: info.launch ? { angle: info.launch.angle, power: info.launch.power } : null,
+    bumped: info.bumped === true,
+    gusted: info.gusted === true,
+    arc,
+  }
+  run.failedArcs.push(arc)
   if (run.failedArcs.length > MAX_STORED_ARCS) run.failedArcs.splice(0, run.failedArcs.length - MAX_STORED_ARCS)
   if (info.restId) {
     const k = run.routePath.lastIndexOf(info.restId)
@@ -256,6 +270,8 @@ export function recordSend(d: SaveData, levelId: LevelId, night: boolean, now: D
   if (levelId === SUMMIT_PITCH && !night && !d.summit.reached) {
     d.summit.reached = true
     d.summit.at = send.at
+    // Every stone after these unlocks a camp treasure (stones from earlier today don't).
+    d.summit.stonesAt = totalStones(d)
   }
   return send
 }

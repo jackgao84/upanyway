@@ -7,6 +7,7 @@
  * test mode, climbs and gear included.
  */
 import type { Page } from '@playwright/test'
+import { HALL_COPY } from '../src/screens/flops/copy'
 import { MAP_COPY } from '../src/screens/map/copy'
 import { PARENT_COPY } from '../src/screens/parent/copy'
 import {
@@ -132,6 +133,24 @@ test('test mode opens everything, records nothing, and turning it off puts it al
   await expect(treasure).toHaveClass(/is-selected/)
   expect((await readSave(page)).profile.look.gear).toHaveLength(1)
   await tap(page.locator('.layout__back'))
+  await expectRoute(page, '/camp')
+
+  // Every fall pose and every badge is on show (read-time only: her record is untouched).
+  const shown = await readSave(page)
+  await page.goto('./#/flops?tab=poses')
+  await expectRoute(page, '/flops')
+  await expect(page.locator('.pose-card')).toHaveCount(16)
+  await expect(page.locator('.pose-card.is-found')).toHaveCount(16)
+  await expect(page.locator('.pose-card.is-mystery')).toHaveCount(0)
+  await expect(page.locator('.hall__count-text')).toHaveText(HALL_COPY.poses.testMode)
+  await checkScreen(page, 'hall: test mode')
+  await page.goto('./#/badges')
+  await expectRoute(page, '/badges')
+  await expect(page.locator('.badge-card.is-earned')).toHaveCount(10)
+  await expect(page.locator('.badge-card.is-locked')).toHaveCount(0)
+  await checkScreen(page, 'badges: test mode')
+  expect(await readSave(page), 'showing them wrote nothing').toEqual(shown)
+  await page.goto('./#/camp')
   await expectRoute(page, '/camp')
 
   // Turn it off: everything is exactly as it was before.

@@ -129,12 +129,14 @@ function posesRoom(panel: HTMLElement, room: Disposer, d: SaveData): void {
   const look = d.profile.look
   const today = now()
   const total = FALL_POSES.length
-  const foundCount = FALL_POSES.filter((p) => d.poses[p.id]).length
+  // Test mode puts every pose on show (read-time only: nothing is written to her record).
+  const onShow = (id: string) => !!d.poses[id] || d.testMode
+  const foundCount = FALL_POSES.filter((p) => onShow(p.id)).length
 
   const tally = h(
     'div',
     { class: 'hall__tally', role: 'img', 'aria-label': c.found(foundCount, total) },
-    ...FALL_POSES.map((p) => h('span', { class: 'hall__tally-dot' + (d.poses[p.id] ? ' is-found' : '') })),
+    ...FALL_POSES.map((p) => h('span', { class: 'hall__tally-dot' + (onShow(p.id) ? ' is-found' : '') })),
   )
   const intro = h(
     'div',
@@ -143,7 +145,7 @@ function posesRoom(panel: HTMLElement, room: Disposer, d: SaveData): void {
     h(
       'div',
       { class: 'hall__count' },
-      h('span', { class: 'hall__count-text' }, foundCount === total ? c.allFound(total) : c.found(foundCount, total)),
+      h('span', { class: 'hall__count-text' }, d.testMode ? c.testMode : foundCount === total ? c.allFound(total) : c.found(foundCount, total)),
       tally,
     ),
   )
@@ -153,8 +155,8 @@ function posesRoom(panel: HTMLElement, room: Disposer, d: SaveData): void {
   for (const p of FALL_POSES) {
     const rec = d.poses[p.id]
     const canvas = h('canvas', { class: 'pose-card__canvas', 'aria-hidden': 'true' })
-    if (rec) {
-      const fresh = isToday(rec.firstAt, today)
+    if (onShow(p.id)) {
+      const fresh = !!rec && isToday(rec.firstAt, today)
       const card = h(
         'button',
         { type: 'button', class: 'pose-card is-found', 'aria-label': c.open(p.name) },
@@ -164,7 +166,7 @@ function posesRoom(panel: HTMLElement, room: Disposer, d: SaveData): void {
           { class: 'pose-card__words' },
           h('span', { class: 'pose-card__name' }, p.name),
           h('span', { class: 'pose-card__text' }, p.description),
-          h('span', { class: 'pose-card__times' }, c.times(Math.max(1, rec.count))),
+          rec ? h('span', { class: 'pose-card__times' }, c.times(Math.max(1, rec.count))) : null,
         ),
       )
       onTap(card, () => openPose(p, d))
@@ -196,9 +198,9 @@ function posesRoom(panel: HTMLElement, room: Disposer, d: SaveData): void {
 function openPose(p: FallPoseInfo, d: SaveData): void {
   const c = HALL_COPY.poses
   const rec = d.poses[p.id]
-  if (!rec) return
+  if (!rec && !d.testMode) return
   const canvas = h('canvas', { class: 'pose-modal__canvas', 'aria-hidden': 'true' })
-  const when = dayPhrase(rec.firstAt, now())
+  const when = rec ? dayPhrase(rec.firstAt, now()) : ''
   let stop: (() => void) | null = null
   modal({
     title: p.name,
@@ -208,13 +210,15 @@ function openPose(p: FallPoseInfo, d: SaveData): void {
     art: h('div', { class: 'pose-modal__pic' }, canvas),
     body: [
       h('p', { class: 'pose-modal__text' }, p.description),
-      h(
-        'p',
-        { class: 'pose-modal__facts' },
-        c.count(Math.max(1, rec.count)),
-        when ? h('br') : null,
-        when ? c.firstFound(when) : null,
-      ),
+      rec
+        ? h(
+            'p',
+            { class: 'pose-modal__facts' },
+            c.count(Math.max(1, rec.count)),
+            when ? h('br') : null,
+            when ? c.firstFound(when) : null,
+          )
+        : null,
     ],
     actions: [{ label: c.close, variant: 'secondary' }],
     onClose: () => {

@@ -5,9 +5,11 @@
  * the other; a soft line joins the forecasts and another joins the real weather, so the shape of
  * "forecasts come in stormier" shows without a single number to add up.
  *
- * Plain DOM + one inline SVG for the lines. Columns are big buttons (the whole column, ≥ 96 px wide)
- * that open that brave thing's story. Few columns stretch to fill the card; many scroll sideways,
- * starting at the newest.
+ * Plain DOM + one inline SVG for the lines. Columns are big buttons (the whole column, ≥ 64 px wide)
+ * that open that brave thing's story. Few columns stretch to fill the card (on a phone a column
+ * narrows to 64 px before anything scrolls); many scroll sideways, starting at the newest, with a
+ * whole column at each edge and a soft fade on any edge that has more beyond it. Each day's name
+ * sits once under all of that day's columns.
  */
 import { dayKey, daysBetween } from '../../model/clock'
 import { pressable } from '../../ui/components'
@@ -23,6 +25,9 @@ const H = 250
 const PAD_Y = 30
 const BUBBLE = 44
 const COL_MIN = 100
+/** On a narrow card (a phone) columns may shrink this far before the chart scrolls. */
+const COL_MIN_NARROW = 64
+const NARROW_PX = 420
 const COL_MAX = 156
 const PAD_X = 10
 
@@ -56,7 +61,8 @@ export function weatherChart(entries: readonly WeatherEntry[], now: Date, onPick
   const lines = svg('svg', { class: 'wx-chart__lines', 'aria-hidden': 'true', focusable: 'false' })
   const days = h('div', { class: 'wx-chart__days', 'aria-hidden': 'true' })
   const track = h('div', { class: 'wx-chart__track', style: `height: ${H}px` }, lines)
-  let lastDay = ''
+  // One label per run of columns on the same day ("Today" under all of today's brave things).
+  const dayRuns: { label: string; from: number; count: number }[] = []
   const cols = entries.map((e, i) => {
     const bubble = (kind: 'forecast' | 'really', level: number) =>
       h(
@@ -79,11 +85,21 @@ export function weatherChart(entries: readonly WeatherEntry[], now: Date, onPick
     col.addEventListener('click', () => onPick(e.id))
     track.appendChild(col)
     const label = shortDay(e.at, now)
-    days.appendChild(h('span', { class: 'wx-chart__day' }, label === lastDay && i > 0 ? '' : label))
-    lastDay = label
+    const run = dayRuns[dayRuns.length - 1]
+    if (run && run.label === label) run.count++
+    else dayRuns.push({ label, from: i, count: 1 })
     return col
   })
+  const dayEls = dayRuns.map((r) => days.appendChild(h('span', { class: 'wx-chart__day' }, r.label)))
   const scroll = h('div', { class: 'wx-chart__scroll' }, track, days)
+  const frame = h('div', { class: 'wx-chart__frame' }, scroll)
+  /** A soft fade on each edge that has more chart beyond it. */
+  const edges = () => {
+    const max = scroll.scrollWidth - scroll.clientWidth
+    frame.classList.toggle('has-left', max > 1 && scroll.scrollLeft > 1)
+    frame.classList.toggle('has-right', max > 1 && scroll.scrollLeft < max - 1)
+  }
+  scroll.addEventListener('scroll', edges, { passive: true })
   const axis = h(
     'div',
     { class: 'wx-chart__axis', 'aria-hidden': 'true', style: `height: ${H}px` },
@@ -95,7 +111,7 @@ export function weatherChart(entries: readonly WeatherEntry[], now: Date, onPick
     'div',
     { class: 'wx-chart', role: 'group', 'aria-label': c.chartLabel(n) },
     axis,
-    scroll,
+    frame,
   )
 
   let width = -1
@@ -105,7 +121,14 @@ export function weatherChart(entries: readonly WeatherEntry[], now: Date, onPick
     const avail = scroll.clientWidth
     if (!avail || avail === width) return
     width = avail
-    const col = Math.max(COL_MIN, Math.min(COL_MAX, (avail - 2 * PAD_X) / Math.max(1, n)))
+    const colMin = avail < NARROW_PX ? COL_MIN_NARROW : COL_MIN
+    let col = Math.max(colMin, Math.min(COL_MAX, (avail - 2 * PAD_X) / Math.max(1, n)))
+    if (n * col + 2 * PAD_X > avail) {
+      // It scrolls: size the columns so the view holds a whole number of them when it rests at
+      // the newest end (no bubble cut in half at the left edge).
+      const k = Math.max(1, Math.floor((avail - PAD_X) / colMin))
+      col = (avail - PAD_X) / k
+    }
     const trackW = Math.max(avail, Math.round(n * col + 2 * PAD_X))
     track.style.width = `${trackW}px`
     days.style.width = `${trackW}px`
@@ -162,16 +185,17 @@ export function weatherChart(entries: readonly WeatherEntry[], now: Date, onPick
       el.style.left = `${Math.round(PAD_X + i * col)}px`
       el.style.width = `${Math.round(col)}px`
     })
-    Array.from(days.children).forEach((el, i) => {
-      const s = (el as HTMLElement).style
-      s.left = `${Math.round(PAD_X + i * col)}px`
-      s.width = `${Math.round(col)}px`
+    dayRuns.forEach((r, i) => {
+      const s = dayEls[i].style
+      s.left = `${Math.round(PAD_X + r.from * col)}px`
+      s.width = `${Math.round(r.count * col)}px`
     })
     // Start at the newest (the right-hand end).
     if (first) {
       first = false
       scroll.scrollLeft = trackW - avail
     }
+    edges()
   }
 
   let ro: ResizeObserver | null = null

@@ -64,24 +64,6 @@
   font-weight: 900;
   line-height: 1.3;
 }
-.wx-sign__summary {
-  padding-left: 64px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 22px;
-}
-.wx-sign__line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--ink-soft);
-  font-size: var(--fs-lg);
-  font-weight: 750;
-}
-.wx-sign__line strong {
-  color: var(--ink);
-  font-weight: 900;
-}
 
 /* ------------------------------------------------------------------------------------------ */
 /* The timeline */
@@ -168,6 +150,38 @@
   margin-left: -4px;
   border-radius: 4px;
   background: linear-gradient(180deg, #9aa3b5, #c9d3e2 40%, #fde3a0 75%, #f9c54a);
+}
+/* The scroller's frame: a soft fade on an edge with more chart beyond it (a cue that it scrolls). */
+.wx-chart__frame {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.wx-chart__frame::before,
+.wx-chart__frame::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  width: 34px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s var(--ease-out);
+}
+.wx-chart__frame::before {
+  left: 0;
+  border-radius: var(--r-md) 0 0 var(--r-md);
+  background: linear-gradient(90deg, var(--card), rgba(255, 252, 245, 0));
+}
+.wx-chart__frame::after {
+  right: 0;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: linear-gradient(270deg, var(--card), rgba(255, 252, 245, 0));
+}
+.wx-chart__frame.has-left::before,
+.wx-chart__frame.has-right::after {
+  opacity: 1;
 }
 .wx-chart__scroll {
   flex: 1 1 auto;
@@ -390,9 +404,6 @@
   .wx-sign__vane {
     width: 44px;
     height: 44px;
-  }
-  .wx-sign__summary {
-    padding-left: 0;
   }
   .wx-sign__caption {
     font-size: var(--fs-lg);

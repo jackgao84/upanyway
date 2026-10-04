@@ -3,7 +3,7 @@
 
 .parent .layout__body {
   gap: 22px;
-  padding-bottom: 40px;
+  padding-bottom: max(40px, calc(var(--safe-bottom) + 16px));
 }
 
 .pp-page-lead {

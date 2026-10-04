@@ -7,8 +7,9 @@
  * - day:   'sent' (a little flag) · 'open' (glowing, tap to climb) · 'hidden' (in soft fog).
  * - night: every pitch is open (night climbs open after the summit, or in test mode); 'sent' means
  *          sent by moonlight.
- * Her climber marker stands at her highest open (or sent) pitch by day; at night, at the first
- * pitch she hasn't climbed by moonlight yet (the last one once she has climbed them all).
+ * Her climber marker stands, by day, at the lowest open pitch she is partway up (a run waiting at a
+ * camp) or hasn't sent yet (the highest open pitch once every open one is sent); at night, at the
+ * first pitch she hasn't climbed by moonlight yet (the last one once she has climbed them all).
  */
 import { PITCHES } from '../../game/levels'
 import type { LevelId, ZoneId } from '../../game/types'
@@ -53,10 +54,15 @@ export function trailMarkers(d: SaveData, night: boolean): PitchMarker[] {
     at = out.findIndex((m) => m.state !== 'sent')
     if (at < 0) at = out.length - 1
   } else {
-    at = -1
-    out.forEach((m, i) => {
-      if (m.state !== 'hidden') at = i
-    })
+    // The pitch she is on (a run waiting at a camp) or the next one she hasn't sent, lowest first,
+    // so the big Climb button never walks her away from a run or skips a pitch. Once every open
+    // pitch is sent: the highest open one.
+    at = out.findIndex((m) => m.state !== 'hidden' && (m.state !== 'sent' || !!d.pitches[m.id]?.run))
+    if (at < 0) {
+      out.forEach((m, i) => {
+        if (m.state !== 'hidden') at = i
+      })
+    }
     if (at < 0) at = 0
   }
   out[at].current = true

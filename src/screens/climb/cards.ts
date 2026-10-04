@@ -131,12 +131,15 @@ export function flopPanel(
   }
 }
 
-/** A gentle card for a new badge. */
-export function badgeCard(id: BadgeId): ToastHandle | null {
+/**
+ * A gentle card for a new badge. On camp screens (`place: 'bottom'`) it rises from the bottom, so
+ * it never covers the goat's bubble.
+ */
+export function badgeCard(id: BadgeId, place: 'top' | 'bottom' = 'top'): ToastHandle | null {
   const badge = badgeById(id)
   if (!badge) return null
   if (audio.isRunning()) sfx.chime()
-  return toast(badge.description, { title: CLIMB_COPY.newBadge(badge.name), icon: BADGE_ICONS[id] ?? 'badge', tone: 'sun' })
+  return toast(badge.description, { title: CLIMB_COPY.newBadge(badge.name), icon: BADGE_ICONS[id] ?? 'badge', tone: 'sun', place })
 }
 
 /** Queue a card for each new badge. */

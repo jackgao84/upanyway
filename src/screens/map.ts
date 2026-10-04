@@ -17,13 +17,12 @@ import { markWordSeen, now, releaseCanvas, save, sizeCanvas } from '../app/conte
 import type { Screen } from '../app/router'
 import type { LevelId } from '../game/types'
 import { isSunset } from '../model/climbTime'
-import { scriptedLine } from '../model/goatVoice'
 import { isGoatOut, isNightOpen } from '../model/unlocks'
 import { button, modal, screenLayout, segmented, type OverlayHandle } from '../ui/components'
 import { clear, h } from '../ui/dom'
 import { icon } from '../ui/icons'
 import { term } from '../ui/term'
-import { sunsetPrompt, type Prompt } from './climb/prompts'
+import { sunsetLine, sunsetPrompt, type Prompt } from './climb/prompts'
 import { finalePath } from './finale'
 import { MAP_COPY, ZONE_NAMES } from './map/copy'
 import { paintMap } from './map/paint'
@@ -45,6 +44,9 @@ let lastNight = false
 
 /** Labels beside the side markers need this much map width (narrower: the footer names the pitch). */
 const LABELS_FROM_PX = 540
+
+/** Room kept between her marker (with its "you are here" pin) and the footer. */
+const MARKER_ROOM_PX = 56
 
 const pct = (x: number) => `${(x * 100).toFixed(3)}%`
 
@@ -76,7 +78,7 @@ export const mapScreen: Screen = (root, ctx) => {
       return
     }
     if (isSunset(save(), now())) {
-      prompt = sunsetPrompt({ look: d.profile.look, name: d.profile.goatName, out: night && goatOut }, scriptedLine('sunset'), () =>
+      prompt = sunsetPrompt({ look: d.profile.look, name: d.profile.goatName, out: night && goatOut }, sunsetLine(now()), () =>
         ctx.navigate('/camp'),
       )
       return
@@ -278,8 +280,10 @@ export const mapScreen: Screen = (root, ctx) => {
     back: () => ctx.back('/camp'),
     backLabel: 'Back to camp',
     top: toggle ? h('div', { class: 'trailmap__toggle' }, toggle) : undefined,
-    body: [intro, frame],
-    footer: [footerButton],
+    // The intro (with the first-time card for "pitch") rides in the footer, so scrolling the map to
+    // her marker never hides it under the header.
+    body: [frame],
+    footer: [intro, footerButton],
   })
   root.appendChild(layout)
   buildLayer()
@@ -287,10 +291,13 @@ export const mapScreen: Screen = (root, ctx) => {
   // Paint once it has a size, and again whenever the size changes (rotation, split view).
   let raf = requestAnimationFrame(() => {
     paint()
-    // Start with her marker in view.
+    // Start with her marker in view, scrolling only as far as that needs (none on an iPad held
+    // upright), so the top of the map and Sky Lake stay in sight whenever they can.
     const cur = markers.findIndex((m) => m.current)
     const y = frame.offsetTop + points[Math.max(0, cur)].v * frame.clientHeight
-    root.scrollTop = Math.max(0, y - root.clientHeight * 0.5)
+    const footerH = root.querySelector<HTMLElement>('.layout__footer')?.offsetHeight ?? 0
+    const lowest = root.clientHeight - footerH - MARKER_ROOM_PX
+    if (y > lowest) root.scrollTop = y - lowest
   })
   let lastW = frame.clientWidth
   const onResize = () => {

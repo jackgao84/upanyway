@@ -19,6 +19,8 @@ export const HALL_COPY = {
     intro: 'Every {whipper} strikes a pose. Here are the ones you’ve found.',
     found: (n: number, total: number) => `${n} of ${total} found`,
     allFound: (total: number) => `All ${total} found! A full set of flops.`,
+    /** Test mode (a grown-up looking around): every pose is on show, none of them counted. */
+    testMode: 'Test mode: every pose is on show.',
     mysteryName: '???',
     mysteryText: 'A mystery flop.',
     mysteryLabel: 'A mystery flop, not found yet.',
@@ -30,7 +32,7 @@ export const HALL_COPY = {
     close: 'Back to the Hall',
   },
   mine: {
-    intro: 'Brave things that didn’t go to plan. You tried them anyway.',
+    intro: 'Brave things that didn’t go to plan.',
     learned: 'What I learned:',
     happened: 'What happened:',
     tried: (date: string) => `Tried on ${date}`,
@@ -61,9 +63,9 @@ export const LETTERS_COPY = {
   spotted: 'Spotted!',
   signoff: (who: string) => `from ${who}`,
   skip: 'Tap to open it now',
-  stonePlaced: 'Its bonus stone just joined your cairn.',
-  stoneTomorrow: 'Letter stones go on one a day. Its stone joins your cairn tomorrow.',
-  stoneLater: 'Letter stones go on one a day. Its stone waits beside your cairn for its turn.',
+  stonePlaced: 'This letter’s bonus stone just joined your cairn.',
+  stoneTomorrow: 'Letter stones go on one a day. This letter’s stone joins your cairn tomorrow.',
+  stoneLater: 'Letter stones go on one a day. This letter’s stone waits beside your cairn for its turn.',
   waitingToo: (n: number) =>
     n === 1 ? 'A waiting stone joined your cairn too.' : `${n} waiting stones joined your cairn too.`,
   seeCairn: 'See your cairn',
@@ -82,9 +84,9 @@ export const LETTERS_COPY = {
 /** How to earn each badge: about trying, never about speed, streaks or perfect runs. */
 export const BADGE_HOW: Record<BadgeId, string> = {
   'first-whipper': 'Take your first {whipper}: fall, and let the rope catch you.',
-  'attempts-10': 'Make 10 attempts on the mountain. Falls count as much as landings.',
-  'attempts-50': 'Make 50 attempts on the mountain. Every leap counts, landed or not.',
-  'attempts-100': 'Make 100 attempts on the mountain. Every leap counts, landed or not.',
+  'attempts-10': 'Make 10 attempts: every fall counts, and so does every send.',
+  'attempts-50': 'Make 50 attempts on the mountain. Every fall and every send counts.',
+  'attempts-100': 'Make 100 attempts on the mountain. Every fall and every send counts.',
   'big-leap': 'Try a Big Leap on the mountain. Landed or not, trying it counts.',
   oops: 'Do an Oops Mission: a small mistake on purpose. They’re in the idea cards.',
   'still-here': 'If a brave thing flops, log it anyway. It still counts.',
@@ -96,8 +98,10 @@ export const BADGE_HOW: Record<BadgeId, string> = {
 export const BADGES_COPY = {
   title: 'Badges',
   back: 'Back to camp',
-  intro: 'Badges are for trying things, falling off and going anyway.',
+  intro: 'Badges for tries, falls, Big Leaps and brave things.',
   have: (n: number) => (n === 1 ? '1 badge so far' : `${n} badges so far`),
+  /** Test mode (a grown-up looking around): every badge is on show, none of them earned. */
+  testMode: 'Test mode: every badge is on show.',
   earnedTitle: 'Your badges',
   notYetTitle: 'Still to find',
   earned: (when: string) => `Earned ${when}`,

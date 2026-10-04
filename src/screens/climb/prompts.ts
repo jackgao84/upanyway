@@ -4,7 +4,8 @@
  * Each is an in-DOM modal (never window.confirm); the goat says its line inside the card.
  */
 import { goatAvatar } from '../../app/context'
-import type { SpokenLine } from '../../model/goatVoice'
+import { dayKey } from '../../model/clock'
+import { goatVoice, scriptedLine, type SpokenLine } from '../../model/goatVoice'
 import type { ClimberLook } from '../../storage/schema'
 import { modal, type OverlayHandle } from '../../ui/components'
 import { h } from '../../ui/dom'
@@ -139,7 +140,23 @@ function compareArt(forecast: number, really: number): HTMLElement {
 }
 
 /** The day's climbing time is up: the goat's sunset line, then back to camp. */
-export function sunsetPrompt(goat: GoatInfo, line: SpokenLine, onCamp: () => void): Prompt {
+/** The day the goat last said the brief's sunset words. */
+let sunsetToldOn = ''
+
+/**
+ * What the goat says on the sunset card: the brief's words ("The sun's going down. The mountain will
+ * be here tomorrow.") the first time she's told that day, then one of its other sunset lines if she
+ * asks to climb again.
+ */
+export function sunsetLine(t: Date): SpokenLine {
+  const day = dayKey(t)
+  if (sunsetToldOn === day) return goatVoice().pick('sunset')
+  sunsetToldOn = day
+  return scriptedLine('sunset')
+}
+
+/** The sun's going down: one calm card (no lock icons, no sad state). `label`: its one button. */
+export function sunsetPrompt(goat: GoatInfo, line: SpokenLine, onCamp: () => void, label: string = CLIMB_COPY.sunset.camp): Prompt {
   const bubble = goatSays(goat, line)
   const sun = sunDial()
   // Half-dipped behind the hills: low enough to read as sunset, high enough to still be seen
@@ -151,7 +168,7 @@ export function sunsetPrompt(goat: GoatInfo, line: SpokenLine, onCamp: () => voi
     art: sun.el,
     dismissible: false,
     class: 'climb-prompt climb-prompt--sunset',
-    actions: [{ label: CLIMB_COPY.sunset.camp, icon: 'tent', onClick: onCamp }],
+    actions: [{ label, icon: 'tent', onClick: onCamp }],
     onClose: () => bubble.destroy(),
   })
   return { close: () => handle.close() }

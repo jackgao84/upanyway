@@ -131,3 +131,87 @@ describe('Store', () => {
     for (const key of storage.keys()) expect(key.startsWith('upanyway:')).toBe(true)
   })
 })
+
+describe('Store: two tabs on one storage', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const stored = (storage: MemoryStorage) => JSON.parse(storage.getItem(KEYS.save) as string)
+
+  it('hiding a tab that changed nothing never rewrites the save', () => {
+    const storage = new MemoryStorage()
+    storage.setItem(KEYS.save, JSON.stringify(richSave()))
+    const a = new Store(storage)
+    const b = new Store(storage)
+    b.update((d) => {
+      d.settings.muted = true
+    })
+    b.flush()
+    expect(stored(storage).settings.muted).toBe(true)
+    // Tab A is hidden (pagehide / visibilitychange): it has nothing to save.
+    a.flush()
+    expect(stored(storage).settings.muted).toBe(true)
+  })
+
+  it("a stale tab takes the other tab's write and keeps it on its next change", () => {
+    const storage = new MemoryStorage()
+    storage.setItem(KEYS.save, JSON.stringify(richSave()))
+    const a = new Store(storage)
+    const b = new Store(storage)
+    let notified = 0
+    a.subscribe(() => notified++)
+    b.update((d) => {
+      d.letters.push({ id: 'l-new', createdAt: DAY1.toISOString(), from: 'Mum', text: 'Spotted!', stoneDay: null })
+    })
+    b.flush()
+    // The browser fires 'storage' in tab A only.
+    a.externalWrite(KEYS.save, storage.getItem(KEYS.save))
+    expect(notified).toBe(1)
+    expect(a.data.letters.some((l) => l.id === 'l-new')).toBe(true)
+    a.update((d) => {
+      d.stats.whippers += 1
+    })
+    vi.runAllTimers()
+    const saved = stored(storage)
+    expect(saved.letters.some((l: { id: string }) => l.id === 'l-new')).toBe(true)
+    expect(saved.stats.whippers).toBe(richSave().stats.whippers + 1)
+  })
+
+  it('ignores other keys and removals', () => {
+    const storage = new MemoryStorage()
+    const a = new Store(storage)
+    let notified = 0
+    a.subscribe(() => notified++)
+    a.externalWrite('otherapp:save', '{}')
+    a.externalWrite(KEYS.save, null)
+    a.externalWrite(null, null)
+    expect(notified).toBe(0)
+  })
+
+  it('a failed write stays pending, so a retry writes it', () => {
+    const storage = new MemoryStorage()
+    let fail = true
+    const flaky: StorageLike = {
+      getItem: (k) => storage.getItem(k),
+      setItem: (k, v) => {
+        if (fail) throw new Error('QuotaExceededError')
+        storage.setItem(k, v)
+      },
+      removeItem: (k) => storage.removeItem(k),
+    }
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const s = new Store(flaky)
+    s.update((d) => void (d.stats.sends = 3))
+    vi.runAllTimers()
+    expect(s.lastWriteError).toContain('Quota')
+    fail = false
+    s.flush()
+    expect(s.lastWriteError).toBeNull()
+    expect(stored(storage).stats.sends).toBe(3)
+    warn.mockRestore()
+  })
+})

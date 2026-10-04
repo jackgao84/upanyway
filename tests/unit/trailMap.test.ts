@@ -40,8 +40,8 @@ describe('trail markers by day', () => {
     expect(m[2].needs).toBe(1)
     expect(m[15].needs).toBe(14)
     expect(m[0].needs).toBe(0)
-    // Her marker: the highest open pitch.
-    expect(m.filter((x) => x.current).map((x) => x.id)).toEqual(['p02'])
+    // Her marker: the first pitch she hasn't sent.
+    expect(m.filter((x) => x.current).map((x) => x.id)).toEqual(['p01'])
   })
 
   it('flags sent pitches and opens pitch n at n − 2 stones', () => {
@@ -57,13 +57,42 @@ describe('trail markers by day', () => {
     expect(m[7].state).toBe('hidden')
     expect(m[7].needs).toBe(1)
     expect(m[8].needs).toBe(2)
-    expect(m.filter((x) => x.current).map((x) => x.id)).toEqual(['p07'])
+    // The lowest open pitch not sent yet: never a jump past p02 to the highest open one.
+    expect(m.filter((x) => x.current).map((x) => x.id)).toEqual(['p02'])
   })
 
-  it('stands her marker on the summit pitch once every pitch is open, sent or not', () => {
+  it('stands her marker on the pitch she is partway up, even one she has sent before', () => {
     const d = fresh()
-    withStones(d, 14)
-    const m = trailMarkers(d, false)
+    withStones(d, 4)
+    d.pitches.p01 = { ...defaultPitchProgress(), sends: 1 }
+    d.pitches.p02 = { ...defaultPitchProgress(), sends: 1 }
+    d.pitches.p03 = { ...defaultPitchProgress(), sends: 1 }
+    expect(trailMarkers(d, false).filter((x) => x.current).map((x) => x.id)).toEqual(['p04'])
+    d.pitches.p02.run = {
+      startedAt: at(2026, 10, 3).toISOString(),
+      lastCampId: 'c1',
+      lastCampRouteIndex: 1,
+      whippers: 2,
+      failedArcs: [],
+      routeArcs: [],
+      routePath: ['c1'],
+      fallsBySpot: {},
+      lastMissBySpot: {},
+      highestRouteIndex: 1,
+      night: false,
+    }
+    expect(trailMarkers(d, false).filter((x) => x.current).map((x) => x.id)).toEqual(['p02'])
+  })
+
+  it('stands her marker on the highest open pitch once every open pitch is sent', () => {
+    const d = fresh()
+    withStones(d, 3)
+    for (const id of ['p01', 'p02', 'p03', 'p04', 'p05'] as const) d.pitches[id] = { ...defaultPitchProgress(), sends: 1 }
+    expect(trailMarkers(d, false).filter((x) => x.current).map((x) => x.id)).toEqual(['p05'])
+    const all = fresh()
+    withStones(all, 14)
+    for (const p of PITCHES) all.pitches[p.id] = { ...defaultPitchProgress(), sends: 1 }
+    const m = trailMarkers(all, false)
     expect(m.every((x) => x.state !== 'hidden')).toBe(true)
     expect(m.filter((x) => x.current).map((x) => x.id)).toEqual(['p16'])
   })

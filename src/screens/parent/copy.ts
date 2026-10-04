@@ -74,6 +74,7 @@ export const PARENT_COPY = {
       unlocks: [
         'every pitch is open, and so are night climbs',
         'all the camp treasures and gear are out',
+        'every fall pose and badge is on show',
         'the Sky Lake finale can be replayed',
         'there’s no daily climbing limit',
       ],
@@ -215,6 +216,7 @@ export const PARENT_COPY = {
     compareLabel: (forecast: number, really: number) => `Forecast ${forecast} out of 10, really ${really} out of 10`,
     noReally: 'Not said',
     forecastLine: (label: string, n: number) => `Forecast: ${label} (${n} out of 10)`,
+    worried: 'What they were worried about',
     happened: 'What happened',
     learned: 'What they learned',
     oops: 'Oops Mission',

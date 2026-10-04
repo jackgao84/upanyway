@@ -39,7 +39,7 @@ export const CAIRN_COPY = {
   /** A post-summit stone brought something new. */
   unlockTitle: 'New!',
   unlockGear: (name: string) => `${name}. Try it on in the Wardrobe.`,
-  unlockDecoration: (name: string) => `${name}. It's waiting at camp.`,
+  unlockDecoration: (name: string) => `${name}. It’s waiting at camp.`,
 } as const
 
 export const STORY_COPY = {
@@ -89,15 +89,9 @@ export const WEATHER_COPY = {
   legendReally: 'How it really was',
   stormy: 'Stormy',
   sunny: 'Sunny',
-  /** "Forecasts: mostly Rainy. Really: mostly Sunny." */
-  forecasts: 'Forecasts:',
-  really: 'Really:',
-  mostly: (word: string) => `mostly ${word}`,
-  mix: (a: string, b: string) => `a mix of ${a} and ${b}`,
-  allSorts: 'all sorts of weather',
   columnLabel: (text: string, f: number, fl: string, r: number, rl: string) =>
     `${text}. Forecast ${f}, ${fl}. Really ${r}, ${rl}.`,
-  tapHint: 'Tap a day to read that brave thing again.',
+  tapHint: 'Tap a weather to read that brave thing again.',
   listTitle: 'Your forecasts',
   back: 'Back',
   today: 'Today',

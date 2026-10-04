@@ -3,7 +3,7 @@
  * Scared is allowed and named, going anyway is the move; no banned phrases, no generic praise, no
  * disappointment; ≤ 12 words; at most one moral per camp arrival; no back-to-back repeats.
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
@@ -19,7 +19,7 @@ import {
 import type { HintClass } from '../../src/game/beta'
 import type { WhipperKind } from '../../src/game/events'
 import type { LooksScaryKind, ZoneId } from '../../src/game/types'
-import { GoatVoice, hintMoment, scriptedLine, typeset, type GoatContext, type GoatVars } from '../../src/model/goatVoice'
+import { GoatVoice, hintMoment, scriptedLine, shortThing, typeset, type GoatContext, type GoatVars } from '../../src/model/goatVoice'
 import { mulberry32 } from '../../src/model/rng'
 import { MAX_GOAT_WORDS, bannedIn, plain, wordCount } from './voice'
 
@@ -29,8 +29,9 @@ const SAMPLE: Required<GoatVars> = {
   n: 12,
   goat: 'Captain Fluff',
   mountain: 'Mount Wobbly Top',
+  thing: 'Put my hand up to answer a question in assembly',
 }
-const KNOWN_SLOTS = ['pose', 'n', 'goat', 'mountain']
+const KNOWN_SLOTS = ['pose', 'n', 'goat', 'mountain', 'thing']
 
 /** The groups the brief names: at least four lines each. */
 const BRIEF_GROUPS: GoatMoment[] = [
@@ -97,7 +98,6 @@ const ALL_MOMENTS: GoatMoment[] = [
   'betaOffer',
   'smaller',
   'planSaved',
-  'letter',
 ]
 const SCARY_KINDS: LooksScaryKind[] = ['bigleap', 'eyes', 'rumble', 'bridge', 'shadow']
 const ZONES: ZoneId[] = ['meadow', 'hollow', 'crumble', 'ridge', 'cloud', 'summit']
@@ -133,6 +133,13 @@ const GENERIC_PRAISE = [
 ]
 /** Disappointment, pity, failure words: a flop is information, not a verdict. */
 const DISAPPOINTED = /\b(aw+|unlucky|shame|bummer|sadly|sad|sorry|darn|whoops|fail|fails|failed|failure|disappoint\w*|so close|too bad|never ?mind|nearly had|almost had|better luck|what a pity)\b/
+/**
+ * Teach by doing: only a tagged `moral` camp line may state a general lesson; every other line talks
+ * about this try ("the chalk shows…"), never "attempts are how mountains get climbed".
+ */
+const GENERALISING = /\b(is|are) how\b|means we|taught us|every (one|go|stone)\b|real climbers|how (everybody|everyone|climbers) learn|that'?s how (\w+ )?(learn|climbers)/i
+/** Lines that tell her the feeling is wrong (brief: reject "Don't be scared!" and its cousins). */
+const FEELING_WRONG = /overreact|ignore (me|it|the)|silly to be scared|no need to be|nothing to worry|don'?t worry|calm down|scaredy|not scary at all/i
 /** Orders and nagging: hints are offers. */
 const NAGGING = ['you should', 'you must', 'you need to', 'you have to', 'remember to', 'try harder', "don't forget"]
 
@@ -141,7 +148,9 @@ function slotsOf(text: string): string[] {
 }
 
 function fillSample(text: string): string {
-  return text.replace(/\{(\w+)\}/g, (m, k: string) => (k in SAMPLE ? String(SAMPLE[k as keyof GoatVars]) : m))
+  return text.replace(/\{(\w+)\}/g, (m, k: string) =>
+    k === 'thing' ? (shortThing(SAMPLE.thing) ?? m) : k in SAMPLE ? String(SAMPLE[k as keyof GoatVars]) : m,
+  )
 }
 
 /** Every scripted string as [key, text]. */
@@ -160,12 +169,27 @@ const LINES: [string, GoatLine][] = GOAT_MOMENTS.flatMap((m) =>
 )
 const TEXTS: [string, string][] = [...LINES.map(([p, l]): [string, string] => [p, l.text]), ...scriptedTexts()]
 
-/** A line said with no slots filled and no context. */
+/** A line the picker can say with no slots filled and no context. */
 function isPlain(l: GoatLine): boolean {
-  return !l.moral && !l.zone && !l.scary && !l.whipper && !l.pack && !l.out && slotsOf(l.text).length === 0
+  return !l.moral && !l.scripted && !l.zone && !l.scary && !l.whipper && !l.pack && !l.out && slotsOf(l.text).length === 0
 }
 function untagged(l: GoatLine): boolean {
   return !l.moral && !l.zone && !l.scary && !l.whipper && !l.out
+}
+/** Moments said only as their scripted story beats (the picker never draws them). */
+const SCRIPTED_ONLY: GoatMoment[] = ALL_MOMENTS.filter((m) => GOAT_LINES[m].every((l) => l.scripted))
+/** Moments the line picker draws from. */
+const PICKED: GoatMoment[] = ALL_MOMENTS.filter((m) => !SCRIPTED_ONLY.includes(m))
+
+/** Every .ts file under a folder. */
+function sourceFiles(dir: string): string[] {
+  const out: string[] = []
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name)
+    if (statSync(p).isDirectory()) out.push(...sourceFiles(p))
+    else if (p.endsWith('.ts')) out.push(p)
+  }
+  return out
 }
 
 function voice(seed = 1): GoatVoice {
@@ -210,7 +234,24 @@ describe('goat lines: groups', () => {
   })
 
   it('has a line for every moment that needs no slots and no context', () => {
-    for (const m of ALL_MOMENTS) expect(GOAT_LINES[m].some(isPlain), m).toBe(true)
+    for (const m of PICKED) expect(GOAT_LINES[m].some(isPlain), m).toBe(true)
+  })
+
+  it('says every group: picked groups are picked somewhere, scripted-only groups never are', () => {
+    const src = join(__dirname, '..', '..', 'src')
+    const picked = new Set<string>()
+    for (const file of sourceFiles(src)) {
+      const text = readFileSync(file, 'utf8')
+      for (const line of text.split('\n')) {
+        if (!/\bpick\(/.test(line)) continue
+        for (const m of line.matchAll(/'(\w+)'/g)) picked.add(m[1])
+      }
+    }
+    // The hint groups are picked through hintMoment(classifyMiss(...)) on the climb screen.
+    for (const m of HINT_GROUPS) picked.add(m)
+    for (const m of PICKED) expect(picked.has(m), `${m} has lines the picker could say, but nothing picks it`).toBe(true)
+    for (const m of SCRIPTED_ONLY) expect(picked.has(m), `${m} is scripted only, so nothing should pick it`).toBe(false)
+    expect(SCRIPTED_ONLY.sort()).toEqual(['firstCamp', 'meet', 'rope', 'stoneWaiting'])
   })
 
   it('uses moods the bubble knows', () => {
@@ -262,6 +303,37 @@ describe('goat lines: the voice rules', () => {
     }
   })
 
+  it('teaches by doing: no general lesson outside the tagged camp morals', () => {
+    // The brief's own framing of beta, offered with the hint (never framed as giving up).
+    const BRIEF_WORDS = ['asking for beta is what real climbers do. tip?']
+    for (const [p, l] of LINES) if (!l.moral && !BRIEF_WORDS.includes(plain(l.text))) expect(plain(l.text), p).not.toMatch(GENERALISING)
+    for (const [p, text] of scriptedTexts()) expect(plain(text), p).not.toMatch(GENERALISING)
+  })
+
+  it('never tells her the feeling is wrong, or to ignore it', () => {
+    for (const [p, text] of TEXTS) expect(plain(fillSample(text)), p).not.toMatch(FEELING_WRONG)
+  })
+
+  it('names the brave thing when a stone goes on, never how scary it was or how it went', () => {
+    const withThing = GOAT_LINES.stoneAdded.filter((l) => slotsOf(l.text).includes('thing'))
+    expect(withThing.length).toBeGreaterThanOrEqual(3)
+    expect(withThing.length * 2).toBeGreaterThanOrEqual(GOAT_LINES.stoneAdded.length)
+    for (const [p, l] of LINES) if (slotsOf(l.text).includes('thing')) expect(p.split('[')[0], p).toBe('stoneAdded')
+    expect(shortThing('Order my own food at the canteen.')).toBe('Order my own food at…')
+    expect(shortThing("Say 'I don't know' out loud")).toBe('Say ’I don’t know’ out…')
+    expect(shortThing('  Ask for help.  ')).toBe('Ask for help')
+    expect(shortThing('   ')).toBeNull()
+    const v = voice(9)
+    let named = 0
+    for (let k = 0; k < 40; k++) {
+      const t = v.line('stoneAdded', { n: 4, thing: 'Jump in the deep end' })
+      expect(t).not.toMatch(/[{}]/)
+      if (t.includes('Jump in the deep end')) named++
+    }
+    expect(named).toBeGreaterThan(10)
+    for (let k = 0; k < 20; k++) expect(v.line('stoneAdded', { n: 4 })).not.toMatch(/[“”]/)
+  })
+
   it('never uses a personal name slot other than the goat and mountain she named', () => {
     for (const [p, text] of TEXTS) expect(text, p).not.toMatch(/\{(name|names|mum|dad|kid|child)\}/i)
   })
@@ -307,7 +379,7 @@ describe('goat lines: the voice rules', () => {
   })
 
   it('always has something to say when the goat climbs beside her, for every kind of fall', () => {
-    for (const m of ALL_MOMENTS) expect(GOAT_LINES[m].some((l) => isPlain(l) || (l.out && !l.moral)), m).toBe(true)
+    for (const m of PICKED) expect(GOAT_LINES[m].some((l) => isPlain(l) || (l.out && !l.moral)), m).toBe(true)
     for (const w of WHIPPERS) {
       for (const m of ['fall', 'repeatFall', 'bigLeapMissed'] as const) {
         expect(GOAT_LINES[m].some((l) => isPlain(l) || l.whipper === w), `${m}/${w}`).toBe(true)
@@ -369,7 +441,7 @@ describe('GoatVoice', () => {
   it('never says the same line twice in a row', () => {
     for (const seed of [1, 2, 3, 99]) {
       const v = voice(seed)
-      for (const m of ALL_MOMENTS) {
+      for (const m of PICKED) {
         const fitting = GOAT_LINES[m].filter(isPlain).length
         if (fitting < 2) continue
         let prev = ''
@@ -535,7 +607,7 @@ describe('GoatVoice', () => {
 
   it('says curly apostrophes and a known mood', () => {
     const v = voice(4)
-    for (const m of ALL_MOMENTS) {
+    for (const m of PICKED) {
       for (let k = 0; k < 10; k++) {
         const s = v.pick(m, SAMPLE, { campKey: `k${k}` })
         expect(s.text, m).not.toContain("'")
@@ -550,7 +622,7 @@ describe('GoatVoice', () => {
     const a = voice(42)
     const b = voice(42)
     for (let k = 0; k < 100; k++) {
-      const m = ALL_MOMENTS[k % ALL_MOMENTS.length]
+      const m = PICKED[k % PICKED.length]
       expect(a.line(m, SAMPLE)).toBe(b.line(m, SAMPLE))
     }
   })

@@ -11,7 +11,7 @@ export const p04: Level = {
   index: 4,
   zone: 'hollow',
   title: 'Hanging Roots',
-  height: 1900,
+  height: 2000,
   elements: [
     camp('c0', 20, 40, 170),
     ledge('a1', 155, 130, 120),
@@ -33,11 +33,12 @@ export const p04: Level = {
     ledge('d3', 220, 1520, 120),
     camp('c3', 90, 1610, 170),
     ledge('e1', 230, 1700, 130),
-    camp('top', 110, 1790, 170),
+    ledge('e2', 120, 1790, 120),
+    camp('top', 220, 1880, 170),
   ],
   route: [
     'c0', 'a1', 'a2', 'a3', 'h1', 'a4', 'c1', 'h2', 'b1', 'b2', 'b3', 'b4', 'c2',
-    'h3', 'd1', 'd2', 'h4', 'd3', 'c3', 'e1', 'top',
+    'h3', 'd1', 'd2', 'h4', 'd3', 'c3', 'e1', 'e2', 'top',
   ],
   decor: [
     { kind: 'sign', x: 170, y: 40, text: 'Pitch 4' },

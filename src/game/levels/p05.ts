@@ -10,7 +10,7 @@ export const p05: Level = {
   id: 'p05',
   index: 5,
   zone: 'hollow',
-  title: "Who's in the Cave?",
+  title: 'Who’s in the Cave?',
   height: 1960,
   elements: [
     camp('c0', 200, 40, 170),
@@ -33,12 +33,13 @@ export const p05: Level = {
     camp('c3', 60, 1540, 170),
     ledge('e1', 230, 1630, 120),
     ledge('e2', 110, 1720, 120),
-    camp('top', 200, 1810, 170),
+    ledge('e3', 230, 1810, 120),
+    camp('top', 100, 1900, 170),
     hold('secret', 24, 1260, { style: 'root', hidden: true }),
   ],
   route: [
     'c0', 'a1', 'h1', 'a2', 'a3', 'a4', 'c1', 'b1', 'b2', 'lip', 'b3', 'c2',
-    'd1', 'h2', 'd2', 'd3', 'h3', 'c3', 'e1', 'e2', 'top',
+    'd1', 'h2', 'd2', 'd3', 'h3', 'c3', 'e1', 'e2', 'e3', 'top',
   ],
   looksScary: { kind: 'eyes', forecastAt: 'c1', revealAt: 'lip', x: 362, y: 880 },
   decor: [

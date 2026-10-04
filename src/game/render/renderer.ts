@@ -283,8 +283,8 @@ export class Renderer {
     if (chalkN !== this.seenChalk || chalkAt !== this.seenChalkAt) {
       this.seenChalk = chalkN
       this.seenChalkAt = chalkAt
-      // A whipper: a puff of chalk from her hands where it happened.
-      p.chalkPuff(session.body.x, session.body.y + 34, 9, 1)
+      // A whipper: a puff of chalk from her hands where it happened (a hop just leaves its line).
+      if (!session.chalk[chalkN - 1]?.hop) p.chalkPuff(session.body.x, session.body.y + 34, 9, 1)
     }
     if (session.lastLandAt !== this.seenLand) {
       this.seenLand = session.lastLandAt

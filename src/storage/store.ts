@@ -36,6 +36,11 @@ export class Store {
   private doc: SaveData
   private listeners = new Set<Listener>()
   private timer: ReturnType<typeof setTimeout> | null = null
+  /**
+   * True while the live document holds changes not yet written. flush() writes only then, so hiding
+   * a tab that changed nothing never writes its (possibly stale) copy over another tab's save.
+   */
+  private dirty = false
   /** How the document was loaded (fresh / migrated / recovered from backup / newer-version notice). */
   readonly loadInfo: LoadResult['info']
   /** Set when the stored save could not be written (e.g. storage full). Shown in parent mode. */
@@ -49,6 +54,7 @@ export class Store {
     this.doc = result.data
     this.loadInfo = result.info
     if (result.info.kind === 'migrated' || result.info.kind === 'recovered' || result.info.kind === 'fresh') {
+      this.dirty = true
       this.flush()
     }
   }
@@ -61,6 +67,7 @@ export class Store {
   /** Mutate the document. Saves (debounced) and notifies subscribers. */
   update(fn: (draft: SaveData) => void): void {
     fn(this.doc)
+    this.dirty = true
     this.schedule()
     this.emit()
   }
@@ -68,6 +75,7 @@ export class Store {
   /** Replace the whole document (import / reset). Writes immediately. */
   replace(next: SaveData): void {
     this.doc = next
+    this.dirty = true
     this.flush()
     this.emit()
   }
@@ -78,19 +86,41 @@ export class Store {
     this.replace(defaultSave(now))
   }
 
+  /**
+   * Another tab or window of the app (same origin, same storage) wrote the save: take its copy, so
+   * this one never writes stale data back over it. Wired to the window 'storage' event in main.ts
+   * (the browser fires it only in the OTHER tabs). A change this tab made in the last moment before
+   * (still debounced) gives way to the other tab's newer write.
+   */
+  externalWrite(key: string | null, newValue: string | null): void {
+    if (key !== KEYS.save || newValue === null) return
+    if (this.timer) {
+      clearTimeout(this.timer)
+      this.timer = null
+    }
+    this.doc = loadSave(this.storage).data
+    this.dirty = false
+    this.emit()
+  }
+
   subscribe(fn: Listener): () => void {
     this.listeners.add(fn)
     return () => this.listeners.delete(fn)
   }
 
-  /** Write now (called on pagehide / visibilitychange and by replace). */
+  /**
+   * Write any pending change now (called on pagehide / visibilitychange and by replace). Does nothing
+   * when the document is unchanged since the last successful write.
+   */
   flush(): void {
     if (this.timer) {
       clearTimeout(this.timer)
       this.timer = null
     }
+    if (!this.dirty) return
     try {
       this.storage.setItem(KEYS.save, JSON.stringify(this.doc))
+      this.dirty = false
       this.lastWriteError = null
     } catch (err) {
       this.lastWriteError = err instanceof Error ? err.message : String(err)

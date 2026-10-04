@@ -20,7 +20,10 @@ export type BadgeIcon = 'whipper' | 'attempts' | 'bigleap' | 'oops' | 'stillhere
 export interface Badge {
   id: BadgeId
   name: string
-  /** Kid-facing, at most 14 words, celebrates the try. */
+  /**
+   * Kid-facing, at most 14 words: a plain fact about what she did. The narrator states no morals
+   * (any "why" is the goat's), so no "that's how climbers learn".
+   */
   description: string
   icon: BadgeIcon
 }
@@ -35,13 +38,13 @@ export const BADGES: readonly Badge[] = [
   {
     id: 'attempts-10',
     name: '10 Attempts',
-    description: 'Ten tries on the rock. Every one taught your feet something.',
+    description: 'Ten tries on the rock, falls and sends together.',
     icon: 'attempts',
   },
   {
     id: 'attempts-50',
     name: '50 Attempts',
-    description: 'Fifty tries! That is how climbers learn a mountain.',
+    description: 'Fifty tries on the rock. That’s a lot of chalk lines.',
     icon: 'attempts',
   },
   {
@@ -53,31 +56,31 @@ export const BADGES: readonly Badge[] = [
   {
     id: 'big-leap',
     name: 'First Big Leap Tried',
-    description: "You leapt without seeing the landing. Landed or not, it counts.",
+    description: 'You leapt without seeing the landing. Landed or not, it counts.',
     icon: 'bigleap',
   },
   {
     id: 'oops',
     name: 'First Oops Mission',
-    description: 'You made a mistake on purpose, and the world kept turning.',
+    description: 'You made a small mistake on purpose.',
     icon: 'oops',
   },
   {
     id: 'still-here',
     name: 'Flopped — and Still Here',
-    description: "It didn't go to plan, you tried it anyway, and you're still here.",
+    description: 'It didn’t go to plan. You logged it, and you’re still here.',
     icon: 'stillhere',
   },
   {
     id: 'smaller-step',
     name: 'A Smaller Step',
-    description: 'Not today turned into a smaller step. Clever climbers do that.',
+    description: 'Not today became a smaller step.',
     icon: 'smaller',
   },
   {
     id: 'beta',
     name: 'Asked for Beta',
-    description: 'You asked for a tip. Real climbers swap beta all the time.',
+    description: 'You asked the goat for a tip.',
     icon: 'beta',
   },
   {

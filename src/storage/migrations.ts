@@ -11,6 +11,7 @@
 import { BADGES } from '../content/badges'
 import { PITCH_IDS, type LevelId, type ZoneId } from '../game/types'
 import { downsampleArc } from '../model/attempts'
+import { stonesBeforeSummitDay } from '../model/unlockables'
 import { dayKey } from '../model/clock'
 import { newId } from '../model/ids'
 import { KEYS } from './keys'
@@ -54,13 +55,13 @@ export const MAX_PARENT_NAMES = 4
 
 export const LOAD_MESSAGES = {
   migrated: 'The saved game was updated to work with this version. A copy of the old one was kept as a backup.',
-  recoveredBackup: "The saved game couldn't be read, so the most recent backup was loaded instead.",
-  recoveredFresh: "The saved game couldn't be read and there was no backup to load, so a new game was started.",
+  recoveredBackup: "The saved game couldn’t be read, so the most recent backup was loaded instead.",
+  recoveredFresh: "The saved game couldn’t be read and there was no backup to load, so a new game was started.",
   newer:
     'This saved game came from a newer version of Up Anyway. It was opened as well as possible and the original was kept as a backup. Updating the app is the safest next step.',
 } as const
 
-export const NOT_A_SAVE = "This doesn't look like an Up Anyway save."
+export const NOT_A_SAVE = "This doesn’t look like an Up Anyway save."
 export const NEWER_VERSION =
   'This save is from a newer version of Up Anyway. Update the app first, then try again.'
 
@@ -264,6 +265,23 @@ function normalizeRun(v: unknown, night: boolean, now: Date): PitchRun | null {
     const c = count(n, -1)
     if (c > 0) fallsBySpot[k] = c
   }
+  const lastMissBySpot: PitchRun['lastMissBySpot'] = {}
+  for (const [k, m] of Object.entries(obj(v.lastMissBySpot))) {
+    if (UNSAFE_KEYS.has(k) || !isObj(m)) continue
+    const kind = m.kind === 'rope' || m.kind === 'slip' || m.kind === 'crumble' ? m.kind : null
+    const arc = arcList([m.arc])[0]
+    if (!kind || !arc) continue
+    const l = obj(m.launch)
+    const angle = num(l.angle, NaN, -360, 360)
+    const power = num(l.power, NaN, 0, 1)
+    lastMissBySpot[k] = {
+      kind,
+      launch: Number.isFinite(angle) && Number.isFinite(power) ? { angle, power } : null,
+      bumped: bool(m.bumped, false),
+      gusted: bool(m.gusted, false),
+      arc,
+    }
+  }
   const lastCampRouteIndex = count(v.lastCampRouteIndex)
   return {
     startedAt: isoOf(v.startedAt) ?? now.toISOString(),
@@ -274,6 +292,7 @@ function normalizeRun(v: unknown, night: boolean, now: Date): PitchRun | null {
     routeArcs,
     routePath,
     fallsBySpot,
+    lastMissBySpot,
     highestRouteIndex: Math.max(count(v.highestRouteIndex), lastCampRouteIndex),
     night,
   }
@@ -438,7 +457,8 @@ export function normalize(raw: unknown, now: Date = new Date()): SaveData {
     .slice(0, MAX_PARENT_NAMES)
 
   const summitAt = isoOf(summit.at)
-  return {
+  const stonesAt = num(summit.stonesAt, NaN, 0, Number.MAX_SAFE_INTEGER, true)
+  const out: SaveData = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     createdAt: isoOf(r.createdAt) ?? def.createdAt,
     setup: {
@@ -483,6 +503,7 @@ export function normalize(raw: unknown, now: Date = new Date()): SaveData {
       reached: bool(summit.reached, false),
       ...(summitAt ? { at: summitAt } : {}),
       finaleSeen: bool(summit.finaleSeen, false),
+      ...(Number.isFinite(stonesAt) ? { stonesAt } : {}),
     },
     flags: {
       ropeExplained: bool(flags.ropeExplained, false),
@@ -492,6 +513,9 @@ export function normalize(raw: unknown, now: Date = new Date()): SaveData {
     },
     testMode: bool(r.testMode, false),
   }
+  // A summit reached before `stonesAt` was kept: the cairn size then, by the day rule, once.
+  if (out.summit.reached && out.summit.stonesAt === undefined) out.summit.stonesAt = stonesBeforeSummitDay(out)
+  return out
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -45,8 +45,8 @@ export const FALL_POSES: readonly FallPoseInfo[] = [
   { id: 'teapot', name: 'The Teapot', description: 'One hand a handle, one hand a spout. Time for tea!' },
   { id: 'surprised-cat', name: 'The Surprised Cat', description: 'Every hair standing up. Did somebody say bath time?' },
   { id: 'ballerina', name: 'The Ballerina', description: 'A perfect twirl, all the way down. Take a bow!' },
-  { id: 'sleepy-sloth', name: 'The Sleepy Sloth', description: "Hanging upside down from a branch that isn't there. Five more minutes." },
-  { id: 'doggy-paddle', name: 'The Doggy Paddle', description: "Paddling through thin air like it's the deep end." },
+  { id: 'sleepy-sloth', name: 'The Sleepy Sloth', description: "Hanging upside down from a branch that isn’t there. Five more minutes." },
+  { id: 'doggy-paddle', name: 'The Doggy Paddle', description: "Paddling through thin air like it’s the deep end." },
   { id: 'disco', name: 'The Disco', description: 'Point up, point down, strike a pose. Falling, but groovy.' },
 ]
 

@@ -91,7 +91,7 @@ async function kidScreens(page: Page, d: SaveData, opts: { tabs: number }): Prom
 }
 
 /** The grown-ups' home and each of its pages, through the PIN door. */
-async function parentPages(page: Page): Promise<void> {
+async function parentPages(page: Page, worries: readonly string[] = []): Promise<void> {
   const p = PARENT_COPY
   await openGrownups(page)
   await checkScreen(page, 'parent home')
@@ -108,6 +108,10 @@ async function parentPages(page: Page): Promise<void> {
   for (const [card, path, heading] of pages) {
     await openParentPage(page, card, path)
     await expect(mainHeading(page), `${path} heading`).toHaveText(heading)
+    // Reading her cairn and plans shows what she was worried might happen, as her cairn does.
+    if (path === '/parent/cairn' && worries.length) {
+      for (const w of worries) await expect(page.locator('.pp-brave__worry', { hasText: w })).toHaveCount(1)
+    }
     await checkScreen(page, path)
     await tap(page.locator('.layout__back'))
     await expectRoute(page, '/parent/home')
@@ -134,7 +138,9 @@ test('a climber well into the game: every camp screen and grown-ups page', async
   await gotoCamp(page)
   await expect(campTile(page, 'Letters').locator('.tile__count')).toHaveText('1')
   await kidScreens(page, d, { tabs: 6 })
-  await parentPages(page)
+  const worries = d.brave.map((b) => b.worry?.trim()).filter((w): w is string => !!w)
+  expect(worries.length, 'the save has a worry to read').toBeGreaterThan(0)
+  await parentPages(page, worries)
 })
 
 test('after Sky Lake: every camp screen, with treasures and the night map', async ({ page }) => {

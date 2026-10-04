@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { UNLOCKABLES, VARIANT_COLOURS } from '../../src/content/unlockables'
-import { placeWaitingStones } from '../../src/model/stones'
+import { placeWaitingStones, totalStones } from '../../src/model/stones'
+import { normalize } from '../../src/storage/migrations'
 import {
   newlyUnlockedSince,
   resolveUnlockable,
@@ -14,9 +15,11 @@ import { at, doBrave, fresh, sendLetter, withStones } from './fixtures'
 
 const words = (s: string): number => s.trim().split(/\s+/).length
 
+/** Reach Sky Lake the way recordSend does: the cairn's size then is kept. */
 function summitOn(d: SaveData, when: Date): void {
   d.summit.reached = true
   d.summit.at = when.toISOString()
+  d.summit.stonesAt = totalStones(d)
 }
 
 describe('unlockables content', () => {
@@ -57,17 +60,31 @@ describe('unlockedItems', () => {
     expect(unlockedItems(d)).toEqual([])
   })
 
-  it('one item per stone placed on or after the summit day, in cairn order, letters included', () => {
+  it('one item per stone placed after the summit, in cairn order, letters included', () => {
     const d = fresh()
     doBrave(d, at(2026, 10, 1, 9)) // before the summit: doesn't count
-    const early = doBrave(d, at(2026, 10, 3, 8)).id // summit day, before the send: counts
+    doBrave(d, at(2026, 10, 3, 8)) // summit day, but before the send: doesn't count either
     summitOn(d, at(2026, 10, 3, 16))
+    expect(d.summit.stonesAt).toBe(2)
+    expect(unlockedItems(d)).toEqual([])
     const letter = sendLetter(d, at(2026, 10, 3, 18)).id
     const later = doBrave(d, at(2026, 10, 4, 9)).id
     const items = unlockedItems(d)
-    expect(items.map((u) => u.stoneId)).toEqual([early, letter, later])
-    expect(items.map((u) => u.id)).toEqual(UNLOCKABLES.slice(0, 3).map((u) => u.id))
+    expect(items.map((u) => u.stoneId)).toEqual([letter, later])
+    expect(items.map((u) => u.id)).toEqual(UNLOCKABLES.slice(0, 2).map((u) => u.id))
     expect(items.every((u) => u.tint === null)).toBe(true)
+  })
+
+  it('a save from before stonesAt was kept gets it once, by the summit day', () => {
+    const d = fresh()
+    doBrave(d, at(2026, 10, 1, 9))
+    const early = doBrave(d, at(2026, 10, 3, 8)).id
+    d.summit = { reached: true, at: at(2026, 10, 3, 16).toISOString(), finaleSeen: true }
+    const later = doBrave(d, at(2026, 10, 4, 9)).id
+    expect(unlockedItems(d).map((u) => u.stoneId)).toEqual([early, later])
+    const n = normalize(JSON.parse(JSON.stringify(d)), at(2026, 10, 5))
+    expect(n.summit.stonesAt).toBe(1)
+    expect(normalize(JSON.parse(JSON.stringify(fresh()))).summit.stonesAt).toBeUndefined()
   })
 
   it('keeps giving colour variants past the end of the list', () => {

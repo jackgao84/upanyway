@@ -74,13 +74,25 @@ export function resolveUnlockable(id: string): ItemInfo | null {
   return variantItem(base, colour, roundNo)
 }
 
-/** Stones that count for unlockables: placed on or after the summit day, in cairn order. */
-function postSummitStones(d: SaveData): string[] {
-  if (!d.summit.reached) return []
+/**
+ * Stones placed on days before the summit's day: the cairn size at the summit for a save that
+ * reached Sky Lake before `summit.stonesAt` was recorded (normalize fills it in once with this).
+ */
+export function stonesBeforeSummitDay(d: SaveData): number {
   const at = d.summit.at ? Date.parse(d.summit.at) : NaN
   const summitDay = Number.isFinite(at) ? dayKey(new Date(at)) : ''
+  return stoneOrder(d).filter((s) => s.day < summitDay).length
+}
+
+/**
+ * Stones that count for unlockables: every stone placed after the summit was reached, in cairn order
+ * (the cairn held `summit.stonesAt` stones then; stones from earlier that day don't count).
+ */
+function postSummitStones(d: SaveData): string[] {
+  if (!d.summit.reached) return []
+  const before = d.summit.stonesAt ?? stonesBeforeSummitDay(d)
   return stoneOrder(d)
-    .filter((s) => s.day >= summitDay)
+    .slice(Math.max(0, before))
     .map((s) => s.id)
 }
 

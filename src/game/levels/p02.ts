@@ -10,7 +10,7 @@ export const p02: Level = {
   index: 2,
   zone: 'meadow',
   title: 'The Big Gap',
-  height: 1840,
+  height: 2000,
   elements: [
     camp('c0', 205, 40, 170),
     ledge('a1', 122, 130, 125),
@@ -33,9 +33,11 @@ export const p02: Level = {
     camp('c3', 5, 1420, 170),
     ledge('e1', 138, 1510, 125),
     ledge('e2', 248, 1600, 125),
-    camp('top', 115, 1690, 170),
+    ledge('e3', 138, 1690, 125),
+    ledge('e4', 248, 1780, 125),
+    camp('top', 115, 1870, 170),
   ],
-  route: ['c0', 'a1', 'a2', 'a3', 'c1', 'gap', 'b1', 'b2', 'b3', 'c2', 'd1', 'd2', 'd3', 'd4', 'c3', 'e1', 'e2', 'top'],
+  route: ['c0', 'a1', 'a2', 'a3', 'c1', 'gap', 'b1', 'b2', 'b3', 'c2', 'd1', 'd2', 'd3', 'd4', 'c3', 'e1', 'e2', 'e3', 'e4', 'top'],
   bigLeaps: [{ from: 'c1', to: 'gap' }],
   looksScary: { kind: 'bigleap', forecastAt: 'c1', revealAt: 'gap', x: 200, y: 470 },
   decor: [
@@ -56,6 +58,8 @@ export const p02: Level = {
     { kind: 'flowers', x: 280, y: 1240 },
     { kind: 'tent', x: 30, y: 1420 },
     { kind: 'grass', x: 270, y: 1600 },
-    { kind: 'flag', x: 260, y: 1690 },
+    { kind: 'mushroom', x: 160, y: 1690 },
+    { kind: 'flowers', x: 350, y: 1780 },
+    { kind: 'flag', x: 260, y: 1870 },
   ],
 }

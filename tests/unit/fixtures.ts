@@ -77,6 +77,7 @@ export function richSave(): SaveData {
         ],
         routePath: ['c0', 'a', 'c1'],
         fallsBySpot: { c1: 3 },
+        lastMissBySpot: { c1: { kind: 'rope', launch: { angle: 70, power: 0.6 }, bumped: false, gusted: true, arc: [10, 20, 30, 40] } },
         highestRouteIndex: 3,
         night: false,
       },

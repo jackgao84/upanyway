@@ -16,6 +16,8 @@ const SLOTS = {
   names: joinNames(['Mum', 'Dad', 'Nana']),
   pose: 'The Spaghetti Arms',
   n: '14',
+  // The goat's {thing}: a brave thing cut to its first five words (model/goatVoice shortThing).
+  thing: 'Order my own food at…',
 }
 
 /**

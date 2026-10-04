@@ -114,6 +114,33 @@ describe('attempt counting', () => {
   })
 })
 
+describe('the last miss at each spot (beta hints across visits)', () => {
+  it('keeps her last fall from each spot in the run, and it survives a save and reload', () => {
+    const d = fresh()
+    startRun(d, 'p01', 'c0', false, DAY1)
+    recordWhipper(d, 'p01', false, { spotId: 'c0', arc: [0, 0, 40, 80, 90, -60], kind: 'rope', launch: { angle: 60, power: 0.5 }, bumped: false, gusted: false })
+    recordWhipper(d, 'p01', false, { spotId: 'c0', arc: [0, 0, 30, 70, 60, -60], kind: 'rope', launch: { angle: 65, power: 0.45 }, bumped: true, gusted: false })
+    recordWhipper(d, 'p01', false, { spotId: 'a', arc: [5, 5, 6, 6], kind: 'crumble', launch: null })
+    const run = currentRun(d, 'p01', false)
+    expect(run?.lastMissBySpot.c0).toEqual({ kind: 'rope', launch: { angle: 65, power: 0.45 }, bumped: true, gusted: false, arc: [0, 0, 30, 70, 60, -60] })
+    expect(run?.lastMissBySpot.a).toEqual({ kind: 'crumble', launch: null, bumped: false, gusted: false, arc: [5, 5, 6, 6] })
+    const back = normalize(JSON.parse(JSON.stringify(d)), DAY1)
+    expect(back.pitches.p01?.run?.lastMissBySpot).toEqual(run?.lastMissBySpot)
+  })
+
+  it('reads an older run without it as no misses, and drops broken entries', () => {
+    const d = fresh()
+    startRun(d, 'p01', 'c0', false, DAY1)
+    const raw = JSON.parse(JSON.stringify(d))
+    delete raw.pitches.p01.run.lastMissBySpot
+    expect(normalize(raw, DAY1).pitches.p01?.run?.lastMissBySpot).toEqual({})
+    raw.pitches.p01.run.lastMissBySpot = { c0: { kind: 'oops', arc: [1, 2, 3, 4] }, a: { kind: 'slip', arc: 'x' }, __proto__x: 1, b: { kind: 'slip', arc: [1, 2, 3, 4] } }
+    expect(normalize(raw, DAY1).pitches.p01?.run?.lastMissBySpot).toEqual({
+      b: { kind: 'slip', launch: null, bumped: false, gusted: false, arc: [1, 2, 3, 4] },
+    })
+  })
+})
+
 describe('runs and the bright route', () => {
   it('startRun resumes the run in progress', () => {
     const d = fresh()
@@ -256,7 +283,7 @@ describe('summit', () => {
     expect(d.summit.reached).toBe(false)
     startRun(d, 'p16', 'c0', false, DAY1)
     recordSend(d, 'p16', false, at(2026, 10, 3, 17))
-    expect(d.summit).toEqual({ reached: true, at: at(2026, 10, 3, 17).toISOString(), finaleSeen: false })
+    expect(d.summit).toEqual({ reached: true, at: at(2026, 10, 3, 17).toISOString(), finaleSeen: false, stonesAt: 0 })
     recordSend(d, 'p16', false, at(2026, 10, 9))
     expect(d.summit.at).toBe(at(2026, 10, 3, 17).toISOString())
   })

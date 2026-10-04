@@ -47,12 +47,14 @@ export const helloScreen: Screen = (root, ctx) => {
         h('div', { class: 'stack stack--sm' }, h('strong', null, c.tipTitle), h('span', { class: 'small' }, c.tip)),
       )
 
+  // On a phone the PIN pad comes straight after the first line and the tip (CSS reorders; the second
+  // line, `hello__more`, moves under the pad), so the pad shows without scrolling.
   const intro = h(
     'div',
     { class: 'hello__intro stack' },
     h('div', { class: 'hello__badge', 'aria-hidden': 'true' }, icon('goat', 72)),
     h('h1', { class: 'title-xl hello__title' }, c.title),
-    ...c.lines.map((line, i) => h('p', { class: i === 0 ? 'lead' : 'muted' }, line)),
+    ...c.lines.map((line, i) => h('p', { class: i === 0 ? 'lead hello__lead' : 'muted hello__more' }, line)),
     tip,
   )
 

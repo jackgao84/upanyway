@@ -19,7 +19,7 @@ import {
 } from '../../src/game/physics'
 import { launchTimes, MIN_POWER, solveAnyStep, solveStep, type SolveContext, type Thresholds } from '../../src/game/solver'
 import { hashLevel, type LevelSolutions } from '../../src/game/levels/solutions'
-import type { Hold, Ledge, Level, LevelElement, StepSolution, ZoneId } from '../../src/game/types'
+import { SCREEN_H, type Hold, type Ledge, type Level, type LevelElement, type StepSolution, type ZoneId } from '../../src/game/types'
 
 // ---- The brief's numbers. Do not edit. ------------------------------------------------------------
 export const TH: Thresholds = {
@@ -111,6 +111,10 @@ function structural(level: Level, errors: string[]): void {
     if (level.zone !== ZONE_OF_INDEX[level.index]) errors.push(`zone ${level.zone} should be ${ZONE_OF_INDEX[level.index]}`)
     if (level.height < 1800 || level.height > 2400) errors.push(`height ${level.height} not in 1800–2400 (3–4 screens)`)
     if (isLedge(top) && top.y < level.height - 150) errors.push(`top ${top.id} y=${top.y} should be ≥ height − 150`)
+    // …and 3–4 screens of actual climbing, start camp to top (the sky above the top doesn't count).
+    if (isLedge(first) && isLedge(top) && top.y - first.y < 3 * SCREEN_H) {
+      errors.push(`climb ${first.y}→${top.y} is ${top.y - first.y} units: less than 3 screens (${3 * SCREEN_H})`)
+    }
     // A camp at least every screen along the route (including last camp → top).
     let lastCampY: number | null = null
     for (const id of route) {
@@ -164,9 +168,10 @@ function structural(level: Level, errors: string[]): void {
     }
   }
 
-  // Crumble launches need time to aim.
+  // Crumble launches need time to aim: the crumble timer runs from the landing (after a slip, from
+  // the end of the flop) while she settles to her stand point, which takes at most settleMax.
   if (level.elements.some((e) => isLedge(e) && e.crumble)) {
-    if (!(TUNING.settleTime + AIM_ALLOWANCE < TUNING.crumbleDelay)) {
+    if (!(TUNING.settleMax + AIM_ALLOWANCE < TUNING.crumbleDelay)) {
       errors.push(`crumbleDelay ${TUNING.crumbleDelay}s leaves less than ${AIM_ALLOWANCE}s to aim`)
     }
   }

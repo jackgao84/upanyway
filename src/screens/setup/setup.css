@@ -70,6 +70,26 @@
   .hello__badge {
     display: none;
   }
+  /* A phone: title, first line, Home Screen tip, then the PIN pad (the second line goes under it),
+     so the pad is on the first screen. */
+  .hello {
+    gap: 14px;
+  }
+  .hello__intro {
+    display: contents;
+  }
+  .hello__title,
+  .hello__lead,
+  .hello__more {
+    margin: 0 auto;
+    text-align: center;
+  }
+  .hello__tip {
+    margin: 0 auto;
+  }
+  .hello__more {
+    order: 2;
+  }
 }
 .hello__tip {
   max-width: 520px;
@@ -84,6 +104,28 @@
 }
 .hello__pin .pin__keys {
   gap: 12px 22px;
+}
+@media (max-width: 520px) {
+  .hello__pin {
+    order: 1;
+    padding: 0 0 4px;
+  }
+  .hello__pin .pin {
+    --key: 64px;
+    gap: 8px;
+  }
+  .hello__pin .pin__title {
+    font-size: var(--fs-xl);
+  }
+  .hello__pin .pin__subtitle {
+    font-size: var(--fs-md);
+  }
+  .hello__pin .pin__dots {
+    margin-top: 4px;
+  }
+  .hello__pin .pin__keys {
+    gap: 10px 22px;
+  }
 }
 @media (min-width: 900px) and (orientation: landscape) {
   .setup--hello .layout__body {
@@ -421,6 +463,17 @@
 @media (min-width: 700px) and (min-height: 900px) {
   .meet__stage {
     height: min(38vh, 460px);
+  }
+}
+/* A phone, naming time: a smaller picture, so the name ideas fit above the big button. */
+@media (max-width: 520px) {
+  .meet.is-naming .meet__stage {
+    height: clamp(130px, 17vh, 190px);
+    transition: height 0.3s var(--ease-out);
+  }
+  .meet.is-naming .goat-bubble__bubble {
+    margin-top: 6px;
+    font-size: var(--fs-lg);
   }
 }
 @media (min-width: 900px) and (orientation: landscape) {

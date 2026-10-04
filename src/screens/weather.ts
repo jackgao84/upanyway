@@ -2,8 +2,8 @@
  * The Weather Station (#/weather): her Fear Forecast against how it really was, for every done
  * brave thing (real ones only — never the climb's Looks Scary moments), oldest first, newest last.
  *
- * - The station's sign: "Fear forecasts usually come in stormier than the real weather." and a
- *   gentle summary ("Forecasts: mostly Rainy. Really: mostly Sunny.") — never a score, never praise
+ * - The station's sign carries one caption, the brief's own: "Fear forecasts usually come in
+ *   stormier than the real weather." Nothing else sums her numbers up — never a score, never praise
  *   that grows with the fear number.
  * - A timeline (cairn/weatherChart.ts) and the list of brave things, each with its pair of weather
  *   icons. Tapping either opens that brave thing's story (the same sheet as its cairn stone).
@@ -20,29 +20,10 @@ import { icon, weatherIcon, weatherLabel } from '../ui/icons'
 import { WEATHER_COPY } from './cairn/copy'
 import { openStoneStory } from './cairn/story'
 import { weatherChart, type WeatherChart } from './cairn/weatherChart'
-import { WEATHER_GROUPS, WEATHER_MIN, weatherEntries, weatherGroup, weatherSummary, type WeatherEntry } from './cairn/weatherData'
+import { WEATHER_MIN, weatherEntries, type WeatherEntry } from './cairn/weatherData'
 import { dayPhrase } from './flops/when'
 
 const c = WEATHER_COPY
-
-/** A middle level of the most common kind of weather, for the summary's little picture. */
-function typicalLevel(levels: number[]): number {
-  const counts = WEATHER_GROUPS.map(() => 0)
-  for (const l of levels) counts[weatherGroup(l)]++
-  let best = 0
-  for (let i = 1; i < counts.length; i++) if (counts[i] > counts[best]) best = i
-  const lo = best === 0 ? 0 : WEATHER_GROUPS[best - 1].max + 1
-  return Math.round((lo + WEATHER_GROUPS[best].max) / 2)
-}
-
-function summaryLine(label: string, words: string, level: number, kind: 'forecast' | 'really'): HTMLElement {
-  return h(
-    'p',
-    { class: `wx-sign__line wx-sign__line--${kind}` },
-    h('span', { class: `wx-bubble wx-bubble--${kind} wx-bubble--static`, 'aria-hidden': 'true' }, weatherIcon(level, 30)),
-    h('span', null, h('strong', null, label), ' ', words, '.'),
-  )
-}
 
 function row(e: WeatherEntry, t: Date, onPick: (id: string) => void): HTMLElement {
   const when = dayPhrase(e.at, t)
@@ -113,9 +94,6 @@ export const weatherScreen: Screen = (root, ctx) => {
     empty.insertBefore(slots, empty.lastChild)
     body.push(empty)
   } else {
-    const sum = weatherSummary(entries)
-    const forecasts = entries.map((e) => e.forecast)
-    const reallys = entries.map((e) => e.really)
     body.push(
       h(
         'section',
@@ -125,12 +103,6 @@ export const weatherScreen: Screen = (root, ctx) => {
           { class: 'wx-sign__head' },
           h('span', { class: 'wx-sign__vane', 'aria-hidden': 'true' }, icon('weather', 40)),
           h('p', { class: 'wx-sign__caption' }, c.caption),
-        ),
-        h(
-          'div',
-          { class: 'wx-sign__summary' },
-          summaryLine(c.forecasts, sum.forecasts, typicalLevel(forecasts), 'forecast'),
-          summaryLine(c.really, sum.really, typicalLevel(reallys), 'really'),
         ),
       ),
     )

@@ -89,6 +89,15 @@ describe('idea cards', () => {
     }
   })
 
+  it('puts Oops Missions that could land on schoolwork somewhere safe (at home, scrap paper)', () => {
+    for (const idea of oops) {
+      const t = plain(idea.text)
+      if (/\b(draw\w*|note|write|writing|colour in|colour outside|scribble)\b/.test(t)) {
+        expect(/\bat home\b|scrap paper/.test(t), idea.text).toBe(true)
+      }
+    }
+  })
+
   it('Oops Missions never touch schoolwork, safety or anyone’s feelings', () => {
     for (const idea of oops) {
       const t = plain(idea.text)

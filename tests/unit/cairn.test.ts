@@ -1,7 +1,7 @@
 /**
  * The Cairn and the Weather Station: stone looks (from the id only), the stacking layout
  * (deterministic, never moves a stone already there), what the cairn lists, when a waiting stone
- * goes on, the weather station's entries and gentle summary, and the words on both screens.
+ * goes on, the weather station's entries, and the words on both screens.
  */
 import { describe, expect, it } from 'vitest'
 import { STONE_SIZE, stoneLook } from '../../src/game/art/stones'
@@ -9,13 +9,7 @@ import { stoneOrder } from '../../src/model/stones'
 import { CAIRN_COPY, STORY_COPY, WEATHER_COPY } from '../../src/screens/cairn/copy'
 import { cairnStones, didWait, trailOpenTo, waitingBefore, waitingWhen } from '../../src/screens/cairn/data'
 import { hillY, layoutCairn, layoutWaiting, reachFor, type StoneInput } from '../../src/screens/cairn/layout'
-import {
-  WEATHER_MIN,
-  describeWeather,
-  weatherEntries,
-  weatherGroup,
-  weatherSummary,
-} from '../../src/screens/cairn/weatherData'
+import { WEATHER_MIN, weatherEntries } from '../../src/screens/cairn/weatherData'
 import { DAY1, at, doBrave, fresh, sendLetter } from './fixtures'
 import { bannedIn } from './voice'
 
@@ -193,26 +187,6 @@ describe('the weather station', () => {
     expect(e.map((x) => x.text)).toEqual(['A', 'B'])
     expect(e[0]).toMatchObject({ forecast: 6, really: 1 })
     expect(WEATHER_MIN).toBe(3)
-  })
-
-  it('sums the weather up gently: mostly, a mix, or all sorts — never a score', () => {
-    expect(weatherGroup(0)).toBe(0)
-    expect(weatherGroup(7)).toBe(2)
-    expect(weatherGroup(10)).toBe(3)
-    expect(describeWeather([7, 7, 8, 2])).toBe('mostly Rainy')
-    expect(describeWeather([1, 0, 2])).toBe('mostly Sunny')
-    expect(describeWeather([4, 7, 5, 8, 0])).toBe('a mix of Cloudy and Rainy')
-    expect(describeWeather([0, 1, 7, 10])).toBe('mostly Sunny') // half is "mostly"
-    expect(describeWeather([0, 1, 7, 8])).toBe('mostly Sunny') // a tie goes to the sunnier
-    expect(describeWeather([0, 4, 7, 10])).toBe('all sorts of weather')
-    expect(describeWeather([0, 4, 7, 10, 3, 6, 9])).toBe('all sorts of weather')
-    const s = weatherSummary([
-      { id: '1', text: '', forecast: 7, really: 1, at: '' },
-      { id: '2', text: '', forecast: 8, really: 2, at: '' },
-      { id: '3', text: '', forecast: 6, really: 0, at: '' },
-    ])
-    expect(s).toEqual({ forecasts: 'mostly Rainy', really: 'mostly Sunny' })
-    for (const v of Object.values(s)) expect(v).not.toMatch(/\d/)
   })
 })
 

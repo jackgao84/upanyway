@@ -60,8 +60,9 @@ export const badgesScreen: Screen = (root, ctx) => {
   const today = now()
   const scope: TermScope = termScope()
   const vars = { goat: d.profile.goatName || 'your goat' }
-  const earned = earnedBadges(d)
-  const notYet = BADGES.filter((b) => !d.badges[b.id])
+  // Test mode puts every badge on show (read-time only: her real badges and dates are untouched).
+  const earned = d.testMode ? BADGES.map((b) => ({ ...b, earnedAt: d.badges[b.id] ?? '' })) : earnedBadges(d)
+  const notYet = d.testMode ? [] : BADGES.filter((b) => !d.badges[b.id])
 
   const earnedCards = earned.map((b, i) => {
     const when = dayPhrase(b.earnedAt, today)
@@ -125,7 +126,11 @@ export const badgesScreen: Screen = (root, ctx) => {
           'div',
           { class: 'badges__intro' },
           h('p', { class: 'badges__lead' }, c.intro),
-          earned.length ? h('span', { class: 'badges__have' }, c.have(earned.length)) : null,
+          d.testMode
+            ? h('span', { class: 'badges__have' }, c.testMode)
+            : earned.length
+              ? h('span', { class: 'badges__have' }, c.have(earned.length))
+              : null,
         ),
         earnedCards.length
           ? h(

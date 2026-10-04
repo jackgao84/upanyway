@@ -31,6 +31,8 @@ import { showBadgeCards } from './log/ticket'
 
 /** A new badge waits this long after the goat's line, so she hears the goat first. */
 const BADGE_AFTER_MS = 2600
+/** The goat's second Not today line follows its first (the brief's words) after this long. */
+const NOT_TODAY_MORE_MS = 4200
 
 /** Her plans, newest first (by when they were made; later in the list = newer on a tie). */
 export function plansNewestFirst(brave: readonly BraveThing[]): BraveThing[] {
@@ -123,12 +125,15 @@ export const plansScreen: Screen = (root, ctx) => {
 
     let lower: HTMLElement
     if (notTodayId === plan.id) {
-      // "Not today": the goat's exact words, then a gentle offer. Nothing else changes.
+      // "Not today": the goat's exact words, then a gentle offer. Nothing else changes. Once those
+      // words have had their time, one of its other Not today lines follows (never a nudge).
       const bubble = goatBubble({ avatar: () => goatAvatar(look), name: goatName, tapToHide: false })
       listDisposer.add(() => bubble.destroy())
       const line = scriptedLine('notToday')
       const timer = setTimeout(() => say(bubble, line, 0), 60)
+      const more = setTimeout(() => say(bubble, goatVoice().pick('notToday'), 0), NOT_TODAY_MORE_MS)
       listDisposer.add(() => clearTimeout(timer))
+      listDisposer.add(() => clearTimeout(more))
       lower = h(
         'div',
         { class: 'plan__nottoday' },

@@ -51,8 +51,18 @@ store.subscribe(syncSound)
 registerServiceWorker()
 applyUpdateIfSafe()
 
-// Save straight away when the app is hidden or closed (iPad apps are often swiped away).
+// Save straight away when the app is hidden or closed (iPad apps are often swiped away). flush()
+// writes only unsaved changes, so a second tab of the app never rewinds the save when it is hidden.
 window.addEventListener('pagehide', () => store.flush())
+// Another tab of the app saved: take its copy (Safari tabs, or a browser tab beside the installed app).
+window.addEventListener('storage', (e) => {
+  try {
+    if (e.storageArea && e.storageArea !== window.localStorage) return
+  } catch {
+    return
+  }
+  store.externalWrite(e.key, e.newValue)
+})
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') store.flush()
 })

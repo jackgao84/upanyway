@@ -27,7 +27,7 @@ import {
 } from '../../model/attempts'
 import { evaluateBadges } from '../../model/badges'
 import { addClimbSeconds, isSunset } from '../../model/climbTime'
-import type { PitchRun, SaveData, SendRecord } from '../../storage/schema'
+import type { MissRecord, PitchRun, SaveData, SendRecord } from '../../storage/schema'
 
 export interface RecorderDeps {
   save(): SaveData
@@ -42,6 +42,8 @@ export interface ResumeInfo {
   foundCrumbles: string[]
   /** The run's most recent failed arcs (newest last), to show as chalk again. */
   recentChalk: number[][]
+  /** The run's last fall from each spot (the beta hint reads it). */
+  lastMiss: Record<string, MissRecord>
   /** True when this climb continues a run already in progress. */
   resumed: boolean
 }
@@ -106,6 +108,7 @@ export class ClimbRecorder {
       revealed: p ? p.revealedHolds.slice() : [],
       foundCrumbles: p ? p.foundCrumbles.slice() : [],
       recentChalk: r ? r.failedArcs.slice(-3) : [],
+      lastMiss: r ? { ...r.lastMissBySpot } : {},
       resumed: before !== null,
     }
   }
@@ -146,6 +149,9 @@ export class ClimbRecorder {
           arc: e.arc,
           kind: e.kind,
           restId: e.landedId,
+          launch: e.launch,
+          bumped: e.bumped,
+          gusted: e.gusted,
         })
         facts.whippersThisRun = r.whippersThisRun
         facts.fallsAtSpot = r.fallsAtSpot

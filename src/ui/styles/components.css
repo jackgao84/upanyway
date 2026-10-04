@@ -365,7 +365,8 @@
   width: 100%;
   max-width: calc(var(--content-w) + 2 * var(--gutter));
   margin: 0 auto;
-  padding: 8px max(var(--safe-right), var(--gutter)) 28px max(var(--safe-left), var(--gutter));
+  /* The bottom clears the home indicator on screens with no footer (camp, weather, …). */
+  padding: 8px max(var(--safe-right), var(--gutter)) max(28px, calc(var(--safe-bottom) + 16px)) max(var(--safe-left), var(--gutter));
 }
 .layout--narrow .layout__body {
   max-width: calc(600px + 2 * var(--gutter));
@@ -401,6 +402,70 @@
 }
 .kb-open .layout__footer {
   padding-bottom: 12px;
+}
+/* A phone held sideways with the keyboard up has ~190 px left: the sticky header and footer would
+   cover all of it. Let them scroll with the page then, so the field being typed in stays in view
+   (keepInView only reserves room for bars that stay put). */
+@media (max-height: 500px) {
+  .kb-open .layout__header,
+  .kb-open .layout__footer {
+    position: relative;
+  }
+}
+/* "More below": a soft chevron on the footer's hill while content hides behind it. */
+.layout__more {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  margin-left: -17px;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow:
+    0 2px 0 var(--edge),
+    0 6px 12px -6px rgba(110, 62, 34, 0.4);
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.25s var(--ease-out),
+    transform 0.25s var(--ease-out);
+  pointer-events: none;
+}
+.layout__more::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 9px;
+  width: 10px;
+  height: 10px;
+  margin-left: -6px;
+  border-right: 3px solid var(--ink-soft);
+  border-bottom: 3px solid var(--ink-soft);
+  border-radius: 0 0 3px 0;
+  transform: rotate(45deg);
+}
+.layout__footer.has-more .layout__more {
+  opacity: 1;
+  transform: none;
+  animation: more-bob 1.8s var(--ease-out) 0.3s infinite;
+}
+@keyframes more-bob {
+  0%,
+  100% {
+    transform: none;
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .layout__footer.has-more .layout__more {
+    animation: none;
+  }
+}
+.kb-open .layout__more {
+  display: none;
 }
 .layout__footer-inner {
   display: flex;
@@ -616,6 +681,21 @@ textarea.field__input {
   width: min(560px, calc(100% - 32px));
   transform: translateX(-50%);
   pointer-events: none;
+}
+/* Camp screens: badge cards rise from the bottom, clear of the goat's bubble near the top. */
+.toasts--bottom {
+  top: auto;
+  bottom: calc(max(var(--safe-bottom), 16px) + var(--toast-lift, 0px));
+  flex-direction: column-reverse;
+}
+.toasts--bottom .toast {
+  transform: translateY(14px) scale(0.97);
+}
+.toasts--bottom .toast.is-in {
+  transform: none;
+}
+.toasts--bottom .toast.is-out {
+  transform: translateY(10px) scale(0.98);
 }
 .toast {
   display: flex;

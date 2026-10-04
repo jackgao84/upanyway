@@ -21,6 +21,7 @@ import { sfx } from '../../audio/sfx'
 import { extendDebug } from '../../debug'
 import { FinaleRenderer, type FinaleScene, type Region } from '../../game/render/finale'
 import { scriptedLine, type SpokenLine } from '../../model/goatVoice'
+import { totalStones } from '../../model/stones'
 import { button } from '../../ui/components'
 import { h, prefersReducedMotion } from '../../ui/dom'
 import { goatBubble, type GoatBubble } from '../../ui/goatBubble'
@@ -473,6 +474,7 @@ export class FinalePlay {
       update((draft) => {
         draft.summit.reached = true
         if (!draft.summit.at) draft.summit.at = now().toISOString()
+        if (draft.summit.stonesAt === undefined) draft.summit.stonesAt = totalStones(draft)
         draft.summit.finaleSeen = true
       })
     }

@@ -4,8 +4,10 @@
  *
  * - Shuffle-bag per moment: every line of a group comes round before any repeats, and the same
  *   line is never said twice in a row (unless it is the only one that fits).
- * - Templates: {pose}, {n}, {goat}, {mountain}. A line whose slot has no value is skipped; {n} only
- *   counts from 2 (so there is never a "1 attempts").
+ * - Templates: {pose}, {n}, {goat}, {mountain}, {thing}. A line whose slot has no value is skipped;
+ *   {n} only counts from 2 (so there is never a "1 attempts"); {thing} is cut to its first few words.
+ * - Scripted lines (the SCRIPTED story beats, tagged `scripted`) are said only through
+ *   scriptedLine(); pick() draws a group's other lines.
  * - At most ONE moral line per camp arrival: `ctx.campKey` names the arrival (a hub visit or reaching
  *   a camp on a pitch). Without a campKey no moral line is said at all.
  * - It never takes the fear numbers she gives (before or after a brave thing) as input: the goat's
@@ -36,6 +38,21 @@ export interface GoatVars {
   goat?: string
   /** Her mountain's name (she typed it). */
   mountain?: string
+  /** The brave thing whose stone just went on (her words or the idea card's), shortened. */
+  thing?: string
+}
+
+/** {thing} is cut to this many words (with "…"), so every line stays within 12 words. */
+export const THING_WORDS = 5
+
+/** Her brave thing as a short quote: the first few words, no trailing full stop. */
+export function shortThing(text: string): string | null {
+  const words = text.trim().replace(/\s+/g, ' ').split(' ').filter(Boolean)
+  if (!words.length) return null
+  const cut = words.length > THING_WORDS
+  let out = words.slice(0, THING_WORDS).join(' ')
+  out = cut ? out.replace(/[.,;:!?…]+$/, '') + '…' : out.replace(/[.,;:]+$/, '')
+  return out ? typeset(out) : null
 }
 
 /** Where the goat is, so it only says lines that fit. */
@@ -83,6 +100,8 @@ function slotValue(name: string, vars: GoatVars): string | null {
       const v = vars[name]
       return typeof v === 'string' && v.trim() ? v.trim() : null
     }
+    case 'thing':
+      return typeof vars.thing === 'string' ? shortThing(vars.thing) : null
     default:
       return null
   }
@@ -192,6 +211,7 @@ export class GoatVoice {
   }
 
   private fits(line: GoatLine, slots: string[], vars: GoatVars, ctx: GoatContext): boolean {
+    if (line.scripted) return false
     if (line.moral && (ctx.campKey === undefined || this.moralSaid.has(ctx.campKey))) return false
     if (line.zone !== undefined && line.zone !== ctx.zone) return false
     if (line.scary !== undefined && line.scary !== ctx.scary) return false

@@ -40,6 +40,8 @@ export function numberWord(n: number): string {
 }
 
 const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1)
+/** A title as the end of a sentence: no extra full stop after its own "?" or "!". */
+const end = (title: string): string => (/[.!?…]$/.test(title) ? title : `${title}.`)
 
 export const MAP_COPY = {
   title: 'Trail Map',
@@ -58,10 +60,10 @@ export const MAP_COPY = {
   skyLake: 'Sky Lake',
   youAreHere: 'You are here',
   marker: {
-    sent: (n: number, title: string) => `Pitch ${n}, ${title}. Sent! Tap to climb it again.`,
-    open: (n: number, title: string) => `Pitch ${n}, ${title}. Tap to climb.`,
-    nightSent: (n: number, title: string) => `Pitch ${n}, ${title}. Sent by moonlight. Tap to climb it again.`,
-    night: (n: number, title: string) => `Pitch ${n}, ${title}. Tap to climb by moonlight.`,
+    sent: (n: number, title: string) => `Pitch ${n}, ${end(title)} Sent! Tap to climb it again.`,
+    open: (n: number, title: string) => `Pitch ${n}, ${end(title)} Tap to climb.`,
+    nightSent: (n: number, title: string) => `Pitch ${n}, ${end(title)} Sent by moonlight. Tap to climb it again.`,
+    night: (n: number, title: string) => `Pitch ${n}, ${end(title)} Tap to climb by moonlight.`,
     hidden: (n: number) => `Pitch ${n}, hidden in the fog.`,
   },
   locked: {

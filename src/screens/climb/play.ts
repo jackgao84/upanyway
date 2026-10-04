@@ -41,7 +41,7 @@ import { canShowFinale, finalePath } from '../finale'
 import { betaMapCard, type BetaMapCard } from './betaMap'
 import { badgeCards, CardQueue, flopCard, introduceWord, isNew, wordCard, type WordBook } from './cards'
 import { CLIMB_COPY } from './copy'
-import { forecastPrompt, reallyPrompt, sunsetPrompt, type GoatInfo } from './prompts'
+import { forecastPrompt, reallyPrompt, sunsetLine, sunsetPrompt, type GoatInfo } from './prompts'
 import { ClimbRecorder } from './record'
 import { ClimbStage, type KeepInView } from './stage'
 import { sunDial, type SunDial } from './sun'
@@ -185,6 +185,8 @@ export class ClimbPlay {
       },
     })
     for (const arc of resume.recentChalk) this.session.chalk.push({ arc, at: -10 })
+    // Her saved last miss at each spot: a hint her earlier falls earned is offered on arrival there.
+    for (const [spot, miss] of Object.entries(resume.lastMiss)) this.lastMiss.set(spot, miss)
 
     // DOM: the stage, then the HUD over it. (`is-climbing` lets the page's cards move aside.)
     document.documentElement.classList.add('is-climbing')
@@ -762,7 +764,7 @@ export class ClimbPlay {
     this.stage.setFrozen('sunset', true)
     this.stage.setFrozen('arrive', false)
     this.prompt?.close()
-    const p = sunsetPrompt(this.goat, scriptedLine('sunset'), () => this.nav('/camp'))
+    const p = sunsetPrompt(this.goat, sunsetLine(now()), () => this.nav('/camp'))
     this.prompt = { id: 'sunset', close: p.close }
   }
 
@@ -775,9 +777,14 @@ export class ClimbPlay {
     this.cards.push(() => wordCard(this.words, 'pitch', full) ?? toast(this.level.title, { title, icon: 'mountain', tone: this.level.zone, durationMs: 2800 }))
   }
 
-  private nextPitch(): LevelId | null {
+  /** The pitch after this one, open or not (null after the summit pitch and the lesson). */
+  private followingPitch(): LevelId | null {
     const i = PITCH_IDS.indexOf(this.levelId as (typeof PITCH_IDS)[number])
-    const next = i >= 0 ? PITCH_IDS[i + 1] : undefined
+    return i >= 0 ? (PITCH_IDS[i + 1] ?? null) : null
+  }
+
+  private nextPitch(): LevelId | null {
+    const next = this.followingPitch()
     if (!next) return null
     const d = save()
     const open = this.night ? isNightOpen(d) : isPitchOpen(d, next)
@@ -801,6 +808,8 @@ export class ClimbPlay {
     const q = this.night ? '?night=1' : ''
     const next = this.nextPitch()
     const finale = this.finaleNext()
+    // The next pitch is still in the fog: the Beta Map says why, and offers a brave thing to log.
+    const locked = !finale && !next && !this.night && this.followingPitch() !== null
     // When the sun has gone down, more climbing waits for tomorrow (the finale always plays).
     const orSunset = (go: () => void) => () => (this.sunsetDue ? this.showSunset() : go())
     const card = betaMapCard({
@@ -812,6 +821,7 @@ export class ClimbPlay {
         : next
           ? orSunset(() => this.nav(`/climb/${next}${q}`, { replace: true }))
           : null,
+      onLocked: locked ? () => this.nav('/log') : null,
       nextLabel: finale ? CLIMB_COPY.map.skyLake : undefined,
       // The first time, Sky Lake is where this climb ends: nothing else to pick.
       onlyNext: finale !== null && !this.night,

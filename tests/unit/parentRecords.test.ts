@@ -181,6 +181,11 @@ describe('read the cairn', () => {
     const src = readFileSync(join(__dirname, '../../src/screens/parent/readCairn.ts'), 'utf8')
     const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
     expect(code).not.toMatch(/notTodayCount/)
-    expect(code).not.toMatch(/\bworry\b/)
+  })
+
+  it('shows what she was worried might happen, on done brave things and plans (her cairn does too)', () => {
+    const src = readFileSync(join(__dirname, '../../src/screens/parent/readCairn.ts'), 'utf8')
+    expect(src).toMatch(/b\.worry/)
+    expect(src.match(/worried\(b\)/g)?.length).toBe(2)
   })
 })

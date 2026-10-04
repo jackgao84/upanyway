@@ -8,7 +8,8 @@
  *   one over today's cap drops onto the waiting spot beside the pile.
  * - Each arrival plays once per session: a re-visit of the same URL shows the stone in place.
  * - Tap any stone to read it back (cairn/story.ts). Waiting stones glow softly beside the pile.
- * - Under the picture: the goat (stoneAdded / stoneWaiting / a quiet visit line), how many stones
+ * - Under the picture: the goat (stoneAdded, naming the brave thing that just went on / stoneWaiting /
+ *   a quiet visit line), how many stones
  *   and what they have opened. No comparisons, no streaks, nothing about fear numbers.
  * - After the summit, a stone that lands brings something new to camp: a small toast says what.
  */
@@ -115,6 +116,7 @@ export const cairnScreen: Screen = (root, ctx) => {
           title: c.unlockTitle,
           icon: item.kind === 'gear' ? 'wardrobe' : 'tent',
           tone: 'sun',
+          place: 'bottom',
         })
       }
     },
@@ -126,6 +128,16 @@ export const cairnScreen: Screen = (root, ctx) => {
   })
 
   // ----------------------------------------------------------------- the goat
+  /** The brave thing of the newest stone that just went on the pile, so the goat names that try. */
+  function newestThing(): string | undefined {
+    for (let i = fresh.length - 1; i >= 0; i--) {
+      if (!onPile(fresh[i])) continue
+      const rec = stoneRecord(d, fresh[i])
+      return rec && 'status' in rec ? rec.text : undefined
+    }
+    return undefined
+  }
+
   // Like camp: the goat sits in the backpack beside her cairn.
   const bubble = goatBubble({ avatar: () => goatAvatar(d.profile.look), name: d.profile.goatName })
   let spoken = false
@@ -137,7 +149,7 @@ export const cairnScreen: Screen = (root, ctx) => {
     // Over today's cap: the brief's own words the first time this stone is seen waiting (or, when
     // older stones are queued ahead of it, the same words without the promise of tomorrow).
     if (newWaits) line = scriptedLine(waitsTillTomorrow ? 'stoneWaiting' : 'stoneWaitingLater')
-    else if (newOnPile) line = voice.pick('stoneAdded', { n: placed.length })
+    else if (newOnPile) line = voice.pick('stoneAdded', { n: placed.length, thing: newestThing() })
     else line = voice.pick(placed.length ? 'cairnVisit' : 'cairnEmpty')
     // A new stone's line stays until she taps it; a quiet visit's line drifts off after a while.
     bubble.say(line.text, { mood: line.mood, durationMs: fresh.length ? 0 : 9000 })

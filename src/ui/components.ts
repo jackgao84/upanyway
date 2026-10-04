@@ -246,14 +246,52 @@ export function screenLayout(opts: LayoutOpts): HTMLElement {
         opts.top ? h('div', { class: 'layout__top' }, ...toChildren(opts.top)) : null,
       )
     : h('div', { class: 'layout__spacer' })
-  return h(
+  const footer =
+    opts.footer && opts.footer.length
+      ? h(
+          'footer',
+          { class: 'layout__footer' },
+          h('span', { class: 'layout__more', 'aria-hidden': 'true' }),
+          h('div', { class: 'layout__footer-inner' }, ...opts.footer),
+        )
+      : null
+  const layout = h(
     'div',
     { class: cls.join(' '), dataset: opts.tone ? { tone: opts.tone } : undefined },
     opts.scenery === false ? null : scenery(),
     header,
     h('div', { class: 'layout__body' }, ...opts.body),
-    opts.footer && opts.footer.length ? h('footer', { class: 'layout__footer' }, h('div', { class: 'layout__footer-inner' }, ...opts.footer)) : null,
+    footer,
   )
+  if (footer) watchMoreBelow(layout, footer)
+  return layout
+}
+
+/**
+ * A small "more below" cue on top of a sticky footer while the screen has content scrolled out of
+ * sight behind it (choices under the big button on a phone are otherwise easy to miss).
+ */
+function watchMoreBelow(layout: HTMLElement, footer: HTMLElement): void {
+  let scroller: HTMLElement | null = null
+  const check = () => {
+    if (!layout.isConnected) {
+      window.removeEventListener('resize', check)
+      return
+    }
+    if (!scroller) {
+      scroller = layout.closest<HTMLElement>('.screen')
+      scroller?.addEventListener('scroll', check, { passive: true })
+    }
+    const el = scroller
+    const more = !!el && !footer.hidden && el.scrollHeight - el.scrollTop - el.clientHeight > 24
+    footer.classList.toggle('has-more', more)
+  }
+  window.addEventListener('resize', check)
+  // After mount, and again once entrance animations and late content (chips, pictures) have settled.
+  requestAnimationFrame(check)
+  setTimeout(check, 500)
+  setTimeout(check, 1600)
+  layout.addEventListener('click', () => setTimeout(check, 350))
 }
 
 /** Soft paper-cut hills behind the content (pure CSS shapes, no images). */
@@ -435,6 +473,11 @@ export interface ToastOpts {
   /** A small picture (e.g. a fall-pose canvas) shown at the left. */
   media?: Node
   tone?: Tone
+  /**
+   * 'bottom': stack at the bottom of the screen (above a footer, if the screen has one) — for camp
+   * screens, where the goat's bubble sits near the top and a card there would cover its words.
+   */
+  place?: 'top' | 'bottom'
 }
 
 export interface ToastHandle {
@@ -446,7 +489,20 @@ let toastHost: HTMLElement | null = null
 const MAX_TOASTS = 3
 const liveToasts: (() => void)[] = []
 
-function getToastHost(): HTMLElement {
+let bottomToastHost: HTMLElement | null = null
+
+function getToastHost(place: 'top' | 'bottom' = 'top'): HTMLElement {
+  if (place === 'bottom') {
+    if (!bottomToastHost || !bottomToastHost.isConnected) {
+      bottomToastHost = h('div', { class: 'toasts toasts--bottom', role: 'status', 'aria-live': 'polite' })
+      document.body.appendChild(bottomToastHost)
+    }
+    // Sit above the screen's footer (its buttons stay in reach), else above the home indicator.
+    const footer = document.querySelector<HTMLElement>('.screen .layout__footer')
+    const top = footer && !footer.hidden && footer.offsetHeight > 0 ? footer.getBoundingClientRect().top : window.innerHeight
+    bottomToastHost.style.setProperty('--toast-lift', `${Math.max(0, Math.round(window.innerHeight - top))}px`)
+    return bottomToastHost
+  }
   if (toastHost && toastHost.isConnected) return toastHost
   toastHost = h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' })
   document.body.appendChild(toastHost)
@@ -455,7 +511,7 @@ function getToastHost(): HTMLElement {
 
 /** A non-blocking note that stacks top-centre below the HUD and hides itself. Tap to dismiss. */
 export function toast(message: string | Node, opts: ToastOpts = {}): ToastHandle {
-  const host = getToastHost()
+  const host = getToastHost(opts.place)
   const text = typeof message === 'string' ? message : message.textContent ?? ''
   const media = opts.media ?? (opts.icon ? icon(opts.icon, 30) : null)
   const el = h(

@@ -6,17 +6,20 @@
 
 ## Status
 
-- **Current stage:** 7 — Verify + ship (Stages 1–6 committed; 5 and 6 were built in one workflow and committed together).
-- **Stages 5–6 verified:** typecheck clean; `npm run validate` 17/17 levels; vitest 455/455; Playwright WebKit
-  54/54 on 820×1180, 1180×820, 390×844 (first run + lesson, send p01 by replay, a fall counts, Looks Scary,
-  finale, log a brave thing (both paths), plans: Not today + Make it smaller, open Pitch 3 with one stone,
-  every camp screen + every parent page, letters bonus + waiting stone, export → reset → re-import (file and
-  paste), test mode on/off leaves the save identical). Zero console errors.
-- **Next:** Stage 7 (scratchpad draft `stage7.js` — re-create from the Stages list if lost): requirements audit
-  by brief section + hands-on device QA → fixes → `check:stubs`, personal-identifier grep, offline e2e,
-  README + DEPLOY.md, full test pass, final report.
-- **Machine note:** this Mac (16 GB) is shared with other sessions running Playwright; keep ≤ 3 agents that run
-  dev servers/browsers at once, and Playwright workers ≤ 2 (`PW_WORKERS=2`).
+- **Done.** All seven stages are complete and committed. Ready to deploy (DEPLOY.md).
+- **Final verification (Stage 7):**
+  - `npm run typecheck` — clean (both configs).
+  - `npm run check:stubs` — clean (no unfinished-work markers, skipped tests or empty content lists).
+  - `npm run validate` — lesson + all 16 pitches pass (every route step has a forgiving leap at ≤ 85% power,
+    ±4°, ±6%; wind steps ±0.25 s; Big Leaps and Fear Forecast camps can't be skipped).
+  - `npx vitest run` — 477/477 tests in 40 files.
+  - `PW_WORKERS=2 npx playwright test` — 67/67 on WebKit with touch at 820×1180, 1180×820, 390×844, zero
+    console errors (first run 24 taps ≈ 16 s scripted; lesson; send p01 by replaying saved solutions as
+    touch drags; Looks Scary; finale; log a brave thing; plans; unlock Pitch 3; every camp + parent screen;
+    letters; backup export → reset → import; test mode; keyboard; two tabs; offline with the server stopped).
+  - `npm run build` — dist 1.3 MB (JS 785 KB, 254 KB gzipped; CSS 133 KB; 2 font files); 11 files precached.
+- **Owner actions:** see Known issues (commit author identity before the first push; one Airplane Mode check
+  on the real iPad).
 
 ## How to resume
 
@@ -670,7 +673,7 @@ Test mode never writes stats, poses, badges, stones or attempts.
       content, post-summit unlockables (≥ 40) in camp + wardrobe.
 - [x] **6. Parent + sound** — parent mode (all pages), How to cheer, export/import/reset, test mode, full
       sound pass (sfx + generative ambient + music toggle).
-- [ ] **7. Verify + ship** — full test pass (unit, validator, e2e ×3 + offline), stub search (TODO, FIXME,
+- [x] **7. Verify + ship** — full test pass (unit, validator, e2e ×3 + offline), stub search (TODO, FIXME,
       lorem, "coming soon", placeholder text, empty content arrays), personal-identifier grep (pattern kept
       outside the repo), every Oops card checked against schoolwork/safety/feelings (logged), fixes,
       README + DEPLOY.md, final report.
@@ -872,12 +875,90 @@ Test mode never writes stats, poses, badges, stones or attempts.
     `touch-action: manipulation` like every other scroll container. The stone-story sheet frees its
     canvas after it closes.
 
+64. **Stage 7 audit: saves across tabs.** `Store.flush()` writes only unsaved changes (a `dirty` flag), and a
+    `storage` event from another tab of the app replaces this tab's copy (`Store.externalWrite`), so a second
+    Safari tab (or a browser tab beside the installed app) never rewinds the save when it is hidden; a change
+    still debounced in this tab gives way to the other tab's newer write.
+65. **Short screens with the keyboard up, safe areas, cues.** Below 500 px tall with `.kb-open` the sticky header
+    and footer scroll with the page (`keepInView` only reserves room for bars that stay put), so a field on a
+    phone held sideways stays above the keyboard. `.layout__body` keeps `max(28px, safe-bottom + 16px)` at the
+    bottom (screens without a footer clear the home indicator). A sticky footer shows a small "more below"
+    chevron while content is hidden behind it. Badge and post-summit toasts on camp, cairn and plans rise from
+    the bottom (`toast({ place: 'bottom' })`), clear of the goat's bubble.
+66. **Teach by doing, in the words.** Goat lines outside the tagged camp morals talk about this try (the chalk,
+    the rope, its ears), never a general lesson; badge descriptions, the Hall's intros and the finale card state
+    plain facts. Tested: `goatVoice.test.ts` (GENERALISING, FEELING_WRONG — no "my knees overreacted", no
+    "ignore me") and `copyRules.test.ts` (no narrator morals in kid-facing copy; curly apostrophes everywhere on
+    screen). The brief's own "Asking for beta is what real climbers do" stays as one of the goat's beta offers.
+67. **Every goat group is really said.** Story beats are tagged `scripted` and said only through
+    `scriptedLine()`; the picker draws a group's other lines. Not today: the brief's words, then (4.2 s) one of
+    its variations. Summit: the goat remembers Sky Lake on the first camp visit of each day after the finale.
+    Sunset: the brief's words the first time each day, variations after. Groups that are only story beats
+    (rope, stoneWaiting, meet, firstCamp) keep just those; the never-said `letter` moment was removed. A test
+    fails if a group with pickable lines is never picked. Stone added names the brave thing (`{thing}`: her
+    words or the idea card, first five words), never its fear numbers or outcome.
+68. **"You are here" on the Trail Map and camp's Climb tile** is the lowest open pitch with a run in progress
+    or not sent yet (the highest open pitch only once every open one is sent), so the big button never walks
+    her away from a run or past the first Big Leap. The map scrolls only as far as her marker needs, and its
+    intro line ("Tap a glowing pitch…", with the first-time "pitch" card) sits in the footer.
+69. **Sunset at camp:** once the day's time is used, camp's Climb tile says "The mountain will be here
+    tomorrow." and a tap shows the sunset card right there ("Back to the fire"). No lock, no sad state.
+70. **The Beta Map meets the hidden trail.** After sending a pitch whose next one is still in the fog (day
+    climbs), the card says "The trail ahead is hidden. Add a stone to your cairn to find the way." and its big
+    button is Log a brave thing (Climb again and Back to camp below) — on day one that is Pitch 2.
+71. **Beta across visits:** each run keeps her last miss per spot (`PitchRun.lastMissBySpot`, normalised), so a
+    hint her saved falls have earned is offered on arrival there after camp, a reload or another day.
+72. **Post-summit treasures count from the summit itself:** `summit.stonesAt` = the cairn's size when the summit
+    is reached (recordSend, and the finale card); every stone after those unlocks a treasure, so stones from
+    earlier on the summit day don't. A save without it gets it once from the old day rule (normalize).
+73. **Engine timings live in tuning.ts** (`settleSpeed` 320, `settleMax` 0.55 s, `flopTime` 0.7 s,
+    `pinnedSpeed` 60). A crumbly ledge's timer starts at the landing — after a slip, when the flop ends — so
+    after any landing she has at least `crumbleDelay − settleMax` to aim; the validator checks
+    `settleMax + AIM_ALLOWANCE < crumbleDelay`. The pitch clock is whole steps (`steps × dt`) in the engine and
+    in `simulateLeap` (`(round(t0 / dt) + i) × dt`), so the preview, the ghost and the validator see a gust edge
+    on the same step as the game (engine-vs-simulateLeap test on p10). PHYSICS_VERSION 6; all levels
+    re-validated.
+74. **Chalk for hops:** a leap that comes back down on its own take-off ledge leaves its arc as chalk ("how short
+    was I") with no whipper, attempt or chalk puff; a leap pinned on its ledge that moved < 20 units leaves none.
+75. **3–4 screens of climbing:** the validator also asserts `top.y − route[0].y ≥ 3 × SCREEN_H` (the sky above
+    the top doesn't count). p01, p02, p04 and p05 got one or two more steps at the top, in the same step
+    geometry as the rest of each pitch.
+76. **Test mode puts every fall pose and badge on show** (read-time only; no counts or dates on ones she hasn't
+    earned; the Hall and Badges say "Test mode: every … is on show"). Settings lists it.
+77. **Grown-ups read her worry** ("What they were worried about") on done brave things and plans: her own cairn
+    shows it, she is told her grown-ups can read her cairn, and How to cheer covers not rescuing too fast.
+78. **Oops Missions that could touch schoolwork say where** ("at home", "on scrap paper"): every drawing, pen,
+    note or scribble mission (tested).
+79. **E2E gate:** failures the app catches and logs as warnings ("[upanyway] unmount / cleanup / sfx / ambient /
+    audio listener / save / backup / download failed") fail a test like console errors (a dismissed share
+    sheet and a missing `persist()` are expected). New specs: `offline` (the network is cut by aborting every
+    request — Playwright's WebKit can't navigate after `setOffline` — and the worker answers from its cache),
+    `keyboard` (a stand-in visualViewport: iPad both ways, phone both ways), `two-tabs`.
+80. **Weather Station:** one caption, the brief's (the data summary line is gone). On a phone, columns narrow to
+    64 px before the chart scrolls; a scrolling chart rests with whole columns at each edge, fades an edge that
+    has more, and names each day once under its columns. "Tap a weather to read that brave thing again."
+81. **First run on a phone:** the PIN pad follows the title, the first line and the Home Screen tip (the second
+    line moves under the pad), so it's on the first screen; naming the goat uses a smaller picture so the name
+    ideas fit above the button.
+82. **Docs:** README.md and DEPLOY.md (GitHub Pages step by step, Add to Home Screen, an offline check, updates,
+    backups, sharing the origin with the other app, and keeping a personal name and email out of the public git
+    history before the first push).
+
+83. **Offline is proven against a stopped server.** `e2e/offline.spec.ts` starts a private `vite preview`
+    per device project (ports 4191–4193, its own `baseURL`), installs the worker, stops the server, then
+    reloads camp, a climb deep link, a query-string URL and index.html — all from the worker's cache,
+    with the other app's caches/keys untouched.
+84. **`npm run check:stubs`** (scripts/check-stubs.mjs) fails on TODO/FIXME/XXX/TBD, lorem/ipsum,
+    "coming soon", "to fill in", `.only(`, unconditional `.skip(`/`.todo(`, and empty `export const`
+    content lists; it lists every "placeholder" mention for a human (all are input hints or the SW
+    build placeholders). A per-device `test.skip(condition, reason)` inside a test is allowed.
+
 ## Difficulty ramp (validator report, mean success % of the searched input space / min margin)
 
 | zone | pitches | mean success | min margin |
 |---|---|---|---|
-| Meadow | p01 9.1 · p02 9.1 · p03 8.5 | ≈ 8.9 | ×1.25 |
-| Firefly Hollow | p04 9.0 · p05 9.3 · p06 8.7 | ≈ 9.0 | ×1.00 (p05) |
+| Meadow | p01 8.9 · p02 9.0 · p03 8.5 | ≈ 8.8 | ×1.25 |
+| Firefly Hollow | p04 9.2 · p05 9.0 · p06 8.7 | ≈ 9.0 | ×1.00 (p05) |
 | Crumble Cliffs | p07 8.1 · p08 7.9 · p09 6.9 | ≈ 7.6 | ×1.00 |
 | Gusty Ridge | p10 6.7 · p11 6.4 · p12 5.7 | ≈ 6.3 | ×1.00 |
 | Cloud Steps | p13 7.3 · p14 7.3 · p15 6.3 | ≈ 7.0 | ×1.00 |
@@ -889,5 +970,11 @@ for her also comes from the mechanic (crumbles, gust timing, hidden landings), w
 
 ## Known issues
 
-- None open.
-
+- **Owner action before the first push:** every commit so far carries the owner's real name and personal email
+  as author/committer, and `git config user.email` is still that address. DEPLOY.md ("Before the first push")
+  says how to switch to the GitHub handle + noreply address and, if wanted, rewrite the existing commits. No git
+  writes were made by the audit or the fixes.
+- **Checked in WebKit, not on a physical iPad:** the keyboard spec uses a stand-in `visualViewport` (iPad
+  370/410 px, phone 336 px, phone sideways 200 px). The offline spec goes offline for real by stopping its own
+  preview server (Playwright's WebKit can't navigate after `setOffline` or through request interception).
+  DEPLOY.md §3 has the real Airplane Mode check to do once on the iPad.

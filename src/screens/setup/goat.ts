@@ -99,6 +99,7 @@ export const goatScreen: Screen = (root, ctx) => {
       if (line < SCRIPTED.meet.length - 1) return sayLine(line + 1)
       phase = 'name'
       mood = 'happy'
+      meet.classList.add('is-naming')
       nameBox.hidden = false
       nextBtn.hidden = true
       doneBtn.hidden = false
@@ -128,6 +129,12 @@ export const goatScreen: Screen = (root, ctx) => {
   const stage = h('div', { class: 'meet__stage scene' }, canvas)
   stage.addEventListener('click', onStageTap)
   bubble.el.addEventListener('click', onStageTap)
+  const meet = h(
+    'div',
+    { class: 'meet' },
+    stage,
+    h('div', { class: 'meet__side stack' }, bubble.el, h('p', { class: 'faint small center meet__hint' }, c.tapHint), nameBox),
+  )
 
   root.appendChild(
     screenLayout({
@@ -135,12 +142,7 @@ export const goatScreen: Screen = (root, ctx) => {
       top: kidDots('goat'),
       body: [
         title,
-        h(
-          'div',
-          { class: 'meet' },
-          stage,
-          h('div', { class: 'meet__side stack' }, bubble.el, h('p', { class: 'faint small center meet__hint' }, c.tapHint), nameBox),
-        ),
+        meet,
       ],
       footer: [nextBtn, doneBtn],
     }),

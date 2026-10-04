@@ -36,14 +36,31 @@ function hostOf(url: string | undefined): string {
   return url ? new URL(url).host : 'localhost:4173'
 }
 
+/**
+ * Runtime exceptions the app catches and reports as a console warning (so one broken screen teardown
+ * or sound never takes the app down): in a test they are failures like any console error.
+ */
+const CAUGHT_FAILURE = /^\[upanyway\] (unmount|cleanup|sfx|ambient|audio listener|save|backup|download) failed/
+/** Caught failures that are expected where they happen (none of these is a bug in the app). */
+const EXPECTED_WARNINGS: RegExp[] = [
+  // The share sheet was dismissed (AbortError) or isn't allowed here.
+  /^\[upanyway\] share failed/,
+  // WebKit without navigator.storage.persist().
+  /^\[upanyway\] persist\(\) failed/,
+]
+
 /** Listen to every page in `context` (and its service worker requests, where WebKit reports them). */
 function watch(context: BrowserContext, host: string): Watch {
   const w: Watch = { problems: [], warnings: [] }
   context.on('console', (msg) => {
     const where = msg.location()
     const at = where.url ? ` (${where.url.replace(/^.*\/upanyway\//, '')}:${where.lineNumber})` : ''
-    if (msg.type() === 'error') w.problems.push(`console.error: ${msg.text()}${at}`)
-    else if (msg.type() === 'warning') w.warnings.push(`console.warn: ${msg.text()}${at}`)
+    const text = msg.text()
+    if (msg.type() === 'error') w.problems.push(`console.error: ${text}${at}`)
+    else if (msg.type() === 'warning') {
+      if (CAUGHT_FAILURE.test(text) && !EXPECTED_WARNINGS.some((re) => re.test(text))) w.problems.push(`caught failure: ${text}${at}`)
+      else w.warnings.push(`console.warn: ${text}${at}`)
+    }
   })
   context.on('weberror', (err) => {
     const e = err.error()
@@ -762,6 +779,7 @@ export function runAt(campId: string, routeIndex: number, night = false, now = n
     routeArcs: [],
     routePath: [campId],
     fallsBySpot: {},
+    lastMissBySpot: {},
     highestRouteIndex: routeIndex,
     night,
   }

@@ -34,8 +34,8 @@ export type ImportResult = { ok: true; data: SaveData; summary: ImportSummary } 
 
 export const IMPORT_ERRORS = {
   empty: 'That file is empty. Try choosing the backup file again.',
-  notJson: "That doesn't look like an Up Anyway backup. Check it's the right file and try again.",
-  notOurs: "That doesn't look like an Up Anyway backup. Check it's the right file and try again.",
+  notJson: "That doesn’t look like an Up Anyway backup. Check it’s the right file and try again.",
+  notOurs: "That doesn’t look like an Up Anyway backup. Check it’s the right file and try again.",
   otherApp: 'That backup belongs to a different app, so it was left alone.',
   newer: NEWER_VERSION,
 } as const

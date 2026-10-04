@@ -50,9 +50,15 @@ export const CLIMB_COPY = {
     /** After the summit pitch: on to the Sky Lake finale. */
     skyLake: 'On to Sky Lake',
     again: 'Climb again',
+    /** The next pitch is still hidden: off to log a brave thing. */
+    log: 'Log a brave thing',
   },
   sunset: {
     camp: 'Back to camp',
+    /** On camp itself (the Climb tile after the day's time is used): the card just closes. */
+    stay: 'Back to the fire',
+    /** Under camp's Climb tile once the day's climbing time is used. */
+    tileNote: 'The mountain will be here tomorrow.',
   },
   locked: {
     title: 'The trail ahead is hidden.',

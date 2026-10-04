@@ -57,8 +57,17 @@ export const TUNING = {
   ropeSwingTime: 0.5,
   ropeReelTime: 0.32,
 
-  /** After landing she steps to the ledge's stand point over this time (s). */
+  /**
+   * After landing she steps to the ledge's stand point: settleTime + distance / settleSpeed, at most
+   * settleMax (s). A crumbly ledge's timer runs meanwhile, so settleMax is what the validator allows.
+   */
   settleTime: 0.18,
+  settleSpeed: 320,
+  settleMax: 0.55,
+  /** A slip onto a lower spot: she holds the fall pose this long, then gets up (s). */
+  flopTime: 0.7,
+  /** Sliding along the take-off ledge slower than this (units/s) ends the leap at once as a hop. */
+  pinnedSpeed: 60,
   /** Max flight time before a flight is treated as a fall (safety net, s). */
   maxFlightTime: 6,
 

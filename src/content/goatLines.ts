@@ -14,14 +14,21 @@
  * curly ones (’) for display. Use "…" for a trailing-off pause.
  *
  * Slots: {pose} (the fall pose's name), {n} (a count, only said when it is 2 or more), {goat} and
- * {mountain} (the names she typed). A line whose slot has no value is skipped, so every group also
- * has slot-free lines.
+ * {mountain} (the names she typed), {thing} (the brave thing whose stone just went on, cut to its
+ * first few words; write it inside “curly quotes”). A line whose slot has no value is skipped, so
+ * every group also has slot-free lines.
+ *
+ * Teach by doing: outside the tagged `moral` camp lines, a line talks about THIS try (the chalk, the
+ * rope, the goat's ears) and never states a general lesson ("attempts are how mountains get
+ * climbed", "tricky means we're learning"). Never tell her a feeling is wrong or to ignore it.
  *
  * Tags narrow when a line can be said (lines without a tag can always be said):
  * - zone: only in that zone · scary: only at that Looks Scary moment · whipper: only for that kind
  *   of fall (rope catch, slip onto a lower spot, crumble)
  * - pack: talks from inside the backpack, so it is skipped while the goat climbs beside her (night)
  * - out: only while the goat climbs beside her
+ * - scripted: one of the SCRIPTED story beats, said at its fixed moment through scriptedLine(); the
+ *   picker never draws it, so a group's other lines are its variations
  */
 import type { WhipperKind } from '../game/events'
 import type { LooksScaryKind, ZoneId } from '../game/types'
@@ -67,7 +74,6 @@ export type GoatMoment =
   | 'betaOffer'
   | 'smaller'
   | 'planSaved'
-  | 'letter'
 
 export interface GoatLine {
   text: string
@@ -80,6 +86,7 @@ export interface GoatLine {
   whipper?: WhipperKind
   pack?: true
   out?: true
+  scripted?: true
 }
 
 /**
@@ -198,11 +205,12 @@ export const MOMENT_MOOD: Record<GoatMoment, GoatMood> = {
   betaOffer: 'calm',
   smaller: 'happy',
   planSaved: 'happy',
-  letter: 'happy',
 }
 
 const S = SCRIPTED
 const M = SCRIPTED_MOOD
+/** A scripted story beat inside its group (counted with the group; never drawn by the picker). */
+const sc = (text: string, mood: GoatMood): GoatLine => ({ text, mood, scripted: true })
 
 export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
   // Aiming: she is dragging back. The goat is scared and coming anyway.
@@ -211,7 +219,7 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: "Gulp. Okay. I'm scared, and I'm coming." },
     { text: "My tummy's doing flips. Still coming!" },
     { text: 'Hold on tight, ears. Here we go!' },
-    { text: "If I squeak, that's just my scared noise. Ignore me!", mood: 'giggly' },
+    { text: "If I squeak, that's my scared noise. It's coming too!", mood: 'giggly' },
     { text: "Scared and ready at the same time. That's a thing!" },
     { text: "You pull back. I'll do the squeaking.", mood: 'giggly' },
     { text: "Deep breath. Mine's very squeaky." },
@@ -251,15 +259,15 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: 'Landed! I opened one eye just in time.', mood: 'giggly' },
     { text: "Feet down. My tummy's still catching up.", mood: 'giggly' },
     { text: 'Huh. That was closer than it looked.', mood: 'calm' },
-    { text: 'We did that leap scared. Scared still works!' },
+    { text: 'We did that leap scared, and here we are!' },
     { text: 'Up we go! I only squeaked a tiny bit.', mood: 'giggly' },
     { text: 'We made it! My ears are still flapping.' },
     { text: 'Higher than before. Still scared. Still here.', mood: 'wobbly' },
     { text: "Look how high we are! Actually, don't. Okay, peek.", mood: 'giggly' },
     { text: 'Try number {n} did it! The chalk showed us how.' },
     { text: "{n} tries at that one, and now we're up!" },
-    { text: 'That one took {n} goes. Every go taught us something.' },
-    { text: "We got here, and the scared came too. That's fine.", mood: 'calm' },
+    { text: 'That one took {n} goes. My ears flapped the whole time.' },
+    { text: 'We got here, and my scared came along too.', mood: 'calm' },
     { text: "Got it! I'm hugging the backpack so hard.", pack: true },
     { text: 'Got it! The fireflies are cheering. I think.', zone: 'hollow', mood: 'giggly' },
     { text: 'Solid ground in the clouds! Mostly solid. Solid-ish.', zone: 'cloud', mood: 'giggly' },
@@ -289,7 +297,7 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: "We actually jumped it! That's the scary part done.", mood: 'happy' },
     { text: 'Look at that chalk. Now we know the gap.', mood: 'calm' },
     { text: 'We went for it! My ears are VERY impressed.' },
-    { text: 'Leaping was the scary bit. Landing comes with practice.', mood: 'calm' },
+    { text: 'Leaping was the scary bit, and we did that bit!', mood: 'calm' },
   ],
 
   // A whipper (a fall). Silly, safe, and information.
@@ -303,13 +311,13 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: '{pose}! Very dramatic. Ten out of ten.' },
     { text: '{pose}! My ears went everywhere.' },
     { text: "{pose}! I'd clap, but I'm holding on.", pack: true },
-    { text: "Flop! That's information. Very bouncy information." },
+    { text: 'Flop! Now we know that way goes down. Bouncy!' },
     { text: 'Now we know where that one goes.', mood: 'calm' },
     { text: 'The chalk line shows exactly where we went. Handy!', mood: 'calm' },
     { text: 'Down we go! Scared, wobbly and totally fine.', pack: true },
     { text: "Ears up, tummy down. We're okay!" },
     { text: "We fell, and we're fine. I keep being surprised.", mood: 'calm', pack: true },
-    { text: "That's one more attempt. Attempts are how mountains get climbed.", mood: 'calm' },
+    { text: 'One more chalk line for our map of this bit.', mood: 'calm' },
     { text: 'Plop! A lower spot caught us. Comfy, actually.', whipper: 'slip' },
     { text: 'Bump! Landed lower. Not lost, just lower.', whipper: 'slip', mood: 'calm' },
     { text: 'Crumble, crumble, whoosh! Now we know that one crumbles.', whipper: 'crumble' },
@@ -325,11 +333,11 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: "The rope's caught us {n} times here. It never gets tired.", whipper: 'rope', pack: true },
     { text: "The rope's caught you {n} times here. Still cheering!", whipper: 'rope', out: true },
     { text: "Again! I'm getting good at falling. So are you." },
-    { text: "This one's tricky. Tricky means we're learning it.", mood: 'calm' },
+    { text: "This one's tricky! My ears are taking notes.", mood: 'calm' },
     { text: "Look at all that chalk. We're working this out.", mood: 'calm' },
     { text: 'Still scared, still trying, still bouncing. Again?' },
     { text: 'Every chalk line here is a clue. Lots of clues!', mood: 'calm' },
-    { text: 'Real climbers fall lots on hard bits. I asked one.' },
+    { text: 'Again! This bit and I are getting to know each other.' },
   ],
 
   // Beta hints from her last try at this spot. Offers, never orders; free.
@@ -419,7 +427,7 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: 'My scary guess was way bigger than the real thing.' },
     { text: 'Scary from far away. Cozy up close. Huh!', mood: 'happy' },
     { text: "We went anyway. It's nothing like I imagined!", mood: 'happy' },
-    { text: 'That giant gap? Just a big hop! My knees overreacted.', scary: 'bigleap' },
+    { text: 'That giant gap? Just a big hop! My knees still wobbled, though.', scary: 'bigleap' },
     { text: 'The eyes were fireflies! Hello, tiny lights!', scary: 'eyes', mood: 'happy' },
     { text: 'It was just a sleepy bear, snoring! Shh, tiptoe.', scary: 'rumble' },
     { text: 'The bridge held! Wobbly, and totally fine.', scary: 'bridge', mood: 'happy' },
@@ -469,31 +477,31 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: 'Scared the whole way here. Scared is allowed to come.', moral: true, mood: 'calm' },
   ],
 
-  // A stone joins the cairn ({n} = stones in the cairn now). Same for every brave thing.
+  // A stone joins the cairn ({n} = stones in the cairn now; {thing} = the brave thing it stands
+  // for, so the goat names the specific try). Never about the fear numbers or how it went.
   stoneAdded: [
+    { text: 'Clack! “{thing}” is on the cairn now.' },
+    { text: 'You did “{thing}”! The cairn got taller.' },
+    { text: '“{thing}”: you really did that one.', mood: 'calm' },
+    { text: '“{thing}” is a stone now. Clack!', mood: 'giggly' },
+    { text: 'A stone for “{thing}”! I heard it land.' },
     { text: 'Clack! Stone {n}. Each one is something real you did.' },
     { text: 'Clack! A real-life stone. Those are my favourite kind.' },
     { text: 'A new stone! I heard that clack from the backpack.', pack: true, mood: 'giggly' },
     { text: 'That stone is yours forever. Nobody can take it off.', mood: 'calm' },
     { text: "Our cairn's getting taller than me!", mood: 'giggly' },
-    { text: 'You did a real scary thing. Way scarier than leaping!' },
-    { text: "Clack! The mountain heard that. I'm sure of it." },
-    { text: 'One more stone on the cairn. One more real try.', mood: 'calm' },
+    { text: "“{thing}”! The mountain heard that clack, I'm sure." },
   ],
 
-  stoneWaiting: [
-    { text: S.stoneWaiting, mood: M.stoneWaiting },
-    { text: S.stoneWaitingLater, mood: M.stoneWaitingLater },
-    { text: 'This one waits right here. It gets first spot tomorrow.' },
-    { text: "A waiting stone! It's still yours. It goes on tomorrow.", mood: 'happy' },
-  ],
+  // A stone over today's cap waits beside the cairn (said only as the scripted beats).
+  stoneWaiting: [sc(S.stoneWaiting, M.stoneWaiting), sc(S.stoneWaitingLater, M.stoneWaitingLater)],
 
   // Visiting the cairn with nothing new on it: sitting by the stones together.
   cairnVisit: [
-    { text: 'Every stone here is a real thing you did.' },
+    { text: 'These stones are all real things you did.' },
     { text: 'I like sitting by our cairn. It feels like a hug.', mood: 'happy' },
     { text: "Tap a stone and I'll listen to its story again.", mood: 'happy' },
-    { text: 'Some went wobbly. Some flopped. Every stone counts the same.' },
+    { text: 'Wobbly ones, flopped ones, nailed ones: all here together.' },
     { text: 'I gave our cairn a sniff. It smells like real life.', mood: 'giggly' },
   ],
 
@@ -511,61 +519,62 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: 'Thank you for telling me. Flops are hard to say.' },
     { text: "Here's a hoof hug. You went anyway.", mood: 'happy' },
     { text: 'The scary part was going. You did that part.' },
-    { text: 'Flops are how everybody learns. Even mountain goats. Especially me.' },
+    { text: "I've had real flops too. I'm still here, like you." },
   ],
 
-  // "Not today" on a plan. It costs nothing.
+  // "Not today" on a plan. It costs nothing. The brief's words first; one of the others follows.
   notToday: [
-    { text: S.notToday, mood: M.notToday },
+    sc(S.notToday, M.notToday),
     { text: 'Not today is a real answer. The plan will keep.' },
     { text: 'My tummy said no too. Some days are like that.' },
     { text: "Okay! It'll still be here whenever you want it.", mood: 'happy' },
     { text: 'No rush. Mountains are very good at waiting.' },
   ],
 
-  // The top of the whole mountain, Sky Lake.
+  // The top of the whole mountain, Sky Lake: the finale's beats, then (at camp, the first visit of
+  // each day's play after Sky Lake) the goat remembering it.
   summit: [
-    { text: S.finale[0], mood: M.finale[0] },
-    { text: S.finale[1], mood: M.finale[1] },
-    { text: S.finale[2], mood: M.finale[2] },
-    { text: S.finale[3], mood: M.finale[3] },
-    { text: "The top of {mountain}! The whole thing! I'm dizzy!", mood: 'giggly' },
-    { text: 'Look how far we came! Every flop is down there.' },
+    sc(S.finale[0], M.finale[0]),
+    sc(S.finale[1], M.finale[1]),
+    sc(S.finale[2], M.finale[2]),
+    sc(S.finale[3], M.finale[3]),
+    { text: "We climbed all of {mountain}! I'm still a bit dizzy!", mood: 'giggly' },
+    { text: 'We went all the way up, and every flop came too.' },
     { text: 'I was scared at every single step. Best climb ever.' },
+    { text: 'Sky Lake was so splashy. My ears are still wet!', mood: 'giggly' },
   ],
 
   // The first rope catch: always says WHY the rope is there.
-  rope: [
-    { text: S.ropeFirst, mood: M.ropeFirst },
-    { text: "Boing! That's the rope. It's why climbers can try scary moves.", mood: 'giggly' },
-  ],
+  rope: [sc(S.ropeFirst, M.ropeFirst)],
 
   // The lesson's aiming hint (said again if she waits).
   lesson: [
-    { text: S.lessonLeap, mood: M.lessonLeap },
+    sc(S.lessonLeap, M.lessonLeap),
     { text: 'Pull back like a slingshot, then let go!' },
     { text: "Drag back, let go, and I'll hold on tight!", mood: 'wobbly' },
   ],
 
-  meet: S.meet.map((text, i): GoatLine => ({ text, mood: M.meet[i] })),
+  meet: S.meet.map((text, i): GoatLine => sc(text, M.meet[i])),
 
   hiddenHold: [
-    { text: S.hiddenHold, mood: M.hiddenHold },
+    sc(S.hiddenHold, M.hiddenHold),
     { text: 'Ooh! A secret hold. Falling found it!' },
-    { text: 'See that? A hidden hold! Flops find things.' },
+    { text: 'See that? A hidden hold! That fall found it.' },
     { text: "A shortcut hold! We'd never have seen it without falling." },
   ],
 
+  // The day's climbing time is up: the brief's words the first time she's told today; one of the
+  // others if she taps Climb again.
   sunset: [
-    { text: S.sunset, mood: M.sunset },
-    { text: "The sun's sleepy. Me too. Back to camp?" },
+    sc(S.sunset, M.sunset),
+    { text: "The sun's sleepy. Me too. Fire time?" },
     { text: "Orange sky! That's the sun saying goodnight.", mood: 'happy' },
     { text: "The mountain isn't going anywhere. More climbing tomorrow!", mood: 'happy' },
   ],
 
   // The send: the top of a pitch ({n} = attempts for this pitch, the send included).
   send: [
-    { text: 'We sent it! {n} attempts, and every one helped.' },
+    { text: 'We sent it on attempt number {n}!' },
     { text: '{n} attempts to send it. I felt every whoosh.', mood: 'giggly' },
     { text: 'Top of the pitch! Jelly legs went all the way.' },
     { text: 'We sent it! I was scared the whole way. Ha!', mood: 'giggly' },
@@ -574,7 +583,7 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: 'We sent this pitch, scared and wobbly and all.' },
   ],
 
-  firstCamp: [{ text: S.firstCamp, mood: M.firstCamp }],
+  firstCamp: [sc(S.firstCamp, M.firstCamp)],
 
   // The first time she stands on a crumbly ledge.
   crumbleFound: [
@@ -603,9 +612,9 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
   // "Make it smaller" on a plan.
   smaller: [
     { text: 'A smaller step still goes up. I love small steps.' },
-    { text: "Tiny steps! That's how goats climb everything." },
-    { text: 'Half a scary thing is still a scary thing.', mood: 'calm' },
-    { text: 'Smaller is clever. Mountains are made of little rocks.' },
+    { text: 'Tiny steps! I climb everything in tiny steps.' },
+    { text: "Half of it still makes my knees wobble. I'm in!", mood: 'calm' },
+    { text: 'A smaller step! My knees like this plan already.' },
   ],
 
   // "I'll do it later": a brave thing saved to Plans. Plans keep; nothing is late.
@@ -615,14 +624,6 @@ export const GOAT_LINES: Record<GoatMoment, GoatLine[]> = {
     { text: "Later is a real time. It'll be right here.", mood: 'calm' },
     { text: 'Into Plans it goes. My knees say thank you.', mood: 'giggly' },
     { text: "Whenever you're ready, so is this plan.", mood: 'calm' },
-  ],
-
-  // Opening a Spotted! letter.
-  letter: [
-    { text: 'A letter! Somebody spotted something you did.' },
-    { text: 'Mail! Up a mountain! Open it, open it!', mood: 'giggly' },
-    { text: 'Someone noticed you being you. Want to read it?', mood: 'calm' },
-    { text: 'A Spotted! letter. My ears are wiggling already.', mood: 'giggly' },
   ],
 }
 

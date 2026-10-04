@@ -8,7 +8,8 @@
  * On entry: waiting stones that fit today go on the cairn (a gentle toast offers to go and see
  * them), a waiting app update is switched on (never mid-climb), and the word "cairn" gets its card
  * the first time. The goat says one line per visit from its campIdle bag (campKey = this visit, so
- * at most one moral line); the very first visit it names Sky Lake as where they're going.
+ * at most one moral line); the very first visit it names Sky Lake as where they're going, and after
+ * the Sky Lake finale the first visit of each day it remembers the top (its summit lines).
  * No clocks, no streaks, no nagging: the counts on tiles are plain facts (stones, unread letters);
  * Plans never shows how many are still to do.
  */
@@ -17,8 +18,10 @@ import { goatAvatar, markWordSeen, now, save, update } from '../app/context'
 import type { Screen } from '../app/router'
 import { applyUpdateIfSafe, onUpdateReady } from '../app/sw-register'
 import { CAMP_COPY } from '../content/copy'
+import { dayKey } from '../model/clock'
 import { goatVoice, scriptedLine, type SpokenLine } from '../model/goatVoice'
 import { placeWaitingStones, stoneOrder, unopenedLetters, waitingStones } from '../model/stones'
+import { isSunset } from '../model/climbTime'
 import { isGoatOut } from '../model/unlocks'
 import { newlyUnlockedSince, unlockedDecorations, unlockedItems } from '../model/unlockables'
 import type { SaveData } from '../storage/schema'
@@ -26,6 +29,8 @@ import { button, screenLayout, tile, toast, type ToastHandle } from '../ui/compo
 import { h } from '../ui/dom'
 import { goatBubble } from '../ui/goatBubble'
 import { wordCard, type WordBook } from './climb/cards'
+import { CLIMB_COPY } from './climb/copy'
+import { sunsetLine, sunsetPrompt, type Prompt } from './climb/prompts'
 import { campScene, type CampStone } from './campScene'
 import { noteArrivals } from './log/events'
 import { trailMarkers } from './map/trail'
@@ -41,6 +46,8 @@ export const CAMP_SCREEN_COPY = {
 
 /** Each visit to camp is one camp arrival: the goat says at most one moral line per arrival. */
 let campArrivals = 0
+/** The day the goat last remembered Sky Lake at camp (its summit lines: once a day, after the finale). */
+let summitRecalledOn = ''
 
 /** Her placed stones in cairn order, for the picture. */
 export function campStones(d: SaveData): CampStone[] {
@@ -91,6 +98,19 @@ export const campScreen: Screen = (root, ctx) => {
   const letters = unopenedLetters(d).length
   const stones = campStones(d)
   const here = trailMarkers(d, false).find((m) => m.current)
+  // Today's climbing time is used: the Climb tile says so calmly, and a tap shows the sunset card
+  // right here (no lock, no sad state; camp, cairn and the Hall stay open).
+  const sunset = isSunset(d, now())
+  let sunsetCard: Prompt | null = null
+  const climb = () => {
+    if (!isSunset(save(), now())) return ctx.navigate('/map')
+    if (sunsetCard) return
+    sunsetCard = sunsetPrompt({ look: d.profile.look, name: d.profile.goatName, out: isGoatOut(d) }, sunsetLine(now()), () => {
+      sunsetCard?.close()
+      sunsetCard = null
+    }, CLIMB_COPY.sunset.stay)
+  }
+  const climbNote = sunset ? CLIMB_COPY.sunset.tileNote : here ? s.climbNext(here.n, here.title) : null
 
   const sceneCanvas = h('canvas', { class: 'camp__canvas', role: 'img', 'aria-label': c.sceneLabel(d.profile.mountainName || 'your mountain') })
   const bubble = goatBubble({ avatar: () => goatAvatar(d.profile.look, { out: goatOut }), name: d.profile.goatName })
@@ -111,11 +131,11 @@ export const campScreen: Screen = (root, ctx) => {
         icon: 'mountain',
         tone: 'meadow',
         wide: true,
-        onClick: go('/map'),
-        class: 'camp__climb',
-        ariaLabel: here ? `${c.climb}. ${s.climbNext(here.n, here.title)}` : undefined,
+        onClick: climb,
+        class: 'camp__climb' + (sunset ? ' is-sunset' : ''),
+        ariaLabel: climbNote ? `${c.climb}. ${climbNote}` : undefined,
       }),
-      here ? s.climbNext(here.n, here.title) : null,
+      climbNote,
     ),
     tile({ label: c.log, icon: 'stone', tone: 'coral', wide: true, onClick: go('/log'), class: 'camp__log' }),
     // Plans is a plain tile: no count of brave things still to do (never a to-do list or a nag).
@@ -171,7 +191,16 @@ export const campScreen: Screen = (root, ctx) => {
   const campKey = `camp:${++campArrivals}`
   const idleLine = () => goatVoice().pick('campIdle', {}, { campKey, goatOut })
   const say = (line: SpokenLine, ms?: number) => bubble.say(line.text, { mood: line.mood, durationMs: ms })
-  const timer = setTimeout(() => say(firstVisit ? scriptedLine('firstCamp') : idleLine(), firstVisit ? 0 : 9000), 500)
+  // After Sky Lake, the first visit of a day: the goat remembers the top (its summit lines).
+  const today = dayKey(now())
+  const recall = !firstVisit && d.summit.finaleSeen && !d.testMode && summitRecalledOn !== today
+  if (recall) summitRecalledOn = today
+  const first = firstVisit
+    ? scriptedLine('firstCamp')
+    : recall
+      ? goatVoice().pick('summit', { mountain: d.profile.mountainName }, { goatOut })
+      : idleLine()
+  const timer = setTimeout(() => say(first, firstVisit ? 0 : 9000), 500)
   let lastPoke = -Infinity
   sceneFrame.addEventListener('click', () => {
     const t = performance.now()
@@ -204,6 +233,7 @@ export const campScreen: Screen = (root, ctx) => {
   const wordTimer = setTimeout(() => wordCard(words, 'cairn'), firstVisit ? 6000 : 900)
 
   return () => {
+    sunsetCard?.close()
     clearTimeout(timer)
     clearTimeout(wordTimer)
     offUpdate()

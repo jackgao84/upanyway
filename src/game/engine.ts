@@ -80,8 +80,8 @@ export interface RopeAnim {
 }
 
 const PATH_EVERY = 3
-/** Sliding along the take-off ledge slower than this (units/s) ends the leap as a hop straight away. */
-const PINNED_SPEED = 60
+/** A hop that left a chalk line: the leap moved her at least this far (world units). */
+const HOP_CHALK_MIN = 20
 
 export class ClimbSession {
   readonly level: Level
@@ -89,8 +89,13 @@ export class ClimbSession {
   readonly events = new Emitter()
 
   phase: Phase = 'ready'
-  /** Pitch clock (s). Advances only in fixed steps and only while not frozen. */
+  /**
+   * Pitch clock (s): `steps × TUNING.dt`, exactly as simulateLeap counts it, so the preview, the
+   * ghost and the validator see the same gusts at the same instants. Advances only while not frozen.
+   */
   t = 0
+  /** Fixed steps taken so far (the pitch clock in whole steps). */
+  private steps = 0
   body: Body
   /** Element she stands on / hangs from (while flying: the one she launched from). */
   elementId: string
@@ -107,8 +112,11 @@ export class ClimbSession {
   /** Crumbly ledge id → seconds since she landed on it. */
   readonly crumbleTimers = new Map<string, number>()
 
-  /** Recent failed arcs (renderer draws the last TUNING.chalkVisible, fading). */
-  readonly chalk: { arc: number[]; at: number }[] = []
+  /**
+   * Recent failed arcs (renderer draws the last TUNING.chalkVisible, fading): every whipper, and every
+   * leap that came back down onto its own take-off spot (`hop`: too short to reach anything).
+   */
+  readonly chalk: { arc: number[]; at: number; hop?: boolean }[] = []
   /** Successful arcs since the last rope catch (beta map's bright line is built by the screen). */
   readonly routeArcs: number[][] = []
 
@@ -310,7 +318,8 @@ export class ClimbSession {
 
     this.stepCrumbles(dt)
     this.stepWind(t)
-    this.t = Math.round((t + dt) * 1e6) / 1e6
+    this.steps++
+    this.t = this.steps * dt
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -373,8 +382,9 @@ export class ClimbSession {
     if (!contact && !f.crumbleFall && this.pinnedOnTakeOff(f)) {
       // A leap straight down into the ledge she stands on (a "swipe up"), or a flat one into the pitch
       // wall: the ledge holds her and nothing moves her off it, so it is a neutral hop, not a 6 s
-      // freeze that ends as a whipper she never took.
+      // freeze that ends as a whipper she never took. If the leap went anywhere, its chalk shows it.
       this.flight = null
+      if (pathLength(f.path, this.body) > HOP_CHALK_MIN) this.hopChalk(f)
       this.events.emit('hop', { id: f.launchId })
       this.arrive(this.el(f.launchId), this.body.x, false)
       return
@@ -395,7 +405,10 @@ export class ClimbSession {
       return
     }
     if (contact.id === f.launchId) {
+      // Back down on her own take-off spot: not a whipper or an attempt, but a failed leap all the
+      // same, so its arc stays as chalk ("exactly how short I was").
       this.flight = null
+      this.hopChalk(f)
       this.events.emit('hop', { id: contact.id })
       this.arrive(target, contact.x, false)
       return
@@ -413,7 +426,19 @@ export class ClimbSession {
 
   /** Still on the take-off ledge's surface and (almost) not moving along it. */
   private pinnedOnTakeOff(f: Flight): boolean {
-    return f.ctx.surfaceId === f.launchId && this.body.vy === 0 && Math.abs(this.body.vx) < PINNED_SPEED
+    return f.ctx.surfaceId === f.launchId && this.body.vy === 0 && Math.abs(this.body.vx) < TUNING.pinnedSpeed
+  }
+
+  /** A hop's arc as chalk (no whipper, no attempt). */
+  private hopChalk(f: Flight): void {
+    const last = f.path.length - 2
+    const arc = f.path[last] === round1(this.body.x) && f.path[last + 1] === round1(this.body.y) ? f.path : [...f.path, round1(this.body.x), round1(this.body.y)]
+    this.pushChalk({ arc, at: this.t, hop: true })
+  }
+
+  private pushChalk(c: { arc: number[]; at: number; hop?: boolean }): void {
+    this.chalk.push(c)
+    if (this.chalk.length > 12) this.chalk.splice(0, this.chalk.length - 12)
   }
 
   private checkReveal(f: Flight): void {
@@ -471,8 +496,7 @@ export class ClimbSession {
     const arc = f.path
     const poseId = this.choosePose()
     this.poseId = poseId
-    this.chalk.push({ arc, at: this.t })
-    if (this.chalk.length > 12) this.chalk.splice(0, this.chalk.length - 12)
+    this.pushChalk({ arc, at: this.t })
     if (f.pendingReveal.size > 0) {
       const ids = [...f.pendingReveal]
       for (const id of ids) this.revealed.add(id)
@@ -498,7 +522,8 @@ export class ClimbSession {
       if (landed.kind === 'ledge') this.body.y = landed.y
       this.flop = { t: 0, poseId }
       this.phase = 'flopped'
-      this.startCrumbleIfNeeded(landed)
+      // A crumbly ledge's timer starts once she is back on her feet (after the flop), so she gets the
+      // same time to aim as after any landing. (One already running from before keeps running.)
       return
     }
     this.startRope(poseId)
@@ -525,7 +550,7 @@ export class ClimbSession {
     const sp = standPoint(target)
     this.body = { x: landX, y: target.y, vx: 0, vy: 0 }
     const dx = Math.abs(sp.x - landX)
-    this.settle = { fromX: landX, toX: sp.x, t: 0, dur: Math.min(0.55, TUNING.settleTime + dx / 320) }
+    this.settle = { fromX: landX, toX: sp.x, t: 0, dur: Math.min(TUNING.settleMax, TUNING.settleTime + dx / TUNING.settleSpeed) }
   }
 
   private stepSettle(dt: number): void {
@@ -626,10 +651,11 @@ export class ClimbSession {
     const f = this.flop
     if (!f) return
     f.t += dt
-    if (f.t >= 0.7) {
+    if (f.t >= TUNING.flopTime) {
       this.flop = null
       this.poseId = null
       const el = this.el(this.elementId)
+      this.startCrumbleIfNeeded(el)
       if (el.kind === 'ledge') {
         this.settleTo(el, this.body.x)
         this.phase = 'settling'
@@ -772,4 +798,11 @@ function isCamp(el: LevelElement): boolean {
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10
+}
+
+/** How far a flight path got from its start (to the body's position now), world units. */
+function pathLength(path: number[], body: Body): number {
+  let max = 0
+  for (let i = 0; i + 1 < path.length; i += 2) max = Math.max(max, Math.hypot(path[i] - path[0], path[i + 1] - path[1]))
+  return Math.max(max, Math.hypot(body.x - path[0], body.y - path[1]))
 }

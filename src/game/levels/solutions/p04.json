@@ -1,6 +1,6 @@
 {
  "levelId": "p04",
- "levelHash": "c7018f7b",
+ "levelHash": "7c9c08df",
  "steps": [
   {
    "from": "c0",
@@ -175,18 +175,27 @@
   },
   {
    "from": "e1",
-   "to": "top",
-   "angle": 98,
-   "power": 0.62,
+   "to": "e2",
+   "angle": 104,
+   "power": 0.59,
    "launchTime": 0,
-   "marginAngle": 8,
-   "marginPower": 0.12
+   "marginAngle": 5,
+   "marginPower": 0.075
+  },
+  {
+   "from": "e2",
+   "to": "top",
+   "angle": 74,
+   "power": 0.73,
+   "launchTime": 0,
+   "marginAngle": 12,
+   "marginPower": 0.18
   }
  ],
  "ghosts": {},
  "difficulty": {
   "minMargin": 1.25,
-  "minSuccessFraction": 0.0388,
-  "meanSuccessFraction": 0.0899
+  "minSuccessFraction": 0.0386,
+  "meanSuccessFraction": 0.092
  }
 }

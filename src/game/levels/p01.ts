@@ -7,7 +7,7 @@ export const p01: Level = {
   index: 1,
   zone: 'meadow',
   title: 'First Steps',
-  height: 1800,
+  height: 1960,
   elements: [
     camp('c0', 25, 40, 180),
     ledge('a1', 152, 130, 125),
@@ -27,9 +27,11 @@ export const p01: Level = {
     ledge('d3', 142, 1390, 125),
     ledge('d4', 32, 1480, 125),
     ledge('d5', 142, 1570, 125),
-    camp('top', 210, 1660, 180),
+    ledge('d6', 252, 1660, 125),
+    ledge('d7', 142, 1750, 125),
+    camp('top', 210, 1840, 180),
   ],
-  route: ['c0', 'a1', 'a2', 'a3', 'a4', 'c1', 'b1', 'b2', 'b3', 'b4', 'b5', 'c2', 'd1', 'd2', 'c3', 'd3', 'd4', 'd5', 'top'],
+  route: ['c0', 'a1', 'a2', 'a3', 'a4', 'c1', 'b1', 'b2', 'b3', 'b4', 'b5', 'c2', 'd1', 'd2', 'c3', 'd3', 'd4', 'd5', 'd6', 'd7', 'top'],
   decor: [
     { kind: 'tree', x: 40, y: 40, scale: 1.2 },
     { kind: 'flowers', x: 150, y: 40 },
@@ -51,6 +53,8 @@ export const p01: Level = {
     { kind: 'flowers', x: 240, y: 1390 },
     { kind: 'pine', x: 50, y: 1480, scale: 0.8 },
     { kind: 'grass', x: 250, y: 1570 },
-    { kind: 'flag', x: 360, y: 1660 },
+    { kind: 'flowers', x: 350, y: 1660 },
+    { kind: 'bush', x: 160, y: 1750 },
+    { kind: 'flag', x: 360, y: 1840 },
   ],
 }

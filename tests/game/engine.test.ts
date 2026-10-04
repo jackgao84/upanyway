@@ -6,6 +6,7 @@ import { describe, expect, test } from 'vitest'
 import { ClimbSession } from '../../src/game/engine'
 import { ALL_LEVELS, getLevel } from '../../src/game/levels'
 import { solutionsFor } from '../../src/game/levels/solutions'
+import { simulateLeap } from '../../src/game/physics'
 import { TUNING } from '../../src/game/tuning'
 import type { Level } from '../../src/game/types'
 
@@ -230,5 +231,108 @@ describe('crumbly ledges', () => {
     runUntilReady(s)
     expect(log).toContain('whipper:crumble:a3')
     expect(s.elementId).not.toBe('a3')
+  })
+})
+
+describe('chalk', () => {
+  test('a leap that comes back down on its own take-off ledge leaves chalk, but is no whipper', () => {
+    const level = getLevel('p01')!
+    // A short hop up and down on the wide start camp.
+    const { s, log } = session(level, 'c0')
+    expect(s.launch(80, 0.3)).toBe(true)
+    runUntilReady(s, 3)
+    expect(log).toContain('hop:c0')
+    expect(log.some((l) => l.startsWith('whipper'))).toBe(false)
+    expect(s.chalk).toHaveLength(1)
+    expect(s.chalk[0].hop).toBe(true)
+    // The arc goes up and comes back down where she stands: the chalk shows how short it was.
+    const arc = s.chalk[0].arc
+    let apex = -Infinity
+    for (let i = 1; i < arc.length; i += 2) apex = Math.max(apex, arc[i])
+    expect(apex).toBeGreaterThan(arc[1] + 20)
+  })
+
+  test('a leap pinned on its own ledge without moving leaves no chalk', () => {
+    const level = getLevel('p01')!
+    const { s, log } = session(level, 'c0')
+    expect(s.launch(-90, 0.5)).toBe(true)
+    runUntilReady(s, 1)
+    expect(log).toContain('hop:c0')
+    expect(s.chalk).toHaveLength(0)
+  })
+})
+
+describe('crumbly ledges give her the same time to aim after a slip', () => {
+  test('the timer starts once the flop is over, not while she lies there', () => {
+    const level = getLevel('p07')!
+    let slip: [number, number] | null = null
+    for (let angle = -20; angle <= 200 && !slip; angle += 2) {
+      for (let power = 0.24; power <= 0.9 && !slip; power += 0.02) {
+        const probe = session(level, 'a4')
+        let landedOn: string | null = null
+        probe.s.events.on('whipper', (e) => {
+          if (e.kind === 'slip') landedOn = e.landedId
+        })
+        probe.s.launch(angle, power)
+        runUntilReady(probe.s, 3)
+        if (landedOn === 'a3') slip = [angle, power]
+      }
+    }
+    expect(slip, 'a slip from a4 onto a3').not.toBeNull()
+    const { s } = session(level, 'a4')
+    s.launch(slip![0], slip![1])
+    while (s.phase !== 'flopped') s.fixedStep()
+    expect(s.crumbleTimers.has('a3')).toBe(false)
+    let flop = 0
+    while (s.phase === 'flopped') {
+      s.fixedStep()
+      flop += TUNING.dt
+    }
+    expect(flop).toBeCloseTo(TUNING.flopTime, 1)
+    expect(s.crumbleTimers.has('a3')).toBe(true)
+    // Settling takes at most settleMax; she then still has the validator's aim allowance.
+    let settle = 0
+    while (s.phase !== 'ready') {
+      s.fixedStep()
+      settle += TUNING.dt
+    }
+    expect(settle).toBeLessThanOrEqual(TUNING.settleMax + TUNING.dt)
+    expect(TUNING.crumbleDelay - (s.crumbleTimers.get('a3') ?? 0)).toBeGreaterThan(1.2)
+  })
+})
+
+describe('the engine and simulateLeap step the very same flight (wind pitches)', () => {
+  test('p10: launches either side of a gust edge match step for step', () => {
+    const level = getLevel('p10')!
+    const sol = solutionsFor('p10')!.steps.find((st) => st.from === 'c1')!
+    const zone = level.wind![0]
+    const gustEnd = 2 * zone.period + zone.offset + zone.gust
+    let straddled = 0
+    for (const before of [0, 1, 7, 30, 61, 100, 140]) {
+      const { s } = session(level, 'c1')
+      // Run the pitch clock to `before` steps ahead of a gust's end, then leap.
+      const target = Math.round(gustEnd / TUNING.dt) - before
+      while (Math.round(s.t / TUNING.dt) < target) s.fixedStep()
+      const t0 = s.t
+      expect(t0).toBe(target * TUNING.dt)
+      expect(s.launch(sol.angle, sol.power)).toBe(true)
+      const sim = simulateLeap(level, { fromId: 'c1', t0 }, sol.angle, sol.power, {
+        world: s.world,
+        ropeLineY: s.ropeLineY(),
+        record: true,
+        sampleEvery: 1,
+      })
+      const steps = sim.path.length / 2 - 1
+      let i = 0
+      for (;;) {
+        s.fixedStep()
+        i++
+        if (s.phase !== 'flying') break
+        expect([s.body.x, s.body.y], `step ${i} (launched ${before} steps before the gust ends)`).toEqual([sim.path[2 * i], sim.path[2 * i + 1]])
+      }
+      expect(i, 'same number of steps in the air').toBe(steps)
+      if (before > 0 && steps > before) straddled++
+    }
+    expect(straddled, 'some leaps were in the air when the gust ended').toBeGreaterThan(2)
   })
 })

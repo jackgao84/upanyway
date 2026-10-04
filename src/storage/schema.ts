@@ -97,9 +97,26 @@ export interface PitchRun {
   routePath: string[]
   /** Launch element id → falls from there this run (beta hint after 3, ghost after 6). */
   fallsBySpot: Record<string, number>
+  /**
+   * Launch element id → her last fall from there this run (the beta hint reads it), so a hint her
+   * saved falls have earned is still offered after a trip to camp, a reload or another day.
+   */
+  lastMissBySpot: Record<string, MissRecord>
   /** Highest index in level.route she has reached this run (beta target = the next one). */
   highestRouteIndex: number
   night: boolean
+}
+
+/** One failed leap, as the beta hint needs it (game/beta.ts classifyMiss). */
+export interface MissRecord {
+  kind: 'rope' | 'slip' | 'crumble'
+  /** The leap's angle and power (null: the ledge crumbled under her). */
+  launch: { angle: number; power: number } | null
+  /** Bumped the side of something on the way. */
+  bumped: boolean
+  /** A gust caught the leap. */
+  gusted: boolean
+  arc: Arc
 }
 
 export interface SendRecord {
@@ -183,7 +200,11 @@ export interface SaveData {
   glossarySeen: string[]
   looksScary: Partial<Record<ZoneId, LooksScaryRecord>>
   climbTime: { day: DayKey; seconds: number }
-  summit: { reached: boolean; at?: string; finaleSeen: boolean }
+  /**
+   * Sky Lake. `stonesAt`: how many stones the cairn held when the summit was reached; every stone
+   * placed after those unlocks a camp treasure (model/unlockables.ts).
+   */
+  summit: { reached: boolean; at?: string; finaleSeen: boolean; stonesAt?: number }
   flags: {
     ropeExplained: boolean
     firstCampVisit: boolean

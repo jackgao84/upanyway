@@ -33,9 +33,10 @@ export function keepInView(el: HTMLElement): void {
   const box = container.getBoundingClientRect()
   const top = Math.max(box.top, viewTop)
   const bottom = Math.min(box.bottom, viewBottom)
-  const header = container.querySelector<HTMLElement>('.layout__header')
+  // Only bars that stay put take room (on a short screen with the keyboard up they scroll away).
+  const header = stuck(container.querySelector<HTMLElement>('.layout__header'))
   const headerH = header ? header.getBoundingClientRect().height : 0
-  const footer = container.querySelector<HTMLElement>('.layout__footer')
+  const footer = stuck(container.querySelector<HTMLElement>('.layout__footer'))
   const footerH = footer ? Math.min(footer.getBoundingClientRect().height, (bottom - top) / 3) : 0
   const visTop = top + headerH + 12
   const visBottom = bottom - footerH - 12
@@ -48,6 +49,12 @@ export function keepInView(el: HTMLElement): void {
   const delta = anchor - visTop
   if (Math.abs(delta) < 2) return
   container.scrollTo({ top: container.scrollTop + delta, behavior: reduceMotion() ? 'auto' : 'smooth' })
+}
+
+function stuck(el: HTMLElement | null): HTMLElement | null {
+  if (!el) return null
+  const pos = getComputedStyle(el).position
+  return pos === 'sticky' || pos === '-webkit-sticky' || pos === 'fixed' ? el : null
 }
 
 function reduceMotion(): boolean {

@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "validate": "vitest run tests/levels --exclude tests/levels/fresh.test.ts && vitest run tests/levels/fresh.test.ts",
     "e2e": "playwright test",
-    "icons": "node scripts/make-icons.mjs"
+    "icons": "node scripts/make-icons.mjs",
+    "check:stubs": "node scripts/check-stubs.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

@@ -52,7 +52,7 @@ export const FINALE_COPY = {
     title: 'Sky Lake!',
     climbed: (mountain: string) =>
       mountain.trim() ? `You climbed all of ${mountain.trim()}, right to the very top.` : 'You climbed the whole mountain, right to the very top.',
-    attempts: (n: number) => `${n} attempts got you here.`,
+    attempts: (n: number) => `Attempts on the way up: ${n}.`,
     newHeading: 'New at the top',
     nightOpen: (goat: string) => `Night climbs are open. ${or(goat, 'Your goat')} climbs beside you now.`,
     treasures: 'Each new stone in your cairn brings a camp treasure.',

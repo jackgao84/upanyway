@@ -89,10 +89,13 @@ export const GROUP_TONES: Record<IdeaGroup, Tone> = {
   oops: 'crumble',
 }
 
-/** A gentle card for each new badge (the same card the climb shows), one after another. */
+/**
+ * A gentle card for each new badge (the same card the climb shows), one after another, rising from
+ * the bottom of the screen so the goat's line near the top stays readable.
+ */
 export function showBadgeCards(ids: readonly BadgeId[]): void {
   ids.forEach((id, i) => {
-    if (i === 0) badgeCard(id)
-    else setTimeout(() => badgeCard(id), i * 700)
+    if (i === 0) badgeCard(id, 'bottom')
+    else setTimeout(() => badgeCard(id, 'bottom'), i * 700)
   })
 }
