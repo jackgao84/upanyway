@@ -33,6 +33,26 @@ describe('import', () => {
     expect(r.summary).toEqual({ stones: 2, braveThings: 3, pitchesSent: 1, goatName: 'Pip', mountainName: 'Big Blue' })
   })
 
+  it('carries hidden idea cards through an export and back', () => {
+    const original = richSave()
+    original.hiddenIdeas = ['oops-odd-socks', 'family-light-off', 'school-assembly']
+    const text = exportJson(original, DAY1)
+    expect(JSON.parse(text).data.hiddenIdeas).toEqual(['oops-odd-socks', 'family-light-off', 'school-assembly'])
+    const r = parseImport(text, DAY1)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.data.hiddenIdeas).toEqual(['oops-odd-socks', 'family-light-off', 'school-assembly'])
+    expect(r.data).toStrictEqual(original)
+  })
+
+  it('a backup from before hidden cards (v1) restores with every card showing', () => {
+    const v1 = JSON.parse(JSON.stringify(richSave())) as Record<string, unknown>
+    delete v1.hiddenIdeas
+    v1.schemaVersion = 1
+    const r = parseImport(JSON.stringify({ app: 'upanyway', exportedAt: DAY1.toISOString(), schemaVersion: 1, data: v1 }), DAY1)
+    expect(r.ok && r.data).toStrictEqual({ ...richSave(), hiddenIdeas: [] })
+  })
+
   it('round-trips a brand-new save too', () => {
     const r = parseImport(exportJson(defaultSave(DAY1), DAY1), DAY1)
     expect(r.ok && r.data).toStrictEqual(defaultSave(DAY1))

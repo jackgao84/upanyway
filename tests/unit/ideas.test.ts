@@ -130,8 +130,8 @@ describe('idea cards', () => {
       { id: 'c3', createdAt: at, text: '   ', oops: false },
     ])
     expect(cards).toEqual([
-      { id: 'c1', text: 'Ask Grandma about her first job', oops: false, group: 'me' },
-      { id: 'c2', text: 'Wear a silly hat to dinner', oops: true, group: 'oops' },
+      { id: 'c1', text: 'Ask Grandma about her first job', oops: false, group: 'me', custom: true },
+      { id: 'c2', text: 'Wear a silly hat to dinner', oops: true, group: 'oops', custom: true },
     ])
   })
 })

@@ -44,7 +44,7 @@ export function withStones(d: SaveData, n: number, start: Date = DAY1): void {
   }
 }
 
-/** A rich, valid v1 save touching every part of the schema. */
+/** A rich, valid current-version save touching every part of the schema. */
 export function richSave(): SaveData {
   const d = defaultSave(at(2026, 9, 1))
   d.setup = { parentDone: true, lookDone: true, complete: true }
@@ -148,6 +148,7 @@ export function richSave(): SaveData {
   ]
   d.grownupFlops = [{ id: 'f-1', createdAt: at(2026, 9, 2).toISOString(), who: 'Mum', what: 'Burnt the toast', learned: 'Set a timer' }]
   d.customIdeas = [{ id: 'i-1', createdAt: at(2026, 9, 2).toISOString(), text: 'Say hi to the bus driver', oops: false }]
+  d.hiddenIdeas = ['school-assembly', 'oops-worst-joke']
   d.badges = { 'first-whipper': at(2026, 9, 1).toISOString(), 'attempts-10': at(2026, 9, 3).toISOString() }
   d.glossarySeen = ['pitch', 'whipper']
   d.looksScary = { meadow: { forecast: 8, really: 3, at: at(2026, 9, 2).toISOString() }, hollow: { forecast: 6, really: null, at: at(2026, 9, 3).toISOString() } }

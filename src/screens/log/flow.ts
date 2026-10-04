@@ -25,6 +25,7 @@ import { drawPackWithGoat } from '../../game/art/climber'
 import type { GoatMood as ArtGoatMood } from '../../game/art/goat'
 import { evaluateBadges } from '../../model/badges'
 import { goatVoice } from '../../model/goatVoice'
+import { visibleIdeas } from '../../model/ideas'
 import { addBraveThing, completeBraveThing } from '../../model/stones'
 import type { BraveOutcome } from '../../storage/schema'
 import {
@@ -318,7 +319,7 @@ export function runLogFlow(root: HTMLElement, ctx: ScreenContext, mode: FlowMode
       draft.oops = idea.oops
       advance('forecast')
     }
-    return layout(ideasView({ custom: save().customIdeas, selectedId: draft.ideaId, onPick, scroller: root }))
+    return layout(ideasView({ ideas: visibleIdeas(save()), selectedId: draft.ideaId, onPick, scroller: root }))
   }
 
   function weatherStep(q: string, label: string, value: number | null, onPick: (n: number) => void, next: Step): HTMLElement {

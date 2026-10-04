@@ -16,7 +16,7 @@ export const PARENT_COPY = {
       cairn: { title: 'Read the cairn', text: 'Their brave things and plans, read-only.' },
       letter: { title: 'Write a Spotted! letter', text: 'A note about something brave you noticed.' },
       flop: { title: 'Grown-ups’ Wing', text: 'Hang one of your own flops in the Hall.' },
-      ideas: { title: 'Idea cards', text: 'Suggest ideas. They always choose.' },
+      ideas: { title: 'Idea cards', text: 'Add or hide ideas. They always choose.' },
       settings: { title: 'Settings', text: 'Climbing time, sound, names, test mode.' },
       data: { title: 'Backup and data', text: 'Save, restore or start over.' },
       pin: { title: 'Change PIN', text: 'New numbers for this door.' },
@@ -80,7 +80,7 @@ export const PARENT_COPY = {
       ],
       records:
         'Climbing in test mode records nothing: no attempts, flops, badges, climbing time or progress. Turning it off puts everything back exactly as it was.',
-      real: 'Brave things, letters, flops and ideas you add are still real, even in test mode.',
+      real: 'Brave things, letters, flops and idea cards you add or hide are still real, even in test mode.',
       pill: 'A small “Test mode” label shows in the corner while it’s on.',
       on: 'Test mode is on.',
       off: 'Test mode is off. Everything is back to normal.',
@@ -161,7 +161,7 @@ export const PARENT_COPY = {
   },
   ideas: {
     title: 'Idea cards',
-    lead: 'Add idea cards to the ones your climber can pick from when they log a brave thing.',
+    lead: 'Add your own idea cards, or hide built-in ones, for when your climber logs a brave thing and taps “Pick an idea”.',
     choose:
       'An idea card is a suggestion, never a task. You can suggest; they decide what, and when. Please don’t assign one, or ask why one hasn’t been picked.',
     chooseTitle: 'They always choose',
@@ -192,6 +192,30 @@ export const PARENT_COPY = {
       no: 'Keep it',
     },
     removed: 'Idea card removed.',
+    builtIn: {
+      title: 'Built-in idea cards',
+      lead: 'Hide any card that doesn’t suit your climber. A hidden card just doesn’t appear when they pick an idea.',
+      points: [
+        'Nothing is deleted. Tap a hidden card to show it again, any time.',
+        'They can still type any brave thing they like. They always choose.',
+        'Brave things and plans already made from a card stay just as they are.',
+        'Test mode doesn’t change this.',
+      ],
+      shown: 'Shown',
+      hidden: 'Hidden',
+      count: (n: number) =>
+        n === 0 ? 'Every built-in card is showing.' : n === 1 ? '1 card hidden from their idea cards.' : `${n} cards hidden from their idea cards.`,
+      groupCount: (n: number) => `${n} hidden`,
+      showAll: 'Show all again',
+      showAllConfirm: {
+        title: 'Show the hidden cards again?',
+        body: (n: number) =>
+          n === 1 ? 'The hidden card goes back on their idea cards.' : `All ${n} hidden cards go back on their idea cards.`,
+        yes: 'Show them all',
+        no: 'Keep as it is',
+      },
+      shownAll: 'Every built-in card is showing again.',
+    },
   },
   cairn: {
     title: 'Read the cairn',

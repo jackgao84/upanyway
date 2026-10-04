@@ -12,8 +12,9 @@ comes along anyway.
   network requests; everything stays on the device.
 - **Set up in under three minutes**: a grown-up picks a PIN and the names she calls them, then hands
   it over.
-- **Grown-ups' corner** (behind the PIN): daily climbing time, Spotted! letters, idea cards, reading
-  her cairn, How to cheer, backups, and a test mode.
+- **Grown-ups' corner** (behind the PIN): daily climbing time, Spotted! letters, idea cards (add your
+  own, or hide built-in ones and show them again), reading her cairn, How to cheer, backups, and a test
+  mode.
 
 ## Put it on an iPad
 

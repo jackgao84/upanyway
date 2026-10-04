@@ -48,6 +48,17 @@ function v0Fixture(): Record<string, unknown> {
   }
 }
 
+/**
+ * A v1 save, as the app wrote it before grown-ups could hide idea cards: the rich save with no
+ * `hiddenIdeas` and schemaVersion 1.
+ */
+function v1Fixture(): Record<string, unknown> {
+  const d = JSON.parse(JSON.stringify(richSave())) as Record<string, unknown>
+  delete d.hiddenIdeas
+  d.schemaVersion = 1
+  return d
+}
+
 describe('loadSave', () => {
   it('missing save → fresh, and never falls back to the backup', () => {
     const storage = new MemoryStorage()
@@ -59,7 +70,7 @@ describe('loadSave', () => {
     expect(storage.getItem(KEYS.backup)).toBe(backupText)
   })
 
-  it('a current (v1) save loads unchanged', () => {
+  it('a current save loads unchanged', () => {
     const storage = new MemoryStorage()
     storage.setItem(KEYS.save, JSON.stringify(richSave()))
     const r = loadSave(storage, DAY1)
@@ -103,7 +114,20 @@ describe('loadSave', () => {
     expect(Object.keys(d.pitches)).toEqual(['p01'])
     expect(Object.keys(d.badges)).toEqual(['first-whipper'])
     expect(Object.keys(d.poses).sort()).toEqual(['pancake', 'starfish'])
+    expect(d.hiddenIdeas, 'v0 → v1 → v2: every idea card shows').toEqual([])
     expect('somethingElse' in d).toBe(false)
+  })
+
+  it('a v1 save migrates to v2: every idea card shows and nothing else changes', () => {
+    const storage = new MemoryStorage()
+    const raw = JSON.stringify(v1Fixture())
+    storage.setItem(KEYS.save, raw)
+    const r = loadSave(storage, DAY1)
+    expect(r.info).toEqual({ kind: 'migrated', fromVersion: 1, message: LOAD_MESSAGES.migrated })
+    expect(storage.getItem(KEYS.backup), 'the v1 text is kept as the backup').toBe(raw)
+    expect(r.data.schemaVersion).toBe(2)
+    expect(r.data.hiddenIdeas).toEqual([])
+    expect(r.data).toStrictEqual({ ...richSave(), hiddenIdeas: [] })
   })
 
   it('the Store writes the migrated save back', () => {
@@ -195,10 +219,28 @@ describe('migrateToCurrent', () => {
   })
 
   it('does not mutate its input', () => {
-    const raw = v0Fixture()
-    const copy = JSON.parse(JSON.stringify(raw))
-    migrateToCurrent(raw, DAY1)
-    expect(raw).toEqual(copy)
+    for (const raw of [v0Fixture(), v1Fixture()]) {
+      const copy = JSON.parse(JSON.stringify(raw))
+      migrateToCurrent(raw, DAY1)
+      expect(raw).toEqual(copy)
+    }
+  })
+
+  it('v1 → v2 adds an empty hidden-cards list and the new version, and only that', () => {
+    const v1 = v1Fixture()
+    const v2 = MIGRATIONS[1](v1)
+    expect(CURRENT_SCHEMA_VERSION).toBe(2)
+    expect(v2.schemaVersion).toBe(2)
+    expect(v2.hiddenIdeas).toEqual([])
+    const { hiddenIdeas: _h, schemaVersion: _v2, ...rest } = v2
+    const { schemaVersion: _v1, ...before } = v1
+    expect(rest).toEqual(before)
+  })
+
+  it('v1 → v2 keeps a list a v1 file already had, for normalize to check', () => {
+    const v1 = { ...v1Fixture(), hiddenIdeas: ['oops-odd-socks', 'not-a-card', 'oops-odd-socks'] }
+    expect(MIGRATIONS[1](v1).hiddenIdeas).toEqual(['oops-odd-socks', 'not-a-card', 'oops-odd-socks'])
+    expect(migrateToCurrent(v1, DAY1).data.hiddenIdeas).toEqual(['oops-odd-socks'])
   })
 })
 
@@ -273,6 +315,21 @@ describe('normalize', () => {
     expect(d.grownupFlops).toHaveLength(1)
     expect(d.grownupFlops[0].id).toMatch(/^f-/)
     expect(d.customIdeas).toEqual([expect.objectContaining({ text: 'Wave first', oops: false })])
+  })
+
+  it('keeps only hidden ids that are still built-in cards, each once, in the order hidden', () => {
+    const d = normalize(
+      {
+        ...richSave(),
+        hiddenIdeas: ['oops-odd-socks', 'school-assembly', 'oops-odd-socks', 'a-card-that-was-removed', 'i-1', '', 7, null, { id: 'x' }],
+      },
+      DAY1,
+    )
+    // 'i-1' is a grown-up's own card (removed, never hidden), so it isn't kept either.
+    expect(d.hiddenIdeas).toEqual(['oops-odd-socks', 'school-assembly'])
+    for (const junk of [undefined, null, 'school-assembly', { 0: 'school-assembly' }, 3]) {
+      expect(normalize({ ...richSave(), hiddenIdeas: junk }, DAY1).hiddenIdeas, String(junk)).toEqual([])
+    }
   })
 
   it('keeps unknown fields, pitches, zones and badges out', () => {

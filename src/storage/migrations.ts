@@ -9,6 +9,7 @@
  * Every path ends in normalize(), so the rest of the app can trust the shape completely.
  */
 import { BADGES } from '../content/badges'
+import { ideaById } from '../content/ideas'
 import { PITCH_IDS, type LevelId, type ZoneId } from '../game/types'
 import { downsampleArc } from '../model/attempts'
 import { stonesBeforeSummitDay } from '../model/unlockables'
@@ -151,8 +152,18 @@ function v0Brave(item: unknown): unknown {
   return b
 }
 
+/**
+ * v1 → v2: grown-ups can hide built-in idea cards and Oops Missions (`hiddenIdeas`, the ids of the
+ * hidden ones). Every v1 save showed every card, so the list starts empty; anything already there
+ * (a hand-edited file) is kept for normalize() to check.
+ */
+function v1to2(d: Obj): Obj {
+  return { ...d, hiddenIdeas: Array.isArray(d.hiddenIdeas) ? d.hiddenIdeas : [], schemaVersion: 2 }
+}
+
 export const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
   0: v0to1,
+  1: v1to2,
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -390,6 +401,11 @@ function normalizeFlop(v: unknown, now: Date): GrownupFlop | null {
   return { id: str(v.id), createdAt: isoOf(v.createdAt) ?? now.toISOString(), who: str(v.who), what, learned: str(v.learned) }
 }
 
+/** Hidden built-in idea cards: only ids that are still built-in cards, each once, in the order hidden. */
+function hiddenIdeaList(v: unknown): string[] {
+  return strList(v).filter((id) => ideaById(id) !== undefined)
+}
+
 function normalizeIdea(v: unknown, now: Date): CustomIdea | null {
   if (!isObj(v)) return null
   const text = optStr(v.text)
@@ -495,6 +511,7 @@ export function normalize(raw: unknown, now: Date = new Date()): SaveData {
     letters: uniqueIds(list(r.letters).map((v) => normalizeLetter(v, now)), 'l'),
     grownupFlops: uniqueIds(list(r.grownupFlops).map((v) => normalizeFlop(v, now)), 'f'),
     customIdeas: uniqueIds(list(r.customIdeas).map((v) => normalizeIdea(v, now)), 'i'),
+    hiddenIdeas: hiddenIdeaList(r.hiddenIdeas),
     badges,
     glossarySeen: strList(r.glossarySeen),
     looksScary,

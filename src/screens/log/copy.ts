@@ -27,6 +27,8 @@ export const LOG_COPY = {
     jump: 'Jump to a group of ideas',
     extra: 'Extra ideas',
     oopsTag: 'Oops',
+    /** No cards to show (a grown-up hid them all). */
+    none: { title: 'No idea cards right now', text: 'Go back and type your brave thing in your own words.' },
   },
   forecast: {
     q: 'How scary does it look?',

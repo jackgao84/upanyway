@@ -1,6 +1,7 @@
 /**
  * Idea cards for "What's the brave thing?" (log flow → Pick an idea). She always chooses: an idea is
- * only ever a suggestion, never a task. Parents can add more (save.customIdeas), never assign.
+ * only ever a suggestion, never a task. Parents can add more (save.customIdeas), never assign, and
+ * can hide built-in ones from her screen (save.hiddenIdeas, model/ideas.ts) without deleting them.
  *
  * Brave ideas: everyday things a young climber would recognise (audience: see .brief/) — the canteen,
  * swimming lessons, assembly, PE, school trips, clubs, ordering food (Decision 24: school-life
@@ -20,6 +21,8 @@ export interface Idea {
   text: string
   oops: boolean
   group: IdeaGroup
+  /** A card a grown-up added in parent mode (save.customIdeas), not a built-in one. */
+  custom?: true
 }
 
 /** The groups in the order the ideas screen shows them (Oops Missions get their own section last). */
@@ -132,5 +135,5 @@ export function ideaById(id: string): Idea | undefined {
 export function customIdeaCards(custom: readonly CustomIdea[]): Idea[] {
   return custom
     .filter((c) => c.text.trim())
-    .map((c) => ({ id: c.id, text: c.text.trim(), oops: c.oops, group: c.oops ? 'oops' : 'me' }))
+    .map((c) => ({ id: c.id, text: c.text.trim(), oops: c.oops, group: c.oops ? 'oops' : 'me', custom: true }))
 }

@@ -655,6 +655,113 @@ textarea.pp-letter__input {
   box-shadow: inset 0 0 0 3px var(--leaf);
 }
 
+/* Built-in cards: a Shown/Hidden switch each, grouped like her ideas screen */
+.pp-hide__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--paper-2);
+}
+.pp-hide__count {
+  flex: 1 1 14em;
+  color: var(--ink);
+  font-weight: 800;
+  line-height: 1.4;
+}
+.pp-hide__all {
+  flex: none;
+}
+.pp-hide__group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+.pp-hide__group--oops {
+  margin-top: 12px;
+  padding: 16px 14px 18px;
+  border-radius: var(--r-lg);
+  background: var(--zone-crumble-soft);
+  box-shadow:
+    inset 0 0 0 2.5px rgba(201, 124, 75, 0.25),
+    0 3px 0 rgba(201, 124, 75, 0.18);
+}
+.pp-hide__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pp-hide__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: var(--tone-soft, var(--paper-2));
+  color: var(--tone, var(--ink-soft));
+}
+.pp-hide__group--oops .pp-hide__icon {
+  background: var(--card);
+}
+.pp-hide__title {
+  font-size: var(--fs-lg);
+  font-weight: 900;
+  line-height: 1.2;
+}
+.pp-hide__group-count {
+  margin-left: auto;
+  color: var(--plum);
+  font-size: var(--fs-sm);
+  font-weight: 850;
+  white-space: nowrap;
+}
+.pp-hide__intro {
+  color: var(--ink-soft);
+  font-weight: 700;
+  line-height: 1.45;
+}
+.pp-hide__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pp-hide__item {
+  display: flex;
+}
+.switch.pp-hide {
+  min-height: 60px;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  box-shadow: inset 0 0 0 1.5px rgba(236, 216, 192, 0.95);
+}
+.pp-hide .switch__label {
+  font-size: var(--fs-md);
+  font-weight: 750;
+  line-height: 1.3;
+}
+.pp-hide .switch__hint {
+  color: var(--leaf-deep);
+  font-weight: 850;
+}
+.pp-hide__item.is-hidden .pp-hide {
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 2px rgba(138, 107, 176, 0.45);
+}
+.pp-hide__item.is-hidden .switch__label {
+  color: var(--ink-soft);
+}
+.pp-hide__item.is-hidden .switch__hint {
+  color: var(--plum);
+}
+
 /* ------------------------------------------------------------------------------------------ */
 /* Read the cairn */
 
@@ -1126,8 +1233,12 @@ textarea.pp-letter__input {
   }
   .pp-home__cards,
   .pp-tips,
-  .pp-ideas {
+  .pp-ideas,
+  .pp-hide__list {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .pp-hide__group--oops {
+    padding: 14px 10px 16px;
   }
   .pp-home__cards--keep .pp-home__card {
     flex-direction: row;

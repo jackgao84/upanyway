@@ -5,7 +5,7 @@
 import type { DayKey } from '../model/clock'
 import type { LevelId, ZoneId } from '../game/types'
 
-export const CURRENT_SCHEMA_VERSION = 1
+export const CURRENT_SCHEMA_VERSION = 2
 
 /** Flattened [x0, y0, x1, y1, …] world units, rounded to integers, ≤ ARC_POINTS points. */
 export type Arc = number[]
@@ -194,6 +194,12 @@ export interface SaveData {
   letters: Letter[]
   grownupFlops: GrownupFlop[]
   customIdeas: CustomIdea[]
+  /**
+   * Built-in idea cards and Oops Missions (ids from content/ideas.ts) a grown-up has hidden from her
+   * "Pick an idea" screen. Hidden, never deleted: showing one again puts it straight back, and brave
+   * things she logged from it keep their words. Added in schema v2.
+   */
+  hiddenIdeas: string[]
   /** Badge id → ISO time earned. */
   badges: Record<string, string>
   /** Climbing words already introduced ('pitch', 'whipper', 'beta', 'send', …). */
@@ -263,6 +269,7 @@ export function defaultSave(now: Date = new Date()): SaveData {
     letters: [],
     grownupFlops: [],
     customIdeas: [],
+    hiddenIdeas: [],
     badges: {},
     glossarySeen: [],
     looksScary: {},

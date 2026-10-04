@@ -14,6 +14,12 @@
     How to cheer; unit + e2e tests updated. Checked: typecheck clean; check:stubs clean; vitest 485/485 in 40
     files; Playwright (all 13 specs, PW_WORKERS=2) 70 passed + 2 skipped (the phone-only sideways-keyboard
     test on the two iPad projects), zero console errors. No level data changed.
+  - [x] **Parent mode: hide built-in ideas and Oops Missions (reversible)** (Decision 85). Idea cards page lists
+    every built-in card in her screen's groups with a Shown/Hidden switch, hidden counts and "Show all again";
+    her ideas screen leaves hidden cards (and emptied groups) out. `SaveData.hiddenIdeas`, schema v2 with a v1 → v2
+    migration; rules in `model/ideas.ts`. Checked: typecheck clean; check:stubs clean; vitest 500/500 in 41 files;
+    Playwright (the specs this touches: ideas (new), backup, brave, camp-screens, testmode; PW_WORKERS=2, all
+    three projects) 30 passed, zero console errors. No level data changed.
 - **Final verification (Stage 7):**
   - `npm run typecheck` — clean (both configs).
   - `npm run check:stubs` — clean (no unfinished-work markers, skipped tests or empty content lists).
@@ -174,6 +180,8 @@ npm run build        # dist/ for GitHub Pages
   something could really hurt you or someone else, the brave move is to stop and
   tell a grown-up.
 - She always chooses. Parents can add idea cards, never assign. [R] parent-assigned tasks.
+  **Owner's change (Decision 85):** grown-ups can also hide any built-in brave idea or Oops Mission from her
+  ideas screen — hidden, not deleted, and reversible ("Show all again").
 - Idea cards: ≥ 30 brave ideas a young climber would recognise (audience and reading level: see
   .brief/; school canteen, swimming lessons, everyday school life — nothing identifying) (ask the teacher a question, order food yourself, jump in the deep end,
   join a game with kids you don't know, say "I don't know" out loud, ask for help, say
@@ -228,7 +236,7 @@ can read her cairn to cheer her on. Then Pitch 1.
 
 ### Parent mode (PIN)
 - Daily climb minutes; sound. Write a Spotted! letter; add a Grown-ups' Wing flop;
-  add idea cards. Read her cairn and plans. One-page "How to cheer" (praise the try
+  add idea cards (owner's change: and hide/show built-in ones, Decision 85). Read her cairn and plans. One-page "How to cheer" (praise the try
   not the result; ask "What did you learn?" not "Why didn't you…?"; tell her about your
   own flops; don't rescue too fast; never use the game as reward/punishment for other
   things; never compare her with a sibling). Export/Import JSON, reset, Test mode
@@ -350,7 +358,7 @@ src/
   ui/term.ts (glossary words: first mention shows its one-line definition)  ui/goatBubble.ts
   ui/styles/{tokens,base,components,screens}.css
   storage/keys.ts (written)  schema.ts (written)  migrations.ts  store.ts (written)  backup.ts
-  model/clock.ts (written)  ids.ts  rng.ts  hash.ts  pin.ts  stones.ts  unlocks.ts  attempts.ts
+  model/clock.ts (written)  ids.ts  rng.ts  hash.ts  pin.ts  stones.ts  unlocks.ts  attempts.ts  ideas.ts
         badges.ts  climbTime.ts  unlockables.ts  goatVoice.ts (line picker: shuffle-bag, moral cap)
   content/goatLines.ts  ideas.ts  fallPoses.ts  badges.ts  glossary.ts  copy.ts  unlockables.ts
           learnChips.ts  happenedChips.ts  smaller.ts  wardrobe.ts  names.ts  cheer.ts
@@ -372,7 +380,7 @@ e2e/*.spec.ts  e2e/helpers.ts
 
 ---
 
-## Data schema (`src/storage/schema.ts`, schemaVersion 1 — written; keep this in sync)
+## Data schema (`src/storage/schema.ts`, schemaVersion 2 — written; keep this in sync)
 
 ```ts
 type DayKey = string                       // local 'YYYY-MM-DD'
@@ -406,7 +414,9 @@ interface SaveData { schemaVersion; createdAt
   pitches: Partial<Record<LevelId, PitchProgress>>
   stats: { whippers; sends; bigLeapsTried; betaAsked }
   poses: Record<poseId, { firstAt; count }>
-  brave; letters; grownupFlops; customIdeas; badges: Record<badgeId, earnedAtIso>
+  brave; letters; grownupFlops; customIdeas
+  hiddenIdeas: string[]              // v2: built-in idea/Oops ids a grown-up hid from her ideas screen
+  badges: Record<badgeId, earnedAtIso>
   glossarySeen: string[]; looksScary: Partial<Record<ZoneId, { forecast; really; at }>>
   climbTime: { day: DayKey; seconds }; summit: { reached; at?; finaleSeen }
   flags: { ropeExplained; firstCampVisit; braveVsDangerousSeen; persistGranted: boolean | null }
@@ -426,9 +436,13 @@ interface SaveData { schemaVersion; createdAt
   `localStorage`/`caches` and fails on any unprefixed key, any `localStorage.clear(`/`sessionStorage.clear(`,
   and any `caches.delete(` not guarded by the prefix.
 - **Load** (`migrations.ts: loadSave(storage)`): missing save → fresh (never the backup). Corrupt JSON →
-  backup → else fresh (info `recovered`). No `schemaVersion` → v0. Run `MIGRATIONS[v]` up to current, then
+  backup → else fresh (info `recovered`). No `schemaVersion` → v0. Run `MIGRATIONS[v]` up to current (0 → 1: the
+  prototype's field names; 1 → 2: adds an empty `hiddenIdeas`), then
   `normalize()` fills missing fields from `defaultSave()`. Newer-than-current → best-effort normalize,
   raw copy kept in the backup key, notice in parent mode. Import uses the same path but refuses newer files.
+- **Hidden idea cards** (`hiddenIdeas`, v2): ids of built-in cards only (`content/ideas.ts`), in the order hidden;
+  `normalize()` keeps only ids that are still built-in cards, each once (a grown-up's own cards are removed,
+  never hidden). Rules in `model/ideas.ts` (Decision 85). Export/import carry it like any other field.
 - **Reset** (parent, confirm + "Export first?"): copy current save to backup, write a fresh `defaultSave()`
   (never just delete), route to `#/setup`. Never `localStorage.clear()`, never touches caches.
 - **Export**: file `upanyway-backup-YYYY-MM-DD.json`. Buttons: "Share / Save to Files"
@@ -567,7 +581,9 @@ Failing pitch → edit the LEVEL. Never the validator, thresholds or tolerances.
   "Spotted a hold on the way down!". Blocking (clock frozen): Fear Forecast, How-scary-really, Beta Map,
   Sunset.
 - **Log** `#/log` (one question per screen, big buttons): 1 `what` (text field + "Pick an idea" →
-  1b `ideas` screen: idea + Oops cards, ALWAYS shows the brave-vs-dangerous line at the top) → 2
+  1b `ideas` screen: idea + Oops cards, ALWAYS shows the brave-vs-dangerous line at the top; cards a grown-up
+  hid are left out, a group with none left has no heading or jump chip, and with no cards at all it says "No
+  idea cards right now. Go back and type your brave thing in your own words.") → 2
   `forecast` (fear scale, tap = next) → 3 `worry` (optional, Skip) → 4 `when` ("I'll do it later" → saved
   to Plans → `#/plans` with goat line | "I already did it!") → 5a `really` (fear scale) → 5b `happened`
   (one line, quick chips, required) → 5c `outcome` (Nailed it / Wobbly, but I did it / Flopped — and I'm
@@ -609,7 +625,9 @@ Failing pitch → edit the LEVEL. Never the validator, thresholds or tolerances.
 - **Parent** `#/parent` (PIN pad; "Forgot PIN?" → 3 s press-and-hold, then a 2-digit × 2-digit product
   written in words, typed as digits → set a new PIN; a deterrent, not security): settings (daily minutes,
   sound master + music), Spotted! letter, Grown-ups' Wing flop, idea cards (add/remove her custom ones;
-  never assign), read cairn + plans (read-only; no counts like "Not today ×4"), How to cheer, data
+  never assign; "Built-in idea cards": every built-in card in her screen's groups and order, Oops Missions in
+  their own section, each with a Shown/Hidden switch, hidden counts per group and in total, "Show all again"
+  with an in-page confirm — hidden, not deleted, and test mode leaves it alone), read cairn + plans (read-only; no counts like "Not today ×4"), How to cheer, data
   (export/import/reset, storage-persist status, update-ready button), test mode toggle.
 
 ## Story/voice rules (enforced in content + tests)
@@ -646,8 +664,11 @@ Test mode never writes stats, poses, badges, stones or attempts.
 
 ## Testing
 
-- **Vitest** (node): migrations (v0 + v1 fixtures, newer-version, corrupt → backup, missing → fresh),
-  export/import round-trip, reset keeps backup, stone limits (3/day + queue, letters 1/day, day change),
+- **Vitest** (node): migrations (v0 + v1 fixtures, v1 → v2 adds an empty `hiddenIdeas`, newer-version, corrupt →
+  backup, missing → fresh; normalize keeps only real built-in hidden ids, once each), export/import round-trip
+  (hidden idea cards included; a v1 backup restores with every card showing), reset keeps backup, hidden idea
+  cards (`hiddenIdeas.test.ts`: hide/show/show all, only built-in ids, fully reversible, her brave things and
+  plans untouched, `visibleIdeas` order, a whole group, test mode leaves it alone), stone limits (3/day + queue, letters 1/day, day change),
   climb-time daily cap, attempt counting (whippers/sends/slips/neutral hops), unlock rule (stones AND the
   pitch below sent: 0 stones → p01 only, p02 once p01 is sent; stones but no send; a send but no stones;
   both; night sends don't count; waiting stones don't; test mode; `lockReason` agrees with every helper),
@@ -671,7 +692,11 @@ Test mode never writes stats, poses, badges, stones or attempts.
   `camp-screens` (every
   camp screen, Hall room, Wardrobe tab and grown-ups' page for a new climber, a mid-game one and one after
   Sky Lake: heading, 48 px targets, no sideways scroll, 16 px fields); `backup` (download → start over →
-  first run again → restore the file, and paste the text on a second device: deep-equal saves); `testmode`
+  first run again → restore the file, and paste the text on a second device: deep-equal saves, hidden idea
+  cards included); `ideas` (a grown-up hides a brave idea and an Oops Mission with their switches → her "Pick
+  an idea" screen leaves exactly those out, the brave-vs-dangerous line first → "Show all again" → both back;
+  her plan from the card untouched. Seeded with a whole group hidden: no heading or jump chip for it → the
+  downloaded backup holds the hidden ids → Show all again → restoring the file hides them again); `testmode`
   (everything open + night, a test-mode climb records nothing, off → deep-equal save); `letters` (bonus
   stone today; a second letter's stone waits); fear-scale targets ≥ 48 px on the phone (checkScreen on the
   log's weather steps). Stage 7: offline relaunch (SW controller → `setOffline` → reload → camp + climb;
@@ -989,6 +1014,22 @@ Test mode never writes stats, poses, badges, stones or attempts.
     "coming soon", "to fill in", `.only(`, unconditional `.skip(`/`.todo(`, and empty `export const`
     content lists; it lists every "placeholder" mention for a human (all are input hints or the SW
     build placeholders). A per-device `test.skip(condition, reason)` inside a test is allowed.
+85. **Hidden idea cards (owner follow-up after Stage 7).** In parent mode → Idea cards a grown-up can hide any
+    built-in brave idea or Oops Mission from her "Pick an idea" screen, and show it again. Stored as
+    `SaveData.hiddenIdeas` (built-in ids, in the order hidden): schema v2, with a real v1 → v2 migration that adds
+    an empty list (every v1 save showed every card); `normalize()` keeps only ids that are still built-in cards,
+    once each. Hidden, never deleted: `content/ideas.ts` never changes, a hidden card's id still looks up
+    (`ideaById`), and brave things and plans made from it keep their words. A grown-up's own cards are removed
+    as before, never hidden. One place for the rules, `model/ideas.ts`: `hideIdea`, `showIdea`, `showAllIdeas`,
+    `isHidden`, `hiddenCount`, and `visibleIdeas` (the built-in cards minus the hidden ones in their usual order,
+    then the grown-ups' cards marked `custom`). Her screen draws `visibleIdeas`; a group with nothing left has no
+    heading or jump chip; the brave-vs-dangerous line stays first; if every card is hidden and none added, one
+    line sends her back to type her own. The grown-ups' page lists every built-in card in her screen's groups and
+    order (Oops Missions in their own section, with their intro line), each a Shown/Hidden switch (≥ 48 px),
+    with hidden counts per group and in total and "Show all again" (in-page confirm). The copy says a hidden card
+    just doesn't appear, nothing is deleted, she can still type anything and always chooses. Test mode never
+    changes hiding (a grown-up's preference, like the cards they add); the page and Settings say so. Export and
+    import carry it like any other field (a v1 backup restores with every card showing).
 
 ## Difficulty ramp (validator report, mean success % of the searched input space / min margin)
 

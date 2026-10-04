@@ -924,7 +924,8 @@ export async function logDoneBraveThing(page: Page, log: QuickLog): Promise<void
  * A climber well into the game, with something on every camp screen: a PIN, `stones` done brave
  * things with their stones (default 5), a framed flop with what she learned, an Oops Mission, a plan
  * and its smaller step (after a "Not today"), a read letter with its stone and a sealed one, a
- * Grown-ups' Wing flop, a custom idea card, fall poses, badges and the first pitches sent.
+ * Grown-ups' Wing flop, a custom idea card, two hidden built-in cards, fall poses, badges and the
+ * first pitches sent.
  * `summit`: after Sky Lake (finale seen, every pitch sent), so the stones also brought treasures.
  */
 export function richSave(opts: { stones?: number; summit?: boolean; now?: Date } = {}): SaveData {
@@ -1008,6 +1009,7 @@ export function richSave(opts: { stones?: number; summit?: boolean; now?: Date }
     learned: 'Practise new things on a quiet night.',
   })
   d.customIdeas.push({ id: 'idea-1', createdAt: iso(5), text: 'Order a new ice-cream flavour', oops: false })
+  d.hiddenIdeas = ['school-assembly', 'oops-worst-joke']
   d.poses = { starfish: { firstAt: iso(12), count: 3 }, pancake: { firstAt: iso(6), count: 1 } }
   d.stats = { whippers: 9, sends: 3, bigLeapsTried: 1, betaAsked: 1 }
   d.badges = { 'first-whipper': iso(12), 'attempts-10': iso(6), 'still-here': iso(9), oops: iso(10), 'smaller-step': iso(2) }

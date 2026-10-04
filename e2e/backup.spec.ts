@@ -120,6 +120,7 @@ test('download a backup, start over, and restore it exactly', async ({ page, fre
   expect(after, 'the restored save is exactly the one in the backup').toEqual(before)
   expect(after.parent.names).toEqual(DEFAULT_NAMES)
   expect(after.brave.map((b) => b.text)).toEqual(before.brave.map((b) => b.text))
+  expect(after.hiddenIdeas, 'hidden idea cards stay hidden').toEqual(['school-assembly', 'oops-worst-joke'])
   expect(totalStones(after)).toBe(totalStones(before))
 
   // Its PIN came back too: the old one opens the grown-ups' door, and camp shows her stones.
