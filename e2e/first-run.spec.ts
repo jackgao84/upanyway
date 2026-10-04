@@ -5,6 +5,7 @@
  * checked for the mute toggle, finger-sized targets and sideways scrolling, and the whole run stays
  * short.
  */
+import { CLIMB_COPY } from '../src/screens/climb/copy'
 import {
   DEFAULT_PIN,
   checkScreen,
@@ -56,12 +57,15 @@ test('walks the whole first run to Pitch 1 in a few taps', async ({ page }, test
   expect(save.glossarySeen).toContain('whipper')
   expect(save.pitches.lesson, 'no pitch record for the lesson (no run, no attempts, no send)').toBeUndefined()
 
-  // Pitch 3 needs a stone in the cairn: typed in by hand, its trail is hidden, with a way to camp.
+  // Pitch 3 needs a stone in the cairn and Pitch 2 climbed: typed in by hand, its trail is hidden
+  // (the card names both), with a way to camp.
   await page.goto('./#/climb/p03')
   await expect.poll(() => page.evaluate(() => window.__upanyway?.climb.pendingPrompt() ?? null), { message: 'the hidden-trail card' }).toBe('locked')
   expect(await page.evaluate(() => window.__upanyway?.climb.levelId() ?? null)).toBe('p03')
   expect(await page.evaluate(() => window.__upanyway?.climb.state() ?? null), 'no climb behind the card').toBeNull()
-  await expect(page.getByRole('dialog')).toContainText('The trail ahead is hidden.')
+  await expect(page.getByRole('dialog')).toContainText(CLIMB_COPY.locked.title)
+  await expect(page.getByRole('dialog')).toContainText('Climb Pitch 2 and add a stone to your cairn to find the way.')
+  expect(CLIMB_COPY.locked.way(1, 2)).toBe('Climb Pitch 2 and add a stone to your cairn to find the way.')
   await checkScreen(page, 'climb p03 (locked)')
   await tap(page.getByRole('button', { name: 'Back to camp', exact: true }))
   await expectRoute(page, '/camp')

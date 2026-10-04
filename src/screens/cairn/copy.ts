@@ -17,10 +17,14 @@ export const CAIRN_COPY = {
   emptyTitle: 'Your cairn is waiting for its first stone.',
   emptyText: 'Do something brave in real life, then log it. Its stone goes right here.',
   logFirst: 'Log a brave thing',
-  /** What the stones have opened. */
+  /** What the stones have opened ("Pitch" is a glossary term, so the line comes in parts). */
   trailTo: (pitch: number) => `The trail is open to Pitch ${pitch}.`,
   trailToBefore: 'The trail is open to ',
   trailToAfter: (pitch: number) => ` ${pitch}.`,
+  /** The stones reach further than she has climbed: a pitch opens once the one below it is climbed too. */
+  trailFound: (pitch: number) => `Your stones have found the way to Pitch ${pitch}. Climb on to get there.`,
+  trailFoundBefore: 'Your stones have found the way to ',
+  trailFoundAfter: (pitch: number) => ` ${pitch}. Climb on to get there.`,
   trailAll: 'The whole trail is open, all the way to Sky Lake.',
   afterSummit: (m: number) =>
     m === 0

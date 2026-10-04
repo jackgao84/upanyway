@@ -1,12 +1,13 @@
 /**
- * The summit pitch ends at Sky Lake, on every project. A climber with the whole mountain open stands
- * at the summit pitch's last camp (a seeded run); the last leap (a Big Leap) sends it, the Beta Map
- * offers only "On to Sky Lake", and the finale plays. A tap skips ONE beat — every tap is checked to
- * really move it on — except, the first time, while the goat climbs out of the backpack, makes its
- * leap and flops in: taps do nothing there and the Skip button waits until it pops up laughing. The
- * card records the summit. "Watch again" replays it and writes nothing. Then a night climb of the
- * same pitch — the goat climbing beside her now — ends with the short moonlight ending, which writes
- * nothing either. And a reload on the summit pitch while Sky Lake is still owed goes on to Sky Lake.
+ * The summit pitch ends at Sky Lake, on every project. A climber with the whole mountain open (14
+ * stones, Pitches 1–15 sent) stands at the summit pitch's last camp (a seeded run); the last leap (a
+ * Big Leap) sends it, the Beta Map offers only "On to Sky Lake", and the finale plays. A tap skips
+ * ONE beat — every tap is checked to really move it on — except, the first time, while the goat
+ * climbs out of the backpack, makes its leap and flops in: taps do nothing there and the Skip button
+ * waits until it pops up laughing. The card records the summit. "Watch again" replays it and writes
+ * nothing. Then a night climb of the same pitch — the goat climbing beside her now — ends with the
+ * short moonlight ending, which writes nothing either. And a reload on the summit pitch while Sky Lake
+ * is still owed goes on to Sky Lake.
  */
 import {
   addStones,
@@ -21,6 +22,7 @@ import {
   readSave,
   runAt,
   seedSave,
+  sendPitches,
   tap,
   test,
   waitClimbPause,
@@ -129,6 +131,7 @@ test('the summit pitch: Beta Map → Sky Lake → the summit is reached; Watch a
   const { lastCamp, index } = summitRoute()
   const d = climberSave()
   addStones(d, 14)
+  sendPitches(d, 15)
   d.pitches.p16 = pitchWithRuns(runAt(lastCamp, index), runAt(lastCamp, index, true))
   await seedSave(page, d)
 
@@ -190,6 +193,7 @@ test('a reload on a climb while Sky Lake is still owed goes on to Sky Lake', asy
   const { lastCamp, index } = summitRoute()
   const d = climberSave()
   addStones(d, 14)
+  sendPitches(d, 15)
   d.pitches.p16 = { ...pitchWithRuns(null, runAt(lastCamp, index, true)), sends: 1, totalAttempts: 1 }
   d.summit = { reached: true, at: new Date().toISOString(), finaleSeen: false }
   await seedSave(page, d)

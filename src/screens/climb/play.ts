@@ -33,7 +33,7 @@ import { needsScaryForecast, needsScaryReally } from '../../model/attempts'
 import { isSunset, sunProgress } from '../../model/climbTime'
 import { goatVoice, hintMoment, scriptedLine, type GoatContext, type GoatVars, type SpokenLine } from '../../model/goatVoice'
 import { hashString, mulberry32 } from '../../model/rng'
-import { isGoatOut, isNightOpen, isPitchOpen } from '../../model/unlocks'
+import { isGoatOut, isNightOpen, isPitchOpen, lockReason, pitchNumber } from '../../model/unlocks'
 import { button, iconButton, toast } from '../../ui/components'
 import { h } from '../../ui/dom'
 import { goatBubble, type GoatBubble } from '../../ui/goatBubble'
@@ -808,8 +808,10 @@ export class ClimbPlay {
     const q = this.night ? '?night=1' : ''
     const next = this.nextPitch()
     const finale = this.finaleNext()
-    // The next pitch is still in the fog: the Beta Map says why, and offers a brave thing to log.
-    const locked = !finale && !next && !this.night && this.followingPitch() !== null
+    // The next pitch is still in the fog: the Beta Map says what still opens it (after a day send,
+    // a stone — the pitch below is the one just sent) and offers a brave thing to log.
+    const following = this.followingPitch()
+    const hidden = !finale && !next && !this.night && following ? lockReason(save(), following) : null
     // When the sun has gone down, more climbing waits for tomorrow (the finale always plays).
     const orSunset = (go: () => void) => () => (this.sunsetDue ? this.showSunset() : go())
     const card = betaMapCard({
@@ -821,7 +823,12 @@ export class ClimbPlay {
         : next
           ? orSunset(() => this.nav(`/climb/${next}${q}`, { replace: true }))
           : null,
-      onLocked: locked ? () => this.nav('/log') : null,
+      locked: hidden
+        ? {
+            text: CLIMB_COPY.locked.way(hidden.needStones, hidden.needPitch ? pitchNumber(hidden.needPitch) : 0),
+            onLog: hidden.needStones > 0 ? () => this.nav('/log') : null,
+          }
+        : null,
       nextLabel: finale ? CLIMB_COPY.map.skyLake : undefined,
       // The first time, Sky Lake is where this climb ends: nothing else to pick.
       onlyNext: finale !== null && !this.night,

@@ -4,7 +4,8 @@
  * the picture and the buttons agree at any size).
  *
  * Marker states:
- * - day:   'sent' (a little flag) · 'open' (glowing, tap to climb) · 'hidden' (in soft fog).
+ * - day:   'sent' (a little flag) · 'open' (glowing, tap to climb) · 'hidden' (in soft fog: it still
+ *          needs stones, the pitch below climbed, or both — model/unlocks.ts lockReason).
  * - night: every pitch is open (night climbs open after the summit, or in test mode); 'sent' means
  *          sent by moonlight.
  * Her climber marker stands, by day, at the lowest open pitch she is partway up (a run waiting at a
@@ -13,7 +14,7 @@
  */
 import { PITCHES } from '../../game/levels'
 import type { LevelId, ZoneId } from '../../game/types'
-import { isNightOpen, isPitchOpen, stonesToOpen } from '../../model/unlocks'
+import { isNightOpen, lockReason, pitchNumber } from '../../model/unlocks'
 import type { SaveData } from '../../storage/schema'
 
 export type MarkerState = 'sent' | 'open' | 'hidden'
@@ -27,6 +28,8 @@ export interface PitchMarker {
   state: MarkerState
   /** Stones still needed (hidden markers only; 0 otherwise). */
   needs: number
+  /** The pitch below (its number) still to climb before this one opens (hidden markers only; 0 otherwise). */
+  needsPitch: number
   /** Her climber marker stands here. */
   current: boolean
 }
@@ -35,9 +38,10 @@ export function trailMarkers(d: SaveData, night: boolean): PitchMarker[] {
   const nightMode = night && isNightOpen(d)
   const out: PitchMarker[] = PITCHES.map((level, i) => {
     const p = d.pitches[level.id]
+    const hidden = nightMode ? null : lockReason(d, level.id)
     let state: MarkerState
     if (nightMode) state = (p?.nightSends ?? 0) > 0 ? 'sent' : 'open'
-    else if (!isPitchOpen(d, level.id)) state = 'hidden'
+    else if (hidden) state = 'hidden'
     else state = (p?.sends ?? 0) > 0 ? 'sent' : 'open'
     return {
       id: level.id,
@@ -45,7 +49,8 @@ export function trailMarkers(d: SaveData, night: boolean): PitchMarker[] {
       title: level.title,
       zone: level.zone,
       state,
-      needs: state === 'hidden' ? stonesToOpen(d, level.id) : 0,
+      needs: hidden?.needStones ?? 0,
+      needsPitch: hidden?.needPitch ? pitchNumber(hidden.needPitch) : 0,
       current: false,
     }
   })

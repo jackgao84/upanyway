@@ -9,14 +9,14 @@
  * - Each arrival plays once per session: a re-visit of the same URL shows the stone in place.
  * - Tap any stone to read it back (cairn/story.ts). Waiting stones glow softly beside the pile.
  * - Under the picture: the goat (stoneAdded, naming the brave thing that just went on / stoneWaiting /
- *   a quiet visit line), how many stones
- *   and what they have opened. No comparisons, no streaks, nothing about fear numbers.
+ *   a quiet visit line), how many stones and what they have opened ("The trail is open to Pitch 5."),
+ *   or, while a pitch below still needs climbing, how far they reach ("Your stones have found the
+ *   way to Pitch 5. Climb on to get there."). No comparisons, no streaks, nothing about fear numbers.
  * - After the summit, a stone that lands brings something new to camp: a small toast says what.
  */
 import './cairn/cairn.css'
 import { goatAvatar, markWordSeen, now, save, update } from '../app/context'
 import type { Screen } from '../app/router'
-import { PITCH_IDS } from '../game/types'
 import { goatVoice, scriptedLine, type SpokenLine } from '../model/goatVoice'
 import { placeWaitingStones, waitingStones } from '../model/stones'
 import { unlockedItems, type UnlockedItem } from '../model/unlockables'
@@ -26,7 +26,7 @@ import { icon } from '../ui/icons'
 import { goatBubble } from '../ui/goatBubble'
 import { isNewWord, term } from '../ui/term'
 import { CAIRN_COPY } from './cairn/copy'
-import { cairnStones, didWait, stoneRecord, trailOpenTo, waitingBefore, waitingWhen } from './cairn/data'
+import { cairnStones, didWait, sameTrailLine, stoneRecord, trailLine, waitingBefore, waitingWhen } from './cairn/data'
 import { cairnScene } from './cairn/scene'
 import { openStoneStory } from './cairn/story'
 import { releaseHeldBadges, takeArrivals } from './log/events'
@@ -166,15 +166,18 @@ export const cairnScreen: Screen = (root, ctx) => {
   const countWords = document.createTextNode(c.countWords(shown))
   const trailEl = h('p', { class: 'cairn-info__line cairn-info__trail' })
   function renderTrail(stones: number, opened: boolean): void {
-    const to = trailOpenTo(stones, PITCH_IDS.length)
+    const line = trailLine(d, stones)
+    const pitchWord = () => term('pitch', { seen, onSeen: markWordSeen, text: 'Pitch' })
     clear(trailEl)
     trailEl.classList.toggle('is-new', opened)
     append(
       trailEl,
       h('span', { class: 'cairn-info__icon', 'aria-hidden': 'true' }, icon('map', 26)),
-      to >= PITCH_IDS.length
+      line.kind === 'all'
         ? h('span', null, c.trailAll)
-        : h('span', null, c.trailToBefore, term('pitch', { seen, onSeen: markWordSeen, text: 'Pitch' }), c.trailToAfter(to)),
+        : line.kind === 'open'
+          ? h('span', null, c.trailToBefore, pitchWord(), c.trailToAfter(line.pitch))
+          : h('span', null, c.trailFoundBefore, pitchWord(), c.trailFoundAfter(line.pitch)),
     )
   }
   function countUp(): void {
@@ -185,8 +188,8 @@ export const cairnScreen: Screen = (root, ctx) => {
     numEl.classList.remove('is-bump')
     void numEl.offsetWidth
     numEl.classList.add('is-bump')
-    const opened = trailOpenTo(shown, PITCH_IDS.length) > trailOpenTo(shown - 1, PITCH_IDS.length)
-    if (opened) renderTrail(shown, true)
+    // A stone that changes the line (the way reaches a pitch further up) lights it up.
+    if (!sameTrailLine(trailLine(d, shown), trailLine(d, shown - 1))) renderTrail(shown, true)
   }
   if (n > 0) {
     info.push(

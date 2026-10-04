@@ -2,9 +2,11 @@
  * The Trail Map (#/map, #/map?night=1): her mountain as a cozy illustrated map. Five zones and the
  * summit, Sky Lake shining at the top, a winding trail from camp with the 16 pitch markers:
  * - sent: a little flag · open: glowing, tap to climb (#/climb/pNN) · hidden: in soft fog — a tap
- *   says "The trail ahead is hidden. Add a stone to your cairn to find the way." and, gently, how
- *   many more stones that part of the trail needs.
- * - Her climber marker ("you are here") at her highest open pitch, with the goat.
+ *   says "The trail ahead is hidden." and what still opens it: a stone ("Add a stone to your cairn
+ *   to find the way." and, gently, how many more), the pitch below ("Climb Pitch 4 first to find the
+ *   way."), or both in one sentence. Log a brave thing is offered when a stone is needed.
+ * - Her climber marker ("you are here") at the lowest open pitch she is partway up or hasn't sent
+ *   (Decision 68), with the goat.
  * - After the summit (or in test mode): a Day/Night toggle — at night every pitch is open and a
  *   tap climbs by moonlight (#/climb/pNN?night=1) — and "Watch the Sky Lake ending again".
  * - When today's climbing time is used up, a tap shows the sunset card ("The sun's going down. The
@@ -88,13 +90,18 @@ export const mapScreen: Screen = (root, ctx) => {
 
   function showHidden(m: PitchMarker): void {
     const l = c.locked
+    // Only stones missing: the brief's line, then how many more. The pitch below too: one sentence.
+    const onlyStones = m.needs > 0 && !m.needsPitch
     prompt = modal({
       art: h('span', { class: 'trailmap__fog-art', 'aria-hidden': 'true' }, icon('fog', 52)),
-      body: [h('p', { class: 'trailmap__locked' }, l.text), m.needs > 0 ? h('p', { class: 'trailmap__locked-more' }, l.more(m.needs)) : null],
+      body: [
+        h('p', { class: 'trailmap__locked' }, l.text(m.needs, m.needsPitch)),
+        onlyStones ? h('p', { class: 'trailmap__locked-more' }, l.more(m.needs)) : null,
+      ],
       dismissible: true,
       class: 'trailmap__card',
       actions: [
-        { label: l.log, icon: 'stone', variant: 'secondary', onClick: () => ctx.navigate('/log') },
+        ...(m.needs > 0 ? [{ label: l.log, icon: 'stone' as const, variant: 'secondary' as const, onClick: () => ctx.navigate('/log') }] : []),
         { label: l.ok, icon: 'check' },
       ],
       onClose: () => {

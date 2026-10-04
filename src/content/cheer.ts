@@ -100,7 +100,7 @@ export const CHEER = {
     {
       id: 'trail',
       title: 'How stones open the mountain',
-      body: 'The mountain has 16 pitches (climbing sections). The first two are open from the start, and each stone opens one more: pitch 3 needs 1 stone, pitch 4 needs 2, and so on up to the summit. Real-life brave things are what take them up the mountain.',
+      body: 'The mountain has 16 pitches (climbing sections). Pitch 1 is open from the start. Each pitch after that opens when two things are true: they have climbed the pitch below it all the way to the top, and their cairn holds enough stones (pitch 2 needs none, pitch 3 needs 1, pitch 4 needs 2, and so on up to 14 for the summit). Real-life brave things are what take them up the mountain.',
     },
     {
       id: 'sun',

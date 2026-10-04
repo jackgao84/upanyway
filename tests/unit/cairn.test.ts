@@ -7,9 +7,11 @@ import { describe, expect, it } from 'vitest'
 import { STONE_SIZE, stoneLook } from '../../src/game/art/stones'
 import { stoneOrder } from '../../src/model/stones'
 import { CAIRN_COPY, STORY_COPY, WEATHER_COPY } from '../../src/screens/cairn/copy'
-import { cairnStones, didWait, trailOpenTo, waitingBefore, waitingWhen } from '../../src/screens/cairn/data'
+import { cairnStones, didWait, sameTrailLine, trailLine, waitingBefore, waitingWhen } from '../../src/screens/cairn/data'
 import { hillY, layoutCairn, layoutWaiting, reachFor, type StoneInput } from '../../src/screens/cairn/layout'
 import { WEATHER_MIN, weatherEntries } from '../../src/screens/cairn/weatherData'
+import { PITCH_IDS } from '../../src/game/types'
+import { defaultPitchProgress, type SaveData } from '../../src/storage/schema'
 import { DAY1, at, doBrave, fresh, sendLetter } from './fixtures'
 import { bannedIn } from './voice'
 
@@ -167,12 +169,27 @@ describe('what the cairn shows', () => {
     expect(w.map((s) => waitingWhen(d, s.id))).toEqual(['tomorrow', 'tomorrow', 'tomorrow', 'later'])
   })
 
-  it('names the furthest pitch the stones have opened', () => {
-    expect(trailOpenTo(0)).toBe(2)
-    expect(trailOpenTo(1)).toBe(3)
-    expect(trailOpenTo(12)).toBe(14)
-    expect(trailOpenTo(14)).toBe(16)
-    expect(trailOpenTo(99)).toBe(16)
+  it('names how far the trail is open, or how far the stones reach while a pitch below needs climbing', () => {
+    const sentUpTo = (d: SaveData, n: number) => {
+      for (const id of PITCH_IDS.slice(0, n)) d.pitches[id] = { ...defaultPitchProgress(), sends: 1 }
+    }
+    const d = fresh()
+    // One stone, nothing climbed yet: the stones reach Pitch 3, Pitches 1 and 2 still to climb.
+    expect(trailLine(d, 1)).toEqual({ kind: 'found', pitch: 3 })
+    sentUpTo(d, 2)
+    expect(trailLine(d, 1)).toEqual({ kind: 'open', pitch: 3 })
+    expect(trailLine(d, 2)).toEqual({ kind: 'found', pitch: 4 })
+    sentUpTo(d, 15)
+    expect(trailLine(d, 12)).toEqual({ kind: 'open', pitch: 14 })
+    expect(trailLine(d, 14)).toEqual({ kind: 'all' })
+    expect(trailLine(d, 99)).toEqual({ kind: 'all' })
+    const t = fresh()
+    t.testMode = true
+    expect(trailLine(t, 1)).toEqual({ kind: 'all' })
+    expect(sameTrailLine({ kind: 'all' }, { kind: 'all' })).toBe(true)
+    expect(sameTrailLine({ kind: 'open', pitch: 3 }, { kind: 'open', pitch: 3 })).toBe(true)
+    expect(sameTrailLine({ kind: 'open', pitch: 3 }, { kind: 'found', pitch: 3 })).toBe(false)
+    expect(sameTrailLine({ kind: 'found', pitch: 3 }, { kind: 'found', pitch: 4 })).toBe(false)
   })
 })
 
@@ -220,6 +237,9 @@ describe('the words', () => {
     expect(CAIRN_COPY.countLabel(1)).toBe('1 stone in your cairn.')
     expect(CAIRN_COPY.countLabel(12)).toBe('12 stones in your cairn.')
     expect(CAIRN_COPY.trailTo(14)).toBe('The trail is open to Pitch 14.')
+    expect(CAIRN_COPY.trailFound(5)).toBe('Your stones have found the way to Pitch 5. Climb on to get there.')
+    expect(`${CAIRN_COPY.trailFoundBefore}Pitch${CAIRN_COPY.trailFoundAfter(5)}`).toBe(CAIRN_COPY.trailFound(5))
+    expect(`${CAIRN_COPY.trailToBefore}Pitch${CAIRN_COPY.trailToAfter(5)}`).toBe(CAIRN_COPY.trailTo(5))
     expect(WEATHER_COPY.emptyHave(0)).not.toMatch(/\d/)
     expect(WEATHER_COPY.emptyHave(1)).toContain('1')
     expect(WEATHER_COPY.emptyHave(2)).toContain('2')

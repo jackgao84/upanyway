@@ -746,7 +746,10 @@ export function climberSave(now = new Date()): SaveData {
   return d
 }
 
-/** Add `n` done brave things with their stones placed (three a day, on past days): pitch n + 2 opens. */
+/**
+ * Add `n` done brave things with their stones placed (three a day, on past days): enough stones for
+ * pitch n + 2, which opens once the pitch below it is sent too (see `sendPitches`).
+ */
 export function addStones(d: SaveData, n: number, now = new Date()): void {
   for (let i = 0; i < n; i++) {
     const day = new Date(now.getTime() - (Math.floor(i / 3) + 1) * 86_400_000)
@@ -765,6 +768,17 @@ export function addStones(d: SaveData, n: number, now = new Date()): void {
       outcome: 'wobbly',
       stoneDay: key,
     })
+  }
+}
+
+/**
+ * Pitches 1…`n` sent once by day (one attempt each), so pitch n + 1 opens as soon as the cairn holds
+ * enough stones (Decision 5: a pitch needs its stones AND the pitch below sent).
+ */
+export function sendPitches(d: SaveData, n: number, now = new Date()): void {
+  for (let i = 1; i <= n; i++) {
+    const id = `p${String(i).padStart(2, '0')}` as keyof SaveData['pitches']
+    d.pitches[id] = { ...defaultPitchProgress(), ...d.pitches[id], sends: 1, totalAttempts: 1, firstSentAt: now.toISOString() }
   }
 }
 

@@ -3,8 +3,10 @@
  * (oldest first), and their labels for screen readers. Pure, no DOM — the Cairn screen and the
  * grown-ups' "read her cairn" page can both use it.
  */
+import { PITCH_IDS } from '../../game/types'
 import { dayKey } from '../../model/clock'
 import { BRAVE_STONES_PER_DAY, LETTER_STONES_PER_DAY, stoneOrder, waitingStones } from '../../model/stones'
+import { trailReach } from '../../model/unlocks'
 import type { BraveThing, Letter, SaveData } from '../../storage/schema'
 import { CAIRN_COPY } from './copy'
 import type { SceneStone } from './scene'
@@ -82,9 +84,25 @@ export function waitingBefore(d: SaveData, hopIds: readonly string[], waiting: r
   return list.map((x) => x.s)
 }
 
-/** The highest pitch her stones have opened by day (1–16): pitch n opens at n − 2 stones. */
-export function trailOpenTo(stones: number, pitches = 16): number {
-  return Math.max(2, Math.min(pitches, Math.floor(stones) + 2))
+/**
+ * The cairn's line about the trail, with `stones` on the cairn (it counts up as stones land):
+ * - 'all': every pitch is open (or test mode);
+ * - 'open': the trail is open to Pitch `pitch`, as far as the stones reach;
+ * - 'found': the stones reach Pitch `pitch`, but a pitch below it still needs climbing first
+ *   (Decision 5: a pitch needs its stones AND the pitch below sent).
+ */
+export type TrailLine = { kind: 'all' } | { kind: 'open' | 'found'; pitch: number }
+
+export function trailLine(d: SaveData, stones: number): TrailLine {
+  const reach = trailReach(d, stones)
+  if (reach.open >= PITCH_IDS.length) return { kind: 'all' }
+  if (reach.open >= reach.stones) return { kind: 'open', pitch: reach.open }
+  return { kind: 'found', pitch: reach.stones }
+}
+
+/** Same line? (The cairn lights the line up when a landing stone changes it.) */
+export function sameTrailLine(a: TrailLine, b: TrailLine): boolean {
+  return a.kind === b.kind && (a.kind === 'all' || (b.kind !== 'all' && a.pitch === b.pitch))
 }
 
 export type WaitingWhen = 'tomorrow' | 'later'

@@ -1,8 +1,9 @@
 /**
  * Words on the climb screen and in its cards. Narrator copy states no morals (the goat says any
- * "why"), names no counts except attempts on the Beta Map, and never uses a clock. Goat lines live in
- * content/goatLines.ts.
+ * "why"), names no counts except attempts on the Beta Map (and, in words, the stones a hidden pitch
+ * still needs), and never uses a clock. Goat lines live in content/goatLines.ts.
  */
+import { MAP_COPY } from '../map/copy'
 
 export const CLIMB_COPY = {
   /** The tent button's name (top-left). */
@@ -60,9 +61,13 @@ export const CLIMB_COPY = {
     /** Under camp's Climb tile once the day's climbing time is used. */
     tileNote: 'The mountain will be here tomorrow.',
   },
+  /**
+   * A pitch still hidden (the locked card, and the Beta Map when the next one is): the Trail Map's
+   * words — a stone (the brief's sentence), the pitch below, or both. 0 = not missing.
+   */
   locked: {
-    title: 'The trail ahead is hidden.',
-    text: 'Add a stone to your cairn to find the way.',
+    title: MAP_COPY.locked.title,
+    way: MAP_COPY.locked.way,
     camp: 'Back to camp',
   },
 } as const

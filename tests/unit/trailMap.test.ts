@@ -1,7 +1,8 @@
 /**
  * The Trail Map (src/screens/map/*): what each of the 16 pitch markers shows (sent, open, hidden in
- * fog, and how many more stones a hidden one needs), where her marker stands by day and by night,
- * test mode, the map's geometry (every marker has room for a finger), and the words on it.
+ * fog, and what a hidden one still needs: stones, the pitch below, or both), where her marker stands
+ * by day and by night, test mode, the map's geometry (every marker has room for a finger), and the
+ * words on it.
  */
 import { describe, expect, it } from 'vitest'
 import { PITCHES } from '../../src/game/levels'
@@ -33,31 +34,45 @@ describe('trail markers by day', () => {
     })
   })
 
-  it('opens pitches 1–2 for free and hides the rest, each with the stones it still needs', () => {
+  it('opens Pitch 1 and hides the rest, each with the stones and the pitch below it still needs', () => {
     const m = trailMarkers(fresh(), false)
-    expect(m.slice(0, 2).map((x) => x.state)).toEqual(['open', 'open'])
-    expect(m.slice(2).every((x) => x.state === 'hidden')).toBe(true)
-    expect(m[2].needs).toBe(1)
-    expect(m[15].needs).toBe(14)
-    expect(m[0].needs).toBe(0)
+    expect(m[0].state).toBe('open')
+    expect(m.slice(1).every((x) => x.state === 'hidden')).toBe(true)
+    expect(m[0]).toMatchObject({ needs: 0, needsPitch: 0 })
+    expect(m[1]).toMatchObject({ needs: 0, needsPitch: 1 })
+    expect(m[2]).toMatchObject({ needs: 1, needsPitch: 2 })
+    expect(m[15]).toMatchObject({ needs: 14, needsPitch: 15 })
     // Her marker: the first pitch she hasn't sent.
     expect(m.filter((x) => x.current).map((x) => x.id)).toEqual(['p01'])
   })
 
-  it('flags sent pitches and opens pitch n at n − 2 stones', () => {
+  it('flags sent pitches and opens pitch n at n − 2 stones once the pitch below is sent', () => {
     const d = fresh()
     withStones(d, 5)
+    for (const id of ['p01', 'p02', 'p03', 'p05', 'p06'] as const) d.pitches[id] = { ...defaultPitchProgress(), sends: 1 }
     d.pitches.p01 = { ...defaultPitchProgress(), sends: 2 }
-    d.pitches.p04 = { ...defaultPitchProgress(), sends: 1 }
     const m = trailMarkers(d, false)
     expect(m[0].state).toBe('sent')
-    expect(m[1].state).toBe('open')
-    expect(m[3].state).toBe('sent')
-    expect(m[6].state).toBe('open')
-    expect(m[7].state).toBe('hidden')
-    expect(m[7].needs).toBe(1)
-    expect(m[8].needs).toBe(2)
-    // The lowest open pitch not sent yet: never a jump past p02 to the highest open one.
+    expect(m[1].state).toBe('sent')
+    expect(m[3].state).toBe('open')
+    // Stones enough for Pitch 5, but Pitch 4 isn't sent yet.
+    expect(m[4]).toMatchObject({ state: 'hidden', needs: 0, needsPitch: 4 })
+    // Pitch 7: five stones and Pitch 6 sent.
+    expect(m[6]).toMatchObject({ state: 'open', needs: 0, needsPitch: 0 })
+    // Pitch 8: a stone short (Pitch 7 not sent either); Pitch 9: two stones and Pitch 8.
+    expect(m[7]).toMatchObject({ state: 'hidden', needs: 1, needsPitch: 7 })
+    expect(m[8]).toMatchObject({ state: 'hidden', needs: 2, needsPitch: 8 })
+    // The lowest open pitch not sent yet: never a jump past p04 to the highest open one.
+    expect(m.filter((x) => x.current).map((x) => x.id)).toEqual(['p04'])
+  })
+
+  it('names only a stone when the pitch below is sent', () => {
+    const d = fresh()
+    d.pitches.p01 = { ...defaultPitchProgress(), sends: 1 }
+    d.pitches.p02 = { ...defaultPitchProgress(), sends: 1 }
+    const m = trailMarkers(d, false)
+    expect(m[1].state).toBe('sent')
+    expect(m[2]).toMatchObject({ state: 'hidden', needs: 1, needsPitch: 0 })
     expect(m.filter((x) => x.current).map((x) => x.id)).toEqual(['p02'])
   })
 
@@ -101,7 +116,7 @@ describe('trail markers by day', () => {
     const d = fresh()
     d.testMode = true
     const m = trailMarkers(d, false)
-    expect(m.every((x) => x.state === 'open' && x.needs === 0)).toBe(true)
+    expect(m.every((x) => x.state === 'open' && x.needs === 0 && x.needsPitch === 0)).toBe(true)
   })
 })
 
@@ -177,8 +192,15 @@ describe('trail map geometry', () => {
 describe('trail map words', () => {
   const ALL = [...strings(MAP_COPY, 'MAP_COPY'), ...strings(ZONE_NAMES, 'ZONE_NAMES')]
 
-  it('uses the brief’s words for the hidden trail', () => {
-    expect(MAP_COPY.locked.text).toBe('The trail ahead is hidden. Add a stone to your cairn to find the way.')
+  it('uses the brief’s words for the hidden trail when a stone is what’s missing', () => {
+    for (const n of [1, 3, 14]) expect(MAP_COPY.locked.text(n, 0)).toBe('The trail ahead is hidden. Add a stone to your cairn to find the way.')
+  })
+
+  it('names the pitch below when that is what’s missing, and both in one sentence', () => {
+    expect(MAP_COPY.locked.text(0, 4)).toBe('The trail ahead is hidden. Climb Pitch 4 first to find the way.')
+    expect(MAP_COPY.locked.text(1, 2)).toBe('The trail ahead is hidden. Climb Pitch 2 and add a stone to your cairn to find the way.')
+    expect(MAP_COPY.locked.text(3, 4)).toBe('The trail ahead is hidden. Climb Pitch 4 and add three more stones to your cairn to find the way.')
+    expect(MAP_COPY.locked.way(1, 0)).toBe('Add a stone to your cairn to find the way.')
   })
 
   it('says how many more stones gently, in words', () => {

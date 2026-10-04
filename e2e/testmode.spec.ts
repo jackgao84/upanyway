@@ -37,7 +37,12 @@ test.describe.configure({ timeout: 150_000 })
 
 const P = PARENT_COPY
 const T = P.settings.test
-/** The first pitch still in the fog for richSave() (8 stones: open to Pitch 10). */
+/**
+ * richSave() has 8 stones and Pitches 1–3 sent: open to Pitch 4 (Pitch 5 waits for Pitch 4 to be
+ * sent; the stones reach Pitch 10). LOCKED is a pitch well up in the fog, climbed in test mode.
+ */
+const LAST_OPEN = 'p04'
+const FIRST_HIDDEN = 'p05'
 const LOCKED = 'p11'
 
 async function openSettings(page: Page): Promise<void> {
@@ -65,7 +70,8 @@ test('test mode opens everything, records nothing, and turning it off puts it al
   const pins = page.locator('.trail-pin')
   await expect(pins).toHaveCount(16)
   await expect(page.locator(`.trail-pin[data-pitch="${LOCKED}"]`)).toHaveClass(/is-hidden/)
-  await expect(page.locator(`.trail-pin[data-pitch="p10"]`)).not.toHaveClass(/is-hidden/)
+  await expect(page.locator(`.trail-pin[data-pitch="${FIRST_HIDDEN}"]`)).toHaveClass(/is-hidden/)
+  await expect(page.locator(`.trail-pin[data-pitch="${LAST_OPEN}"]`)).not.toHaveClass(/is-hidden/)
   await expect(page.getByRole('radio', { name: MAP_COPY.night })).toHaveCount(0)
   await expect(page.locator('.shell__pill')).toBeHidden()
   await tap(page.locator('.layout__back'))

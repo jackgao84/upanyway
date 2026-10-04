@@ -174,13 +174,16 @@ export function sunsetPrompt(goat: GoatInfo, line: SpokenLine, onCamp: () => voi
   return { close: () => handle.close() }
 }
 
-/** A pitch that isn't open yet (typed URL): the trail is hidden; back to camp. */
-export function lockedPrompt(onCamp: () => void): Prompt {
+/**
+ * A pitch that isn't open yet (typed URL): the trail is hidden, and what still opens it — `stones`
+ * more stones and/or climbing Pitch `pitch` (0 = not missing); back to camp.
+ */
+export function lockedPrompt(stones: number, pitch: number, onCamp: () => void): Prompt {
   const c = CLIMB_COPY.locked
   const handle = modal({
     title: c.title,
-    body: [h('p', { class: 'climb-prompt__sub' }, c.text)],
-    art: 'cairn',
+    body: [h('p', { class: 'climb-prompt__sub' }, c.way(stones, pitch))],
+    art: stones > 0 ? 'cairn' : 'mountain',
     dismissible: false,
     class: 'climb-prompt',
     actions: [{ label: c.camp, icon: 'tent', onClick: onCamp }],

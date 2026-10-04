@@ -7,6 +7,13 @@
 ## Status
 
 - **Done.** All seven stages are complete and committed. Ready to deploy (DEPLOY.md).
+- **Owner follow-ups (after Stage 7):**
+  - [x] **Unlock rule: a pitch needs its stones and the pitch below sent** (Decision 5, amended). Pitch n opens
+    when the cairn holds n − 2 stones AND Pitch n − 1 has been sent; the hidden-trail words name whichever is
+    missing (a stone, the pitch below, or both). Model `lockReason`; map, climb card, Beta Map, cairn line,
+    How to cheer; unit + e2e tests updated. Checked: typecheck clean; check:stubs clean; vitest 485/485 in 40
+    files; Playwright (all 13 specs, PW_WORKERS=2) 70 passed + 2 skipped (the phone-only sideways-keyboard
+    test on the two iPad projects), zero console errors. No level data changed.
 - **Final verification (Stage 7):**
   - `npm run typecheck` — clean (both configs).
   - `npm run check:stubs` — clean (no unfinished-work markers, skipped tests or empty content lists).
@@ -180,6 +187,10 @@ npm run build        # dist/ for GitHub Pages
 - Stones never spent. Pitches 1–2 free; pitch n opens when the cairn holds n−2 stones
   ("The trail ahead is hidden. Add a stone to your cairn to find the way.").
   Unlocked pitches replay freely.
+  **Owner's change (supersedes the line above, Decision 5):** Pitch 1 is open from the start; pitch n (n ≥ 2)
+  opens only when the cairn holds n−2 stones AND she has sent pitch n−1. Test mode still opens everything. A
+  hidden pitch's message names whichever is missing: a stone (the brief's line), the pitch below ("The trail
+  ahead is hidden. Climb Pitch 4 first to find the way."), or both in one sentence.
 - After the summit: each new stone also unlocks a camp decoration or gear; the
   mountain can be re-climbed at night with the goat climbing beside her.
 - Daily climb time = parent setting (default 20 min), shown as a small sun sinking,
@@ -551,7 +562,8 @@ Failing pitch → edit the LEVEL. Never the validator, thresholds or tolerances.
   grown-ups (PIN) button. Waiting stones are placed here on a new day (their hop plays at the next cairn
   visit).
 - **Climb** `#/climb/:id[?night=1]`: full-bleed canvas + DOM HUD (camp button, sinking sun — no numbers,
-  goat bubble, beta button when offered). Non-blocking toasts: "New flop unlocked!", word cards,
+  goat bubble, beta button when offered). A hidden pitch (typed URL) shows "The trail ahead is hidden." with the
+  map's sentence for what's missing, and Back to camp. Non-blocking toasts: "New flop unlocked!", word cards,
   "Spotted a hold on the way down!". Blocking (clock frozen): Fear Forecast, How-scary-really, Beta Map,
   Sunset.
 - **Log** `#/log` (one question per screen, big buttons): 1 `what` (text field + "Pick an idea" →
@@ -567,7 +579,10 @@ Failing pitch → edit the LEVEL. Never the validator, thresholds or tolerances.
   first / practise at home first / write my own → a NEW plan, `smallerOf` = original, asks its own
   forecast; the original stays unchanged). No dates, counters, streaks or expiry shown.
 - **Cairn** `#/cairn[?new=id]`: stacked stones (seeded shapes), stacking animation + clack, tap → read
-  back (brave thing story or letter), waiting stones beside the pile, total + what it opened.
+  back (brave thing story or letter), waiting stones beside the pile, total + what it opened: "The trail is
+  open to Pitch 5." when the stones are the limit, "Your stones have found the way to Pitch 5. Climb on to get
+  there." while a pitch below still needs climbing, "The whole trail is open, all the way to Sky Lake." (The
+  line lights up when a landing stone changes it.)
 - **Weather** `#/weather`: forecast vs really per done brave thing (weather icons), caption "Fear
   forecasts usually come in stormier than the real weather."; friendly empty state until 3.
 - **Flops** `#/flops` (museum): tabs Fall poses (16 cards; collected = animated mini rig + name; others
@@ -576,9 +591,12 @@ Failing pitch → edit the LEVEL. Never the validator, thresholds or tolerances.
 - **Letters** `#/letters`: envelopes; opening one reads the Spotted! note and places a bonus stone (1/day,
   else waits).
 - **Wardrobe** `#/wardrobe`: the designer + unlocked gear. **Badges** `#/badges`. **Finale** `#/finale`.
-- **Map** `#/map`: the mountain with Sky Lake at the top; 16 pitch markers by zone; locked pitches: "The
-  trail ahead is hidden. Add a stone to your cairn to find the way."; after the summit a Day/Night toggle
-  (all pitches open at night).
+- **Map** `#/map`: the mountain with Sky Lake at the top; 16 pitch markers by zone; a hidden pitch's card says
+  what still opens it (`lockReason`): only a stone → "The trail ahead is hidden. Add a stone to your cairn to
+  find the way." + "One more stone and the fog lifts here." (how many, in words) and Log a brave thing; only the
+  pitch below → "The trail ahead is hidden. Climb Pitch 4 first to find the way."; both → "The trail ahead is
+  hidden. Climb Pitch 4 and add a stone (three more stones) to your cairn to find the way." + Log a brave
+  thing. After the summit a Day/Night toggle (all pitches open at night).
 - **Sunset**: when the day's minutes run out she keeps climbing until the current attempt ends (a whipper,
   the send, or reaching a camp — run saved), then "The sun's going down. The mountain will be here
   tomorrow." → camp. Climb/Map taps afterwards show the same card. No lock icons, no sad state. The finale
@@ -630,8 +648,10 @@ Test mode never writes stats, poses, badges, stones or attempts.
 
 - **Vitest** (node): migrations (v0 + v1 fixtures, newer-version, corrupt → backup, missing → fresh),
   export/import round-trip, reset keeps backup, stone limits (3/day + queue, letters 1/day, day change),
-  climb-time daily cap, attempt counting (whippers/sends/slips/neutral hops), unlock rule (0 stones →
-  p01–p02; 1 → p03; 14 → p16), unlockables derivation, badge triggers, storage-key prefix scan,
+  climb-time daily cap, attempt counting (whippers/sends/slips/neutral hops), unlock rule (stones AND the
+  pitch below sent: 0 stones → p01 only, p02 once p01 is sent; stones but no send; a send but no stones;
+  both; night sends don't count; waiting stones don't; test mode; `lockReason` agrees with every helper),
+  unlockables derivation, badge triggers, storage-key prefix scan,
   content rules (goat lines, banned phrases, ≥ 30 ideas, ≥ 16 oops, 16 poses, ≥ 40 unlockables, glossary
   definitions ≤ 12 words, no empty arrays), beta classification, goat picker (moral cap, no fear input),
   and the level validator.
@@ -644,7 +664,11 @@ Test mode never writes stats, poses, badges, stones or attempts.
   `console.error` / `pageerror`. Specs: `first-run` (incl. lesson; asserts tap count); `send-pitch1` (replays
   `solutions.json`); `looks-scary`; `finale`; `brave` (every log step, "I already did it!" → Flopped → cairn
   → Hall of Flops → Weather Station empty state; "I'll do it later" → Plans → Not today → Make it smaller →
-  I did it!); `unlock` (p03 hidden after the first run → one brave thing → climb p03); `camp-screens` (every
+  I did it!); `unlock` (after the first run: p02's card names Pitch 1, p03's names Pitch 2 and a stone; one
+  brave thing → the cairn says the stones found the way to Pitch 3 → p03's card names only Pitch 2. Seeded
+  with Pitches 1–2 sent: p03's card is the brief's line + one stone → one brave thing → the cairn says open to
+  Pitch 3 → climb p03. Sending p02 with p01 sent and no stones → the Beta Map's hidden-trail note);
+  `camp-screens` (every
   camp screen, Hall room, Wardrobe tab and grown-ups' page for a new climber, a mid-game one and one after
   Sky Lake: heading, 48 px targets, no sideways scroll, 16 px fields); `backup` (download → start over →
   first run again → restore the file, and paste the text on a second device: deep-equal saves); `testmode`
@@ -689,8 +713,21 @@ Test mode never writes stats, poses, badges, stones or attempts.
    climber; releasing on her cancels, matching "dragging back onto the climber cancels".
 4. **"±6% power" = ±0.06 of max power (absolute)** — stricter than relative → more forgiving for her.
    Wind steps must also tolerate ±0.25 s launch timing. Validator thresholds are literals in the test.
-5. **Unlock rule exactly as the brief:** pitches 1–2 free; pitch n opens at n−2 stones (placed). No
-   "previous pitch sent" gate. Test mode bypasses.
+5. **Unlock rule — the owner chose both gates (follow-up after Stage 7, superseding the brief's stones-only
+   rule):** Pitch 1 is always open; pitch n (n ≥ 2) opens only when the cairn holds n−2 placed stones AND
+   pitch n−1 has been sent by day (`PitchProgress.sends > 0`). Waiting stones don't count. A night send
+   doesn't count either: night climbs only exist after the summit, when every pitch has been sent by day, so
+   it never matters in play and keeps the rule about the day trail. Test mode opens everything; after the
+   summit every pitch is open at night. One source of truth: `model/unlocks.ts` `lockReason(d, id)` →
+   `null | { needStones, needPitch }`; `isPitchOpen`, `stonesToOpen`, `openPitches`, `nextLockedPitch` and
+   `trailReach` (how far the trail is open in a row vs. how far the stones alone reach — the cairn's line)
+   all read it. The rule is literal, not recursive (pitch n checks only pitch n−1), and there is no
+   migration: nothing has shipped; a save from before could find a pitch it skipped to in the fog until the
+   pitch below it is sent. Words (map card, climb card, Beta Map — one function, `MAP_COPY.locked.way`): a
+   stone → the brief's line; the pitch below → "Climb Pitch 4 first to find the way."; both → "Climb Pitch 4
+   and add a stone (three more stones) to your cairn to find the way." Log a brave thing is offered only when
+   a stone is needed. After a day send the Beta Map's note is always the stone line (the pitch below is the
+   one just sent).
 6. **Daily cap overflow waits, never discards.** A 4th brave thing (or 2nd letter) is fully recorded; its
    stone waits beside the cairn and is placed on a later day with room (goat: the cairn's full for today).
 7. **Sunset ends at the end of the current attempt** (whipper, send, or reaching a camp). Climb time counts

@@ -4,8 +4,9 @@
  * many attempts it took — "Sent in 14 attempts. Every whipper got you here." — and offers Back to
  * camp / Next pitch / Climb again. No stars, no timers, no "fewer falls" anything. After the summit
  * pitch the way on is "On to Sky Lake" (the first time by day, the only button: the finale is next).
- * When the next pitch is still hidden, the card says "The trail ahead is hidden. Add a stone to your
- * cairn to find the way." and its big button is Log a brave thing (the real-life half comes in).
+ * When the next pitch is still hidden, the card says "The trail ahead is hidden." and what still opens
+ * it — after a day send that is a stone: "Add a stone to your cairn to find the way." — and its big
+ * button is Log a brave thing (the real-life half comes in).
  *
  * Portrait: a card along the bottom, the pitch framed above it. Landscape (a phone on its side too):
  * a card on the right, the pitch in the middle.
@@ -24,10 +25,11 @@ export interface BetaMapCardOpts {
   /** Null when there is no next pitch to offer (summit, or not open yet). */
   onNext: (() => void) | null
   /**
-   * The next pitch is still hidden (the cairn needs another stone): the card says so in the brief's
-   * words, and its big button goes to Log a brave thing.
+   * The next pitch is still hidden: the card says so, with `text` saying what still opens it (the
+   * brief's words when it is a stone). `onLog` (when a stone is needed) makes the big button Log a
+   * brave thing.
    */
-  onLocked?: (() => void) | null
+  locked?: { text: string; onLog: (() => void) | null } | null
   /** The primary button's words when it isn't "Next pitch" (the summit: "On to Sky Lake"). */
   nextLabel?: string
   /** Offer only the way on (the first Sky Lake finale): no Climb again, no Back to camp. */
@@ -69,13 +71,14 @@ export function betaMapCard(opts: BetaMapCardOpts): BetaMapCard {
       return h('p', { class: 'climb-map__word' }, firstMentionText(word, []))
     })
   const next = opts.onNext
-  const locked = !next && opts.onLocked ? opts.onLocked : null
-  const lockedNote = locked
+  const hidden = !next && opts.locked ? opts.locked : null
+  const locked = hidden?.onLog ?? null
+  const lockedNote = hidden
     ? h(
         'div',
         { class: 'climb-map__locked' },
         h('p', { class: 'climb-map__locked-title' }, CLIMB_COPY.locked.title),
-        h('p', { class: 'climb-map__locked-text' }, CLIMB_COPY.locked.text),
+        h('p', { class: 'climb-map__locked-text' }, hidden.text),
       )
     : null
   const primary = next

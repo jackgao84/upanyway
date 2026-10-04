@@ -68,7 +68,8 @@ test('sends Pitch 1 by replaying its saved solution as touch drags', async ({ pa
   await page.waitForTimeout(3_000)
   await page.screenshot({ path: testInfo.outputPath('beta-map.png') })
 
-  // Pitch 2 is open from the start: Next pitch goes straight there.
+  // Sending Pitch 1 opens Pitch 2 (it needs no stones, only Pitch 1 sent): Next pitch goes straight there.
+  await expect(map.locator('.climb-map__locked'), 'no hidden-trail note').toHaveCount(0)
   const next = map.getByRole('button', { name: 'Next pitch', exact: true })
   await expect(map.getByRole('button', { name: 'Climb again', exact: true })).toBeVisible()
   await expect(map.getByRole('button', { name: 'Back to camp', exact: true })).toBeVisible()

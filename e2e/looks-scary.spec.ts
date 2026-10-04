@@ -1,6 +1,6 @@
 /**
  * The Looks Scary moment on Pitch 2 (the Big Gap), on every project. A climber past the first run
- * climbs to the camp before the gap by replaying the saved solution: the misty drop looms and the
+ * (Pitch 1 sent, so Pitch 2 is open) climbs to the camp before the gap by replaying the saved solution: the misty drop looms and the
  * Fear Forecast asks once (one tap). The Big Leap lands her on the far side: the gentle reveal plays
  * with the clock frozen, then "How scary was it really?" and the one-line comparison ("Forecast 7.
  * Really 2."). Coming back to the pitch, it is already gentle and nothing is asked again.
@@ -16,6 +16,7 @@ import {
   replaySolutions,
   scaryPhase,
   seedSave,
+  sendPitches,
   tap,
   tapCount,
   test,
@@ -28,7 +29,10 @@ const FORECAST = 7
 const REALLY = 2
 
 test('Pitch 2: the Fear Forecast, the gentle reveal up close, then "Forecast 7. Really 2."', async ({ page }) => {
-  await seedSave(page, climberSave())
+  // Pitch 2 opens once Pitch 1 is sent (it needs no stones).
+  const d = climberSave()
+  sendPitches(d, 1)
+  await seedSave(page, d)
   await page.goto('./#/climb/p02')
   const steps = loadSolution('p02').steps
   const toCamp = steps.find((s) => s.to === 'c1')
