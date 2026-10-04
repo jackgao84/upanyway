@@ -1,6 +1,6 @@
 /**
  * SHA-256 in plain TypeScript (no WebCrypto: crypto.subtle is missing in insecure contexts and we
- * also want it synchronous). Only used for the parent PIN, so speed is irrelevant.
+ * also want it synchronous). Only used for the parent PIN and the recovery code, so speed is irrelevant.
  */
 
 const K = new Uint32Array([

@@ -46,11 +46,27 @@ describe('import', () => {
   })
 
   it('a backup from before hidden cards (v1) restores with every card showing', () => {
-    const v1 = JSON.parse(JSON.stringify(richSave())) as Record<string, unknown>
+    const v1 = JSON.parse(JSON.stringify(richSave())) as Record<string, unknown> & { parent: Record<string, unknown> }
     delete v1.hiddenIdeas
+    delete v1.parent.recoveryHash
+    delete v1.parent.recoverySalt
     v1.schemaVersion = 1
     const r = parseImport(JSON.stringify({ app: 'upanyway', exportedAt: DAY1.toISOString(), schemaVersion: 1, data: v1 }), DAY1)
-    expect(r.ok && r.data).toStrictEqual({ ...richSave(), hiddenIdeas: [] })
+    expect(r.ok && r.data).toStrictEqual({ ...richSave(), parent: { ...richSave().parent, recoveryHash: '', recoverySalt: '' }, hiddenIdeas: [] })
+  })
+
+  it('carries the recovery code (its hash, never the code), and a backup from before codes (v2) restores with none', () => {
+    const text = exportJson(richSave(), DAY1)
+    expect(JSON.parse(text).data.parent).toMatchObject({ recoveryHash: 'c'.repeat(64), recoverySalt: 'rsalt456' })
+    const r = parseImport(text, DAY1)
+    expect(r.ok && r.data.parent).toStrictEqual(richSave().parent)
+
+    const v2 = JSON.parse(JSON.stringify(richSave())) as Record<string, unknown> & { parent: Record<string, unknown> }
+    delete v2.parent.recoveryHash
+    delete v2.parent.recoverySalt
+    v2.schemaVersion = 2
+    const old = parseImport(JSON.stringify({ app: 'upanyway', exportedAt: DAY1.toISOString(), schemaVersion: 2, data: v2 }), DAY1)
+    expect(old.ok && old.data).toStrictEqual({ ...richSave(), parent: { ...richSave().parent, recoveryHash: '', recoverySalt: '' } })
   })
 
   it('round-trips a brand-new save too', () => {

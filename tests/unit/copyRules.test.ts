@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest'
 import { BADGES } from '../../src/content/badges'
 import { CHEER } from '../../src/content/cheer'
-import { CAMP_COPY, GATE_COPY, SETUP_COPY } from '../../src/content/copy'
+import { CAMP_COPY, GATE_COPY, RECOVERY_COPY, SETUP_COPY } from '../../src/content/copy'
 import { FALL_POSES } from '../../src/content/fallPoses'
 import { glossary } from '../../src/content/glossary'
 import { HAPPENED_CHIPS } from '../../src/content/happenedChips'
@@ -78,6 +78,7 @@ const KID_NARRATOR = {
 const DISPLAYED = {
   ...KID_NARRATOR,
   GATE_COPY,
+  RECOVERY_COPY,
   PARENT_COPY,
   CHEER,
   FALL_POSES: FALL_POSES.map((p) => ({ name: p.name, description: p.description })),
@@ -117,6 +118,10 @@ describe('narrator copy', () => {
       if (BRIEF_LINES.has(plain(text))) continue
       expect(plain(text), path).not.toMatch(NARRATOR_MORAL)
     }
+  })
+
+  it('never mentions the grown-ups’ recovery code (it lives on their pages only)', () => {
+    for (const [path, text] of kid) expect(plain(text), path).not.toMatch(/recovery|forgot pin/)
   })
 
   it('catches the narrator morals it is meant to', () => {

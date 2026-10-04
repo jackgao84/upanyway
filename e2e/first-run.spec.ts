@@ -1,10 +1,12 @@
 /**
- * The first run, start to Pitch 1, on every project: grown-up PIN + names, hand-over, her climber,
+ * The first run, start to Pitch 1, on every project: grown-up PIN, the recovery code (shown once,
+ * saved as a hash on "I've written it down"), names, hand-over, her climber,
  * the goat, the mountain, the lesson (played for real: a touch-drag leap onto the ledge, a leap off
  * it that the rope catches, then Next), brave vs dangerous, who cheers her on. Every screen is
  * checked for the mute toggle, finger-sized targets and sideways scrolling, and the whole run stays
  * short.
  */
+import { cleanRecoveryInput, verifyRecoveryCode } from '../src/model/recovery'
 import { CLIMB_COPY } from '../src/screens/climb/copy'
 import {
   DEFAULT_PIN,
@@ -12,13 +14,17 @@ import {
   completeFirstRun,
   expect,
   expectRoute,
+  readRecoveryCode,
   readSave,
   routeOf,
   tap,
   test,
 } from './helpers'
 
-/** The brief's budget for the whole first run, counted in touches. */
+/**
+ * The brief's budget for the whole first run, counted in touches. The recovery code's "I've written it
+ * down" (Decision 87) is one more grown-up tap: 24 → 25 measured, still within this budget.
+ */
 const MAX_TAPS = 25
 
 test('walks the whole first run to Pitch 1 in a few taps', async ({ page }, testInfo) => {
@@ -40,11 +46,18 @@ test('walks the whole first run to Pitch 1 in a few taps', async ({ page }, test
   testInfo.annotations.push({ type: 'first run', description: line })
   testInfo.annotations.push({ type: 'screens checked', description: checked.join(', ') })
   expect(result.taps, `the first run takes at most ${MAX_TAPS} taps`).toBeLessThanOrEqual(MAX_TAPS)
-  expect(checked).toHaveLength(12)
+  expect(checked).toHaveLength(13)
 
   const save = await readSave(page)
   expect(save.parent.pinHash, 'a PIN is saved (hashed)').toBeTruthy()
   expect(save.parent.pinHash).not.toBe(DEFAULT_PIN)
+
+  // The recovery code read off its screen is the one saved — as a salted hash, never the code itself.
+  expect(verifyRecoveryCode(result.recoveryCode, save.parent), 'the code shown is the code saved').toBe(true)
+  expect(save.parent.recoverySalt).toBeTruthy()
+  const json = JSON.stringify(save)
+  expect(json).not.toContain(result.recoveryCode)
+  expect(json).not.toContain(cleanRecoveryInput(result.recoveryCode))
   expect(save.glossarySeen, 'the cheer screen explained "cairn"').toContain('cairn')
 
   // The lesson's fall was a real whipper: counted, with its pose and the first-whipper badge, the
@@ -79,17 +92,25 @@ test('a reload part-way through comes back to the same step', async ({ page }) =
       // The PIN isn't saved until it is confirmed, so the first screen always starts over.
       if (phase || step === 'hello') return
       const before = routeOf(page)
+      // The recovery code is never shown twice: a reload before "I've written it down" shows a new one.
+      const code = step === 'recovery' ? await readRecoveryCode(page) : ''
       await page.reload()
       await expectRoute(page, before)
+      if (step === 'recovery') {
+        expect(await readRecoveryCode(page), 'a new code after a reload').not.toBe(code)
+        expect((await readSave(page)).parent.recoveryHash, 'still nothing saved').toBe('')
+      }
       reloaded.push(step)
     },
   })
-  expect(reloaded).toEqual(['names', 'handover', 'climber', 'goat', 'mountain', 'lesson', 'brave', 'cheer'])
+  expect(reloaded).toEqual(['recovery', 'names', 'handover', 'climber', 'goat', 'mountain', 'lesson', 'brave', 'cheer'])
 
   // Once finished, a reload (or opening the app fresh) never goes back into the first run.
   await page.reload()
   await expectRoute(page, '/climb/p01')
   await page.goto('./#/setup/hello')
+  await expectRoute(page, '/camp')
+  await page.goto('./#/setup/recovery')
   await expectRoute(page, '/camp')
 })
 

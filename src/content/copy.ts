@@ -94,19 +94,57 @@ export const GATE_COPY = {
   pinSub: 'Type the four numbers.',
   wrong: 'That’s not it. Try again.',
   forgot: 'Forgot PIN?',
-  holding: 'Keep holding…',
-  holdHint: 'Press and hold for 3 seconds.',
-  /** Two lines ("\n"), so a number like "thirty-five" is never split at its hyphen. */
-  challengeTitle: (a: string, b: string) => `What is ${a}\ntimes ${b}?`,
-  challengeSub: 'Type the answer to set a new PIN.',
-  challengeWrong: 'Not quite. Have another go.',
   newTitle: 'Choose a new PIN',
   newSub: 'Four numbers.',
+  newSubAfterCode: 'The code was right. Now pick four new numbers.',
   confirmTitle: 'Type the new PIN again',
   mismatch: 'Those didn’t match. Let’s start again.',
   saved: 'New PIN saved.',
   noPin: 'No PIN is set yet. Choose one now.',
   back: 'Back to camp',
+  /** "Forgot PIN?" → the recovery code a grown-up wrote down at setup. */
+  code: {
+    title: 'Type your recovery code',
+    sub: 'The 12 letters and numbers a grown-up wrote down when the game was set up. Capitals, spaces and dashes don’t matter.',
+    label: 'Recovery code',
+    check: 'Check the code',
+    back: 'Back to the PIN',
+    empty: 'Type the recovery code first.',
+    length: (n: number) => `A recovery code has 12 letters and numbers. That was ${n}.`,
+    strange: (chars: string) =>
+      `A recovery code only has letters and numbers, and never 0, O, 1, I or L. Check ${chars} against what you wrote down.`,
+    wrong: 'That code doesn’t match. Check it against what you wrote down and try again.',
+    wait: (s: number) => `Too many codes that didn’t match. Wait ${s === 1 ? '1 second' : `${s} seconds`}, then try again.`,
+    ready: 'You can try again now.',
+  },
+  /** "Forgot PIN?" on a game set up before recovery codes. No way round the PIN from here. */
+  noCode: {
+    title: 'This game has no recovery code yet',
+    lines: [
+      'It was set up before recovery codes, so its PIN can’t be reset from here.',
+      'To set it up again on this device: delete the Up Anyway icon from the Home Screen (this deletes the game and everything in it on this device), add it again from Safari and go through the setup. You’ll get a recovery code then.',
+      'Saved a backup file? Restore it straight after the new setup (Grown-ups → Backup and data). It brings back the PIN it was saved with, so before leaving the grown-ups’ pages, make a recovery code (Grown-ups → Change PIN) and use it with “Forgot PIN?” to choose a new PIN.',
+    ],
+    back: 'Back to the PIN',
+  },
+} as const
+
+/**
+ * The recovery code, shown once: at setup, after "Forgot PIN?" has set a new PIN, and from Change
+ * PIN → "Make a new recovery code". Grown-up words only: nothing on her screens mentions it.
+ */
+export const RECOVERY_COPY = {
+  title: 'Your recovery code',
+  forWhat: 'If you ever forget the PIN, this code lets you set a new one.',
+  afterReset: 'Your new PIN is saved. The old recovery code is used up, so here is a new one.',
+  /** Read out by screen readers one character at a time: "K 7 Q M, 4 X P A, T R 9 D". */
+  codeLabel: (spelled: string) => `Recovery code: ${spelled}`,
+  points: ['Write it down and keep it somewhere your climber won’t find it.', 'It won’t be shown again.'],
+  later: 'Lost it later? While you still know the PIN, make a new one in Grown-ups → Change PIN.',
+  replaces: 'Your old recovery code stops working when you tap “I’ve written it down”.',
+  done: 'I’ve written it down',
+  cancel: 'Not now',
+  saved: 'Recovery code saved.',
 } as const
 
 export const CAMP_COPY = {

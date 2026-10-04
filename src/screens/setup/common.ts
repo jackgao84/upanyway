@@ -10,9 +10,9 @@ export function kidDots(step: KidStep): HTMLElement {
   return progressDots(steps.length, Math.max(0, steps.indexOf(step)))
 }
 
-/** Dots for the grown-ups' part (PIN, then names). */
-export function parentDots(i: 0 | 1): HTMLElement {
-  return progressDots(2, i)
+/** Dots for the grown-ups' part (PIN, recovery code, then names). */
+export function parentDots(i: 0 | 1 | 2): HTMLElement {
+  return progressDots(3, i)
 }
 
 export interface NamePicker {

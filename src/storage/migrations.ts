@@ -15,6 +15,7 @@ import { downsampleArc } from '../model/attempts'
 import { stonesBeforeSummitDay } from '../model/unlockables'
 import { dayKey } from '../model/clock'
 import { newId } from '../model/ids'
+import { isRecoveryRecord, noRecoveryCode } from '../model/recovery'
 import { KEYS } from './keys'
 import {
   CURRENT_SCHEMA_VERSION,
@@ -161,9 +162,25 @@ function v1to2(d: Obj): Obj {
   return { ...d, hiddenIdeas: Array.isArray(d.hiddenIdeas) ? d.hiddenIdeas : [], schemaVersion: 2 }
 }
 
+/**
+ * v2 → v3: the grown-ups' recovery code (`parent.recoveryHash` + `parent.recoverySalt`, a salted hash,
+ * never the code). No v2 save had one, so both start empty: "Forgot PIN?" then explains that this game
+ * has no code yet, and the grown-ups' home invites them to make one. Anything already there (a
+ * hand-edited file) is kept for normalize() to check.
+ */
+function v2to3(d: Obj): Obj {
+  const parent = obj(d.parent)
+  return {
+    ...d,
+    parent: { ...parent, recoveryHash: parent.recoveryHash ?? '', recoverySalt: parent.recoverySalt ?? '' },
+    schemaVersion: 3,
+  }
+}
+
 export const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
   0: v0to1,
   1: v1to2,
+  2: v2to3,
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -486,6 +503,11 @@ export function normalize(raw: unknown, now: Date = new Date()): SaveData {
     parent: {
       pinHash: str(parent.pinHash),
       pinSalt: str(parent.pinSalt),
+      // Kept only whole (a 64-character hash with its salt); anything else is no code at all, so a
+      // grown-up is told plainly there's none and asked to make one, rather than never matching.
+      ...(isRecoveryRecord(parent.recoveryHash, parent.recoverySalt)
+        ? { recoveryHash: parent.recoveryHash as string, recoverySalt: parent.recoverySalt as string }
+        : noRecoveryCode()),
       names,
       dailyClimbMinutes: num(parent.dailyClimbMinutes, DEFAULT_DAILY_MINUTES, 0, MAX_DAILY_MINUTES, true),
     },

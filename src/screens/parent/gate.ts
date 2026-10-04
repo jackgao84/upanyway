@@ -1,51 +1,56 @@
 /**
- * The grown-ups' gate (#/parent): the PIN pad. "Forgot PIN?" needs a 3-second press-and-hold, then
- * a 2-digit × 2-digit product written in words, typed as digits, then a new PIN (enter + confirm).
- * A deterrent beyond a young climber's patience and times tables, not security.
+ * The grown-ups' gate (#/parent): the PIN pad, and "Forgot PIN?" (Decision 87).
+ *
+ * "Forgot PIN?" asks for the recovery code a grown-up wrote down at setup. The right code (any case,
+ * spaces and dashes ignored) leads to a new PIN (enter + confirm); saving it uses the old code up, and
+ * a new code is shown once and saved on "I've written it down". A code that doesn't match gets a gentle
+ * line; after five in a row each further try waits 30 seconds (only a guesser notices). A game set up
+ * before recovery codes gets a plain explanation of what a grown-up can do instead: there is no way
+ * round the PIN from here.
  */
 import './gate.css'
 import { lockParent, save, unlockParent, update } from '../../app/context'
 import type { Screen } from '../../app/router'
-import { GATE_COPY } from '../../content/copy'
+import { GATE_COPY, RECOVERY_COPY } from '../../content/copy'
 import { hasPin, makePinRecord, verifyPin } from '../../model/pin'
-import { screenLayout, toast } from '../../ui/components'
+import {
+  cleanRecoveryInput,
+  hasRecoveryCode,
+  isRecoveryCodeShaped,
+  makeRecoveryRecord,
+  newRecoveryCode,
+  noRecoveryCode,
+  recoveryWaitMs,
+  strangeRecoveryChars,
+  verifyRecoveryCode,
+} from '../../model/recovery'
+import { button, screenLayout, setDisabled, textField, toast } from '../../ui/components'
 import { h } from '../../ui/dom'
-import { icon } from '../../ui/icons'
+import { keepInView } from '../../ui/keyboard'
 import { pinPad } from '../../ui/pinPad'
+import { recoveryShow } from './recoveryCode'
 
-type Mode = 'enter' | 'challenge' | 'new' | 'confirm'
+type Mode = 'enter' | 'code' | 'noCode' | 'new' | 'confirm' | 'show'
 
-const HOLD_MS = 3000
-const TRIES_PER_QUESTION = 3
+/**
+ * Codes in a row that didn't match, and when the current wait ends. Kept while the app is open, so
+ * leaving the gate and coming back doesn't start the count again.
+ */
+const guesses = { wrong: 0, waitUntil: 0 }
 
-const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
-const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
-const TEENS = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen']
-
-/** 10–99 in words: "forty-seven". */
-export function twoDigitWords(n: number): string {
-  if (n < 10 || n > 99 || !Number.isInteger(n)) throw new Error('two-digit numbers only')
-  if (n < 20) return TEENS[n - 10]
-  const t = Math.floor(n / 10)
-  const o = n % 10
-  return o ? `${TENS[t]}-${ONES[o]}` : TENS[t]
-}
-
-/** A question whose answer always has four digits (both numbers ≥ 32), so the PIN pad can take it. */
-export function makeChallenge(rng: () => number = Math.random): { a: number; b: number; title: string; answer: string } {
-  const pick = () => 32 + Math.floor(rng() * 68)
-  const a = pick()
-  const b = pick()
-  return { a, b, title: GATE_COPY.challengeTitle(twoDigitWords(a), twoDigitWords(b)), answer: String(a * b) }
+/** "O and 1", "O, 1 and #". */
+function listChars(chars: string[]): string {
+  return chars.length <= 1 ? chars.join('') : `${chars.slice(0, -1).join(', ')} and ${chars[chars.length - 1]}`
 }
 
 export const gateScreen: Screen = (root, ctx) => {
   const c = GATE_COPY
   lockParent()
   let mode: Mode = hasPin(save().parent) ? 'enter' : 'new'
-  let challenge = makeChallenge()
-  let wrongAnswers = 0
+  /** The new PIN follows a right recovery code (then a new code is shown once it's saved). */
+  let viaCode = false
   let firstNew = ''
+  let waitTimer = 0
 
   const pad = pinPad({
     title: mode === 'enter' ? c.pinTitle : c.newTitle,
@@ -53,21 +58,178 @@ export const gateScreen: Screen = (root, ctx) => {
     onComplete: (pin) => onPin(pin),
   })
 
+  // ---- The PIN pad (enter, new, confirm) -------------------------------------------------------
+  const forgot = button(c.forgot, { variant: 'secondary', icon: 'info', onClick: () => openForgot(), class: 'gate__forgot-btn' })
+  const forgotWrap = h('div', { class: 'gate__forgot' }, forgot)
+  const pinView = h('div', { class: 'gate__pin stack stack--center' }, h('div', { class: 'gate__pad' }, pad.el), forgotWrap)
+
+  // ---- "Forgot PIN?": the recovery code ---------------------------------------------------------
+  const codeError = h('p', { class: 'gate__error', role: 'alert' })
+  const field = textField({
+    label: c.code.label,
+    value: '',
+    // Room for spaces and dashes; the "n left" count only shows near the end, well past a code.
+    maxLength: 40,
+    autocapitalize: 'none',
+    enterKeyHint: 'go',
+    name: 'recovery-code',
+    onInput: () => {
+      if (!waiting()) codeError.textContent = ''
+    },
+    onEnter: () => check(),
+  })
+  field.input.setAttribute('autocapitalize', 'characters')
+  field.input.setAttribute('autocorrect', 'off')
+  field.input.setAttribute('spellcheck', 'false')
+  field.classList.add('gate__field')
+  const checkBtn = button(c.code.check, { icon: 'check', onClick: () => check() })
+  const codeView = h(
+    'section',
+    { class: 'gate__panel gate__code', 'aria-labelledby': 'gate-code-title' },
+    h('h2', { class: 'gate__panel-title', id: 'gate-code-title' }, c.code.title),
+    h('p', { class: 'gate__panel-text' }, c.code.sub),
+    field,
+    codeError,
+    h(
+      'div',
+      { class: 'gate__actions' },
+      button(c.code.back, { variant: 'secondary', icon: 'back', onClick: () => enterMode('enter') }),
+      checkBtn,
+    ),
+  )
+
+  // ---- "Forgot PIN?" on a game with no code ------------------------------------------------------
+  const noCodeView = h(
+    'section',
+    { class: 'gate__panel gate__nocode', 'aria-labelledby': 'gate-nocode-title' },
+    h('h2', { class: 'gate__panel-title', id: 'gate-nocode-title' }, c.noCode.title),
+    ...c.noCode.lines.map((line) => h('p', { class: 'gate__panel-text' }, line)),
+    h('div', { class: 'gate__actions' }, button(c.noCode.back, { variant: 'secondary', icon: 'back', onClick: () => enterMode('enter') })),
+  )
+
+  // ---- The new code, once the new PIN is saved -------------------------------------------------
+  const showView = h('div', { class: 'gate__show' })
+
+  function waiting(): boolean {
+    return guesses.waitUntil > Date.now()
+  }
+
+  /** While a wait runs: the check button is off and the line counts down; then it says "try again". */
+  function paintWait(): void {
+    window.clearInterval(waitTimer)
+    waitTimer = 0
+    if (!waiting()) {
+      setDisabled(checkBtn, false)
+      return
+    }
+    setDisabled(checkBtn, true)
+    const tick = () => {
+      const left = Math.ceil((guesses.waitUntil - Date.now()) / 1000)
+      if (left > 0) {
+        codeError.textContent = c.code.wait(left)
+        return
+      }
+      window.clearInterval(waitTimer)
+      waitTimer = 0
+      setDisabled(checkBtn, false)
+      codeError.textContent = c.code.ready
+    }
+    tick()
+    waitTimer = window.setInterval(tick, 500)
+  }
+
+  function check(): void {
+    if (mode !== 'code' || waiting()) return
+    const typed = field.input.value
+    const clean = cleanRecoveryInput(typed)
+    if (!clean) {
+      codeError.textContent = c.code.empty
+      return
+    }
+    // Not a code at all (a letter it never uses, or too few/many): say what, and don't count it.
+    const strange = strangeRecoveryChars(clean)
+    if (strange.length) {
+      codeError.textContent = c.code.strange(listChars(strange))
+      return
+    }
+    if (!isRecoveryCodeShaped(clean)) {
+      codeError.textContent = c.code.length(clean.length)
+      return
+    }
+    if (verifyRecoveryCode(clean, save().parent)) {
+      guesses.wrong = 0
+      guesses.waitUntil = 0
+      field.input.blur()
+      viaCode = true
+      enterMode('new')
+      return
+    }
+    guesses.wrong++
+    const wait = recoveryWaitMs(guesses.wrong)
+    if (wait) {
+      guesses.waitUntil = Date.now() + wait
+      paintWait()
+    } else {
+      codeError.textContent = c.code.wrong
+    }
+  }
+
+  function openForgot(): void {
+    if (mode !== 'enter') return
+    enterMode(hasRecoveryCode(save().parent) ? 'code' : 'noCode')
+  }
+
   function enterMode(next: Mode, error?: string): void {
     mode = next
-    if (next === 'enter') pad.setTitle(c.pinTitle, c.pinSub)
-    else if (next === 'challenge') pad.setTitle(challenge.title, c.challengeSub)
-    else if (next === 'new') pad.setTitle(c.newTitle, c.newSub)
-    else pad.setTitle(c.confirmTitle)
+    pinView.hidden = !(next === 'enter' || next === 'new' || next === 'confirm')
+    codeView.hidden = next !== 'code'
+    noCodeView.hidden = next !== 'noCode'
+    showView.hidden = next !== 'show'
     forgotWrap.hidden = next !== 'enter'
-    layout.classList.toggle('is-challenge', next === 'challenge')
+    layout.classList.toggle('is-panel', next === 'code' || next === 'noCode' || next === 'show')
+    if (next === 'enter') pad.setTitle(c.pinTitle, c.pinSub)
+    else if (next === 'new') pad.setTitle(c.newTitle, viaCode ? c.newSubAfterCode : hasPin(save().parent) ? c.newSub : c.noPin)
+    else if (next === 'confirm') pad.setTitle(c.confirmTitle)
     if (error) pad.error(error)
     else pad.reset()
+    if (next === 'code') {
+      field.setValue('')
+      codeError.textContent = ''
+      paintWait()
+      field.input.focus()
+      keepInView(field.input)
+    }
+    if (next !== 'code') {
+      window.clearInterval(waitTimer)
+      waitTimer = 0
+    }
+    if (next === 'noCode' || next === 'show') root.scrollTop = 0
   }
 
   function done(): void {
     unlockParent()
     ctx.navigate('/parent/home', { replace: true })
+  }
+
+  /** The new PIN is saved: show a new code once (the old one is used up). */
+  function showNewCode(): void {
+    const code = newRecoveryCode()
+    const show = recoveryShow({
+      code,
+      heading: 'h2',
+      lead: RECOVERY_COPY.afterReset,
+      onDone: () => {
+        const record = makeRecoveryRecord(code)
+        update((d) => {
+          d.parent.recoveryHash = record.recoveryHash
+          d.parent.recoverySalt = record.recoverySalt
+        })
+        toast(RECOVERY_COPY.saved, { icon: 'check', tone: 'leaf' })
+        done()
+      },
+    })
+    showView.replaceChildren(show.el, h('div', { class: 'recovery-actions' }, ...show.actions))
+    enterMode('show')
   }
 
   function onPin(pin: string): void {
@@ -76,20 +238,14 @@ export const gateScreen: Screen = (root, ctx) => {
       pad.error(c.wrong)
       return
     }
-    if (mode === 'challenge') {
-      if (pin === challenge.answer) return enterMode('new')
-      wrongAnswers++
-      if (wrongAnswers >= TRIES_PER_QUESTION) {
-        wrongAnswers = 0
-        challenge = makeChallenge()
-        pad.setTitle(challenge.title, c.challengeSub)
-      }
-      pad.error(c.challengeWrong)
-      return
-    }
     if (mode === 'new') {
       firstNew = pin
       enterMode('confirm')
+      return
+    }
+    if (mode !== 'confirm') {
+      // Digits from a hardware keyboard while another panel shows: ignore them.
+      pad.reset()
       return
     }
     if (pin !== firstNew) {
@@ -101,82 +257,15 @@ export const gateScreen: Screen = (root, ctx) => {
     update((d) => {
       d.parent.pinHash = record.pinHash
       d.parent.pinSalt = record.pinSalt
+      // A code that set a new PIN is used up, there and then. The new one is saved on "I've written it
+      // down"; until then (a reload, Back to camp) there is none, and the grown-ups' home says so.
+      if (viaCode) Object.assign(d.parent, noRecoveryCode())
     })
+    // After a recovery code the new code's own first line says the PIN is saved (a toast would cover it).
+    if (viaCode) return showNewCode()
     toast(c.saved, { icon: 'check', tone: 'leaf' })
     done()
   }
-
-  // "Forgot PIN?": press and hold for three seconds (a fill shows the progress).
-  const fill = h('span', { class: 'hold__fill', 'aria-hidden': 'true' })
-  const label = h('span', { class: 'hold__label' }, c.forgot)
-  const forgot = h('button', { type: 'button', class: 'btn btn--secondary hold' }, fill, icon('info', 24), label)
-  const holdHint = h('p', { class: 'muted small center hold__hint', 'aria-live': 'polite' })
-  const forgotWrap = h('div', { class: 'stack stack--sm stack--center gate__forgot' }, forgot, holdHint)
-  forgotWrap.hidden = mode !== 'enter'
-
-  let holdStart = -1
-  let raf = 0
-  const paintHold = (k: number) => {
-    fill.style.transform = `scaleX(${k})`
-  }
-  const tick = () => {
-    if (holdStart < 0) return
-    const k = Math.min(1, (performance.now() - holdStart) / HOLD_MS)
-    paintHold(k)
-    if (k >= 1) {
-      holdStart = -1
-      forgot.classList.remove('is-holding')
-      paintHold(0)
-      label.textContent = c.forgot
-      holdHint.textContent = ''
-      challenge = makeChallenge()
-      wrongAnswers = 0
-      enterMode('challenge')
-      return
-    }
-    raf = requestAnimationFrame(tick)
-  }
-  const startHold = () => {
-    if (holdStart >= 0 || mode !== 'enter') return
-    holdStart = performance.now()
-    forgot.classList.add('is-holding')
-    label.textContent = c.holding
-    holdHint.textContent = ''
-    raf = requestAnimationFrame(tick)
-  }
-  const stopHold = () => {
-    if (holdStart < 0) return
-    holdStart = -1
-    cancelAnimationFrame(raf)
-    forgot.classList.remove('is-holding')
-    paintHold(0)
-    label.textContent = c.forgot
-    holdHint.textContent = c.holdHint
-  }
-  forgot.addEventListener('pointerdown', (e) => {
-    try {
-      forgot.setPointerCapture(e.pointerId)
-    } catch {
-      // Capture is a nicety; holding still works without it.
-    }
-    startHold()
-  })
-  forgot.addEventListener('pointerup', stopHold)
-  forgot.addEventListener('pointercancel', stopHold)
-  forgot.addEventListener('lostpointercapture', stopHold)
-  forgot.addEventListener('contextmenu', (e) => e.preventDefault())
-  forgot.addEventListener('keydown', (e) => {
-    if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
-      e.preventDefault()
-      startHold()
-    }
-  })
-  forgot.addEventListener('keyup', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') stopHold()
-  })
-  forgot.addEventListener('click', () => {
-    if (holdStart < 0 && mode === 'enter' && !holdHint.textContent) holdHint.textContent = c.holdHint
-  })
 
   const layout = screenLayout({
     class: 'gate',
@@ -184,12 +273,13 @@ export const gateScreen: Screen = (root, ctx) => {
     back: () => ctx.back('/camp'),
     backLabel: c.back,
     narrow: true,
-    body: [h('div', { class: 'gate__pad' }, pad.el), forgotWrap],
+    body: [pinView, codeView, noCodeView, showView],
   })
   root.appendChild(layout)
+  enterMode(mode)
 
   return () => {
-    stopHold()
+    window.clearInterval(waitTimer)
     pad.destroy()
   }
 }

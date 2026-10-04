@@ -1,5 +1,5 @@
 /** First run, grown-up step 1: what this is, a Home Screen tip when needed, then a PIN (enter + confirm). */
-import { isStandalone, update } from '../../app/context'
+import { isStandalone, save, setupPath, update } from '../../app/context'
 import type { Screen } from '../../app/router'
 import { SETUP_COPY } from '../../content/copy'
 import { makePinRecord } from '../../model/pin'
@@ -34,7 +34,8 @@ export const helloScreen: Screen = (root, ctx) => {
         d.parent.pinHash = record.pinHash
         d.parent.pinSalt = record.pinSalt
       })
-      ctx.navigate('/setup/names')
+      // On to the recovery code (or, coming back to change the PIN once it's saved, the names).
+      ctx.navigate(setupPath(save()))
     },
   })
 

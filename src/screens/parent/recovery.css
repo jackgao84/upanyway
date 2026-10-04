@@ -1,0 +1,124 @@
+/* The recovery code, shown once (recoveryCode.ts): first run, the gate after "Forgot PIN?", Change PIN. */
+
+.recovery {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 36em;
+  margin: 0 auto;
+  text-align: center;
+}
+.recovery__badge {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 62%, #ffffff 0%, var(--sun-soft) 75%);
+  color: var(--sun-deep);
+  box-shadow:
+    0 4px 0 var(--edge),
+    inset 0 0 0 4px var(--white);
+}
+.recovery__title {
+  font-size: var(--fs-2xl);
+  font-weight: 900;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.recovery__lead {
+  color: var(--ink);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  line-height: 1.45;
+  text-wrap: balance;
+}
+
+/* The code: big, monospaced (every character the same width, easy to copy letter by letter), and the one
+   piece of text on the page that can be selected, for a grown-up who keeps it in a password manager. */
+.recovery-code {
+  margin: 4px 0;
+  padding: 16px 22px;
+  max-width: 100%;
+  border: 2.5px dashed var(--edge-deep);
+  border-radius: var(--r-md);
+  background: var(--card);
+  box-shadow: var(--shadow-paper);
+  color: var(--ink);
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(1.45rem, 6.6vw, 2.3rem);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+.recovery-code__text {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.recovery-code__group {
+  white-space: nowrap;
+}
+.recovery-code__dash {
+  color: var(--ink-faint);
+}
+
+.recovery__points {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+.recovery__points li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--ink);
+  font-size: var(--fs-lg);
+  font-weight: 750;
+  line-height: 1.4;
+}
+.recovery__points .icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--sun-deep);
+}
+.recovery__note {
+  color: var(--ink-soft);
+  font-weight: 650;
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+/* Inside another page (the gate, Change PIN): its buttons sit under it, side by side when they fit. */
+.recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+@media (max-width: 520px) {
+  .recovery__badge {
+    display: none;
+  }
+  .recovery__title {
+    font-size: var(--fs-xl);
+  }
+  .recovery__lead,
+  .recovery__points li {
+    font-size: var(--fs-md);
+  }
+}

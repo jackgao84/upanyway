@@ -49,13 +49,33 @@ function v0Fixture(): Record<string, unknown> {
 }
 
 /**
- * A v1 save, as the app wrote it before grown-ups could hide idea cards: the rich save with no
- * `hiddenIdeas` and schemaVersion 1.
+ * A v2 save, as the app wrote it before recovery codes: the rich save with no `parent.recoveryHash` /
+ * `parent.recoverySalt` and schemaVersion 2.
+ */
+function v2Fixture(): Record<string, unknown> & { parent: Record<string, unknown> } {
+  const d = JSON.parse(JSON.stringify(richSave())) as Record<string, unknown> & { parent: Record<string, unknown> }
+  delete d.parent.recoveryHash
+  delete d.parent.recoverySalt
+  d.schemaVersion = 2
+  return d
+}
+
+/**
+ * A v1 save, as the app wrote it before grown-ups could hide idea cards (and before recovery codes):
+ * the v2 fixture with no `hiddenIdeas` and schemaVersion 1.
  */
 function v1Fixture(): Record<string, unknown> {
-  const d = JSON.parse(JSON.stringify(richSave())) as Record<string, unknown>
+  const d: Record<string, unknown> = v2Fixture()
   delete d.hiddenIdeas
   d.schemaVersion = 1
+  return d
+}
+
+/** The rich save as a v1 or v2 save comes out: every idea card showing (v1) and no recovery code. */
+function richWithoutCode(): ReturnType<typeof richSave> {
+  const d = richSave()
+  d.parent.recoveryHash = ''
+  d.parent.recoverySalt = ''
   return d
 }
 
@@ -91,7 +111,14 @@ describe('loadSave', () => {
 
     const d = r.data
     expect(d.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
-    expect(d.parent).toEqual({ pinHash: 'b'.repeat(64), pinSalt: 'oldsalt', names: ['Mum', 'Dad'], dailyClimbMinutes: 30 })
+    expect(d.parent).toEqual({
+      pinHash: 'b'.repeat(64),
+      pinSalt: 'oldsalt',
+      recoveryHash: '',
+      recoverySalt: '',
+      names: ['Mum', 'Dad'],
+      dailyClimbMinutes: 30,
+    })
     expect(d.settings.muted).toBe(true)
     expect(d.profile.goatName).toBe('Pip')
     expect(d.profile.mountainName).toBe('Big Blue')
@@ -115,19 +142,34 @@ describe('loadSave', () => {
     expect(Object.keys(d.badges)).toEqual(['first-whipper'])
     expect(Object.keys(d.poses).sort()).toEqual(['pancake', 'starfish'])
     expect(d.hiddenIdeas, 'v0 → v1 → v2: every idea card shows').toEqual([])
+    expect(d.schemaVersion, 'v0 → … → v3').toBe(3)
     expect('somethingElse' in d).toBe(false)
   })
 
-  it('a v1 save migrates to v2: every idea card shows and nothing else changes', () => {
+  it('a v1 save migrates: every idea card shows, no recovery code, and nothing else changes', () => {
     const storage = new MemoryStorage()
     const raw = JSON.stringify(v1Fixture())
     storage.setItem(KEYS.save, raw)
     const r = loadSave(storage, DAY1)
     expect(r.info).toEqual({ kind: 'migrated', fromVersion: 1, message: LOAD_MESSAGES.migrated })
     expect(storage.getItem(KEYS.backup), 'the v1 text is kept as the backup').toBe(raw)
-    expect(r.data.schemaVersion).toBe(2)
+    expect(r.data.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
     expect(r.data.hiddenIdeas).toEqual([])
-    expect(r.data).toStrictEqual({ ...richSave(), hiddenIdeas: [] })
+    expect(r.data).toStrictEqual({ ...richWithoutCode(), hiddenIdeas: [] })
+  })
+
+  it('a v2 save migrates to v3: no recovery code yet, and nothing else changes', () => {
+    const storage = new MemoryStorage()
+    const raw = JSON.stringify(v2Fixture())
+    storage.setItem(KEYS.save, raw)
+    const r = loadSave(storage, DAY1)
+    expect(r.info).toEqual({ kind: 'migrated', fromVersion: 2, message: LOAD_MESSAGES.migrated })
+    expect(storage.getItem(KEYS.backup), 'the v2 text is kept as the backup').toBe(raw)
+    expect(r.data.schemaVersion).toBe(3)
+    expect(r.data.parent.recoveryHash).toBe('')
+    expect(r.data.parent.recoverySalt).toBe('')
+    expect(r.data.parent.pinHash, 'the PIN is kept').toBe(richSave().parent.pinHash)
+    expect(r.data).toStrictEqual(richWithoutCode())
   })
 
   it('the Store writes the migrated save back', () => {
@@ -219,7 +261,7 @@ describe('migrateToCurrent', () => {
   })
 
   it('does not mutate its input', () => {
-    for (const raw of [v0Fixture(), v1Fixture()]) {
+    for (const raw of [v0Fixture(), v1Fixture(), v2Fixture()]) {
       const copy = JSON.parse(JSON.stringify(raw))
       migrateToCurrent(raw, DAY1)
       expect(raw).toEqual(copy)
@@ -229,7 +271,6 @@ describe('migrateToCurrent', () => {
   it('v1 → v2 adds an empty hidden-cards list and the new version, and only that', () => {
     const v1 = v1Fixture()
     const v2 = MIGRATIONS[1](v1)
-    expect(CURRENT_SCHEMA_VERSION).toBe(2)
     expect(v2.schemaVersion).toBe(2)
     expect(v2.hiddenIdeas).toEqual([])
     const { hiddenIdeas: _h, schemaVersion: _v2, ...rest } = v2
@@ -242,12 +283,48 @@ describe('migrateToCurrent', () => {
     expect(MIGRATIONS[1](v1).hiddenIdeas).toEqual(['oops-odd-socks', 'not-a-card', 'oops-odd-socks'])
     expect(migrateToCurrent(v1, DAY1).data.hiddenIdeas).toEqual(['oops-odd-socks'])
   })
+
+  it('v2 → v3 adds an empty recovery code to the grown-ups and the new version, and only that', () => {
+    const v2 = v2Fixture()
+    const v3 = MIGRATIONS[2](v2) as Record<string, unknown> & { parent: Record<string, unknown> }
+    expect(CURRENT_SCHEMA_VERSION).toBe(3)
+    expect(v3.schemaVersion).toBe(3)
+    expect(v3.parent.recoveryHash).toBe('')
+    expect(v3.parent.recoverySalt).toBe('')
+    const { recoveryHash: _rh, recoverySalt: _rs, ...parentRest } = v3.parent
+    expect(parentRest).toEqual(v2.parent)
+    const { parent: _p3, schemaVersion: _v3, ...rest } = v3
+    const { parent: _p2, schemaVersion: _v2, ...before } = v2
+    expect(rest).toEqual(before)
+  })
+
+  it('v2 → v3 keeps a code a v2 file already had, for normalize to check', () => {
+    const whole = { ...v2Fixture(), parent: { ...v2Fixture().parent, recoveryHash: 'd'.repeat(64), recoverySalt: 'kept' } }
+    expect(migrateToCurrent(whole, DAY1).data.parent).toMatchObject({ recoveryHash: 'd'.repeat(64), recoverySalt: 'kept' })
+    const broken = { ...v2Fixture(), parent: { ...v2Fixture().parent, recoveryHash: 'K7QM-4XPA-TR9D', recoverySalt: 'kept' } }
+    expect(migrateToCurrent(broken, DAY1).data.parent, 'a stored code (not a hash) is no code').toMatchObject({ recoveryHash: '', recoverySalt: '' })
+  })
 })
 
 describe('normalize', () => {
   it('is the identity on valid data', () => {
     expect(normalize(richSave(), DAY1)).toStrictEqual(richSave())
     expect(normalize(defaultSave(DAY1), DAY1)).toStrictEqual(defaultSave(DAY1))
+  })
+
+  it('keeps a recovery code only whole: a 64-character hash with its salt', () => {
+    const withParent = (parent: Record<string, unknown>) => normalize({ ...richSave(), parent: { ...richSave().parent, ...parent } }, DAY1).parent
+    expect(withParent({})).toMatchObject({ recoveryHash: 'c'.repeat(64), recoverySalt: 'rsalt456' })
+    for (const broken of [
+      { recoverySalt: '' },
+      { recoveryHash: 'c'.repeat(63) },
+      { recoveryHash: 'C'.repeat(64) },
+      { recoveryHash: 42 },
+      { recoveryHash: undefined, recoverySalt: undefined },
+    ]) {
+      expect(withParent(broken), JSON.stringify(broken)).toMatchObject({ recoveryHash: '', recoverySalt: '' })
+      expect(withParent(broken).pinHash, 'the PIN is untouched').toBe('a'.repeat(64))
+    }
   })
 
   it('turns anything into a valid default-shaped save', () => {

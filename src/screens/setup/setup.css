@@ -4,6 +4,7 @@
   padding-bottom: 32px;
 }
 /* Short screens sit in the middle of the space above the big button. */
+.setup--recovery .layout__body,
 .setup--handover .layout__body,
 .setup--brave .layout__body,
 .setup--cheer .layout__body {

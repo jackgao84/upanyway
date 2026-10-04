@@ -1,46 +1,66 @@
-/* Grown-ups' gate: the PIN pad and the press-and-hold "Forgot PIN?" button. */
+/* Grown-ups' gate: the PIN pad, "Forgot PIN?", and its recovery-code panels. */
 
 .gate .layout__body {
   justify-content: center;
   padding-bottom: max(6vh, 32px);
 }
-
-/* The times-table question: two short lines (see GATE_COPY.challengeTitle), a little smaller. */
-.gate.is-challenge .pin__title {
-  font-size: var(--fs-xl);
-  white-space: pre-line;
+/* A panel (the code, no code, the new code) reads from the top, under the title. */
+.gate.is-panel .layout__body {
+  justify-content: flex-start;
 }
 
 .gate__forgot {
+  display: flex;
+  justify-content: center;
   margin-top: 4px;
 }
 
-.hold {
-  overflow: hidden;
-  isolation: isolate;
-  min-width: 220px;
-  font-size: var(--fs-md);
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-}
-.hold__fill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
+.gate__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   width: 100%;
-  z-index: -1;
-  background: linear-gradient(90deg, var(--sun-soft), #fbd88a);
-  transform: scaleX(0);
-  transform-origin: 0 50%;
+  max-width: 34em;
+  margin: 0 auto;
+  padding: 22px 22px 24px;
+  border-radius: var(--r-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-paper);
 }
-.hold.is-holding {
-  transform: translateY(3px);
-  box-shadow:
-    0 2px 0 var(--btn-edge),
-    inset 0 0 0 1.5px rgba(226, 196, 164, 0.7);
+.gate__panel-title {
+  font-size: var(--fs-xl);
+  font-weight: 900;
+  line-height: 1.2;
 }
-.hold__hint {
-  min-height: 1.4em;
+.gate__panel-text {
+  color: var(--ink-soft);
+  font-weight: 650;
+  line-height: 1.5;
+}
+/* The code field: monospaced capitals, so it reads like the code on paper (what's saved is the same). */
+.gate__field .field__input {
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: max(16px, var(--fs-lg));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.gate__error {
+  color: var(--brick-deep);
+  font-weight: 800;
+  line-height: 1.4;
+}
+.gate__error:empty {
+  display: none;
+}
+.gate__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.gate__actions > .btn {
+  flex: 1 1 180px;
+}
+.gate__show {
+  width: 100%;
 }

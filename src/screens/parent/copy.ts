@@ -25,6 +25,12 @@ export const PARENT_COPY = {
     lettersWaiting: (n: number) => (n === 1 ? '1 not opened yet' : `${n} not opened yet`),
     backToCamp: 'Back to camp',
     lockNote: 'Going back to camp locks these pages again.',
+    /** Shown on the grown-ups' home while the game has no recovery code (Decision 87). */
+    noRecovery: {
+      title: 'No recovery code yet',
+      text: 'A recovery code lets you set a new PIN if this one is ever forgotten. Making one takes a minute: it’s shown once for you to write down.',
+      make: 'Make one now',
+    },
     testOn: {
       title: 'Test mode is on',
       text: 'Climbs aren’t being recorded on the real mountain right now.',
@@ -291,7 +297,7 @@ export const PARENT_COPY = {
       mountain: (name: string) => `Mountain: ${name}`,
       unnamed: 'not named yet',
       restore: 'Restore this backup',
-      pinNote: 'The grown-ups’ PIN and names come from the backup too.',
+      pinNote: 'The grown-ups’ PIN, recovery code and names come from the backup too.',
       cancel: 'Cancel',
       confirmTitle: 'Replace the game on this device?',
       confirmBody:
@@ -354,6 +360,13 @@ export const PARENT_COPY = {
     confirmSub: 'Just to be sure.',
     mismatch: 'Those didn’t match. Let’s start the new PIN again.',
     saved: 'New PIN saved.',
-    note: 'Pick four numbers your climber won’t guess. If they’re ever forgotten, “Forgot PIN?” on the grown-ups’ door can set new ones.',
+    note: 'Pick four numbers your climber won’t guess. If they’re ever forgotten, “Forgot PIN?” on the grown-ups’ door asks for your recovery code, then sets new ones.',
+    recovery: {
+      title: 'Recovery code',
+      has: 'This game has a recovery code. If the PIN is ever forgotten, “Forgot PIN?” on the grown-ups’ door asks for it.',
+      none: 'This game has no recovery code yet, so a forgotten PIN can’t be reset. Make one and write it down.',
+      how: 'Lost the one you wrote down? Make a new one: it is shown once, and the old one stops working.',
+      make: 'Make a new recovery code',
+    },
   },
 } as const

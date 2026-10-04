@@ -1,4 +1,4 @@
-/** First run, grown-up step 2: what the climber calls each grown-up (1–4) and the daily climb time. */
+/** First run, grown-up step 3: what the climber calls each grown-up (1–4) and the daily climb time. */
 import { save, update } from '../../app/context'
 import type { Screen } from '../../app/router'
 import { SETUP_COPY } from '../../content/copy'
@@ -100,7 +100,7 @@ export const namesScreen: Screen = (root, ctx) => {
   root.appendChild(
     screenLayout({
       class: 'setup setup--names',
-      top: parentDots(1),
+      top: parentDots(2),
       back: () => ctx.navigate('/setup/hello'),
       narrow: true,
       body: [

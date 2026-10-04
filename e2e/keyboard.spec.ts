@@ -8,7 +8,7 @@
  * of the screen left above the keyboard, with nothing (a sticky header or footer) on top of it.
  *
  * Fields: the grown-up's names (1–4), the mountain's name, a log's brave thing, worry, what
- * happened and what she learned, and a Spotted! letter.
+ * happened and what she learned, a Spotted! letter, and the recovery code behind "Forgot PIN?".
  */
 import type { Locator, Page } from '@playwright/test'
 import { PARENT_COPY } from '../src/screens/parent/copy'
@@ -28,6 +28,7 @@ import {
   test,
   typeInto,
   withPin,
+  withRecovery,
 } from './helpers'
 
 test.describe.configure({ timeout: 120_000 })
@@ -115,7 +116,7 @@ type Stage = { name: string; save: () => SaveData; path: string; check: (page: P
 const STAGES: Stage[] = [
   {
     name: 'the grown-ups’ names',
-    save: () => withPin(defaultSave()),
+    save: () => withRecovery(withPin(defaultSave())),
     path: './#/setup/names',
     check: async (page, kb, where) => {
       await expectRoute(page, '/setup/names')
@@ -187,6 +188,18 @@ const STAGES: Stage[] = [
       // The note itself (who it's from is a picker, not a text field).
       expect(n).toBeGreaterThanOrEqual(1)
       for (let i = 0; i < n; i++) await checkField(page, letter.nth(i), kb, `${where}: letter field ${i + 1}`)
+    },
+  },
+  {
+    name: 'the recovery code',
+    save: () => withRecovery(withPin(climberSave())),
+    path: './#/parent',
+    check: async (page, kb, where) => {
+      await expectRoute(page, '/parent')
+      await tap(buttonNamed(page, 'Forgot PIN?'))
+      const code = page.getByRole('textbox', { name: 'Recovery code' })
+      await expect(code).toBeVisible()
+      await checkField(page, code, kb, `${where}: the recovery code`)
     },
   },
 ]

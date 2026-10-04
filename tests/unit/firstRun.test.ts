@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { setupPath, setupStep } from '../../src/app/context'
 import { guard } from '../../src/app/screens'
 import { makePinRecord } from '../../src/model/pin'
+import { makeRecoveryRecord, newRecoveryCode } from '../../src/model/recovery'
 import { normalize } from '../../src/storage/migrations'
 import { defaultLook, defaultSave } from '../../src/storage/schema'
 import { MemoryStorage, initStore, store } from '../../src/storage/store'
@@ -11,7 +12,7 @@ const at = (path: string) => guard({ path, params: {}, query: new URLSearchParam
 
 function grownUpsDone(): void {
   store().update((d) => {
-    Object.assign(d.parent, makePinRecord('2580'))
+    Object.assign(d.parent, makePinRecord('2580'), makeRecoveryRecord(newRecoveryCode()))
     d.parent.names = ['Mum']
     d.setup.parentDone = true
   })
@@ -26,10 +27,34 @@ describe('first run', () => {
     expect(setupStep(store().data)).toBe('hello')
     expect(at('/camp')).toBe('/setup/hello')
     expect(at('/setup/climber')).toBe('/setup/hello')
+    expect(at('/setup/recovery'), 'no recovery code before a PIN').toBe('/setup/hello')
+    expect(at('/setup/names')).toBe('/setup/hello')
     store().update((d) => Object.assign(d.parent, makePinRecord('2580')))
+    // Right after the PIN: the recovery code, until "I've written it down" saves it.
+    expect(setupStep(store().data)).toBe('recovery')
+    expect(at('/setup/recovery')).toBeNull()
+    expect(at('/setup/names'), 'the code can’t be skipped').toBe('/setup/recovery')
+    expect(at('/setup/handover')).toBe('/setup/recovery')
+    expect(at('/')).toBe('/setup/recovery')
+    store().update((d) => Object.assign(d.parent, makeRecoveryRecord(newRecoveryCode())))
     expect(setupStep(store().data)).toBe('names')
     expect(at('/setup/names')).toBeNull()
+    expect(at('/setup/recovery'), 'a saved code is never shown again').toBe('/setup/names')
+    expect(at('/setup/hello'), 'the PIN can still be changed').toBeNull()
     expect(at('/setup/handover')).toBe('/setup/names')
+  })
+
+  it('a first run from before recovery codes asks for one only while the grown-ups’ part is open', () => {
+    store().update((d) => Object.assign(d.parent, makePinRecord('2580')))
+    expect(setupStep(store().data)).toBe('recovery')
+    store().update((d) => {
+      d.parent.names = ['Mum']
+      d.setup.parentDone = true
+    })
+    // Past the grown-ups' part already: she carries on (the grown-ups' home invites them to make one).
+    expect(setupStep(store().data)).toBe('handover')
+    expect(at('/setup/recovery')).toBe('/setup/handover')
+    expect(at('/setup/handover')).toBeNull()
   })
 
   it('opens the hand-over and the designer, but not the goat, before she has saved a look', () => {

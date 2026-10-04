@@ -8,6 +8,7 @@ import { drawPackWithGoat } from '../game/art/climber'
 import { drawGoat, type GoatMood as ArtGoatMood } from '../game/art/goat'
 import { TUNING } from '../game/tuning'
 import { hasPin } from '../model/pin'
+import { hasRecoveryCode } from '../model/recovery'
 import type { ClimberLook, SaveData } from '../storage/schema'
 import { requestPersistence, store } from '../storage/store'
 import { h, prefersReducedMotion } from '../ui/dom'
@@ -25,10 +26,10 @@ export function update(fn: (d: SaveData) => void): void {
 // ---------------------------------------------------------------------------------------------
 // First run
 
-/** Kid steps of the first run, in order (the grown-up steps 'hello' and 'names' come first). */
+/** Kid steps of the first run, in order (the grown-up steps 'hello', 'recovery' and 'names' come first). */
 export const KID_STEPS = ['handover', 'climber', 'goat', 'mountain', 'lesson', 'brave', 'cheer'] as const
 export type KidStep = (typeof KID_STEPS)[number]
-export type SetupStep = 'hello' | 'names' | KidStep
+export type SetupStep = 'hello' | 'recovery' | 'names' | KidStep
 
 /**
  * The first-run step to show now, derived from what has been saved so far, so a reload resumes
@@ -36,7 +37,10 @@ export type SetupStep = 'hello' | 'names' | KidStep
  */
 export function setupStep(d: SaveData): SetupStep {
   if (!hasPin(d.parent)) return 'hello'
-  if (!d.setup.parentDone) return 'names'
+  // The recovery code is saved on "I've written it down"; until then each visit shows a new one. A save
+  // from before recovery codes that is already past the grown-ups' part carries on with her steps (the
+  // grown-ups' home invites them to make one later).
+  if (!d.setup.parentDone) return hasRecoveryCode(d.parent) ? 'names' : 'recovery'
   if (!d.profile.goatName) return d.setup.lookDone ? 'goat' : 'handover'
   if (!d.profile.mountainName) return 'mountain'
   if (!d.lessonDone) return 'lesson'

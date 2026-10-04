@@ -10,6 +10,7 @@ import { test as base, expect, type Browser, type BrowserContext, type BrowserCo
 import type { ClimbSnapshot } from '../src/debug'
 import { dayKey } from '../src/model/clock'
 import { makePinRecord } from '../src/model/pin'
+import { makeRecoveryRecord } from '../src/model/recovery'
 import { KEYS } from '../src/storage/keys'
 import { defaultPitchProgress, defaultSave, type PitchRun, type SaveData } from '../src/storage/schema'
 
@@ -17,6 +18,8 @@ export { expect }
 
 /** The PIN every spec sets in the first run. */
 export const DEFAULT_PIN = '2468'
+/** The recovery code a seeded save is given by `withRecovery` (the first run makes its own). */
+export const DEFAULT_RECOVERY_CODE = 'K7QM-4XPA-TR9D'
 /** What the climber calls her grown-ups in the specs (generic words, never real names). */
 export const DEFAULT_NAMES = ['Mum', 'Dad']
 /** Smallest finger target, in CSS px (half a pixel of slack for sub-pixel layout). */
@@ -573,7 +576,7 @@ export async function replaySolutions(
 // ---------------------------------------------------------------------------------------------
 // The first run
 
-export const FIRST_RUN_STEPS = ['hello', 'names', 'handover', 'climber', 'goat', 'mountain', 'lesson', 'brave', 'cheer'] as const
+export const FIRST_RUN_STEPS = ['hello', 'recovery', 'names', 'handover', 'climber', 'goat', 'mountain', 'lesson', 'brave', 'cheer'] as const
 export type FirstRunStep = (typeof FIRST_RUN_STEPS)[number]
 /** A second state inside a step that is worth checking too. */
 export type FirstRunPhase = 'confirm-pin' | 'name-goat'
@@ -596,6 +599,17 @@ export interface FirstRunResult {
   /** Touches from the PIN pad to "Let's climb!" (taps, field focuses, drags). */
   taps: number
   ms: number
+  /** The recovery code shown once after the PIN (read from the screen, as a grown-up would). */
+  recoveryCode: string
+}
+
+/** The recovery code on screen right now ("K7QM-4XPA-TR9D"), as shown once for a grown-up to copy. */
+export async function readRecoveryCode(page: Page): Promise<string> {
+  const box = page.locator('.recovery-code__text')
+  await expect(box).toBeVisible()
+  const code = ((await box.textContent()) ?? '').trim()
+  expect(code, 'the code is three groups of four').toMatch(/^[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}$/)
+  return code
 }
 
 /** Fall practice: up and off the far end of the ledge (nothing is reachable from there). */
@@ -633,7 +647,7 @@ export async function walkLesson(page: Page): Promise<void> {
 
 /**
  * Walk the whole first run as she (and a grown-up) would, ending on Pitch 1 (`/climb/p01`):
- * PIN + confirm, names, hand-over, the designer (one change), meet + name the goat (suggestion
+ * PIN + confirm, the recovery code (read off the screen, then "I've written it down"), names, hand-over, the designer (one change), meet + name the goat (suggestion
  * kept), name the mountain (suggestion kept), the lesson, brave vs dangerous, who cheers her on.
  */
 export async function completeFirstRun(page: Page, opts: FirstRunOptions = {}): Promise<FirstRunResult> {
@@ -659,6 +673,12 @@ export async function completeFirstRun(page: Page, opts: FirstRunOptions = {}): 
   await expect(pinTitle).not.toHaveText(firstTitle ?? '')
   await onScreen('hello', 'confirm-pin')
   await enterPin(page, pin)
+
+  // Grown-up: the recovery code, shown once. Nothing is saved until "I've written it down".
+  await arrive('recovery')
+  const recoveryCode = await readRecoveryCode(page)
+  expect((await readSave(page)).parent.recoveryHash, 'no code saved before the tap').toBe('')
+  await tap(button('I’ve written it down'))
 
   // Grown-up: what she calls them.
   await arrive('names')
@@ -723,7 +743,8 @@ export async function completeFirstRun(page: Page, opts: FirstRunOptions = {}): 
   expect(save.profile.mountainName).toBe(mountainName)
   expect(save.lessonDone).toBe(true)
   expect(save.flags.braveVsDangerousSeen).toBe(true)
-  return { taps: tapCount(page), ms }
+  expect(save.parent.recoveryHash, 'the recovery code is saved, hashed').toMatch(/^[0-9a-f]{64}$/)
+  return { taps: tapCount(page), ms, recoveryCode }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -835,6 +856,15 @@ export function withPin(d: SaveData, pin = DEFAULT_PIN): SaveData {
   return d
 }
 
+/**
+ * Give a seeded save a recovery code (hashed, as "I've written it down" stores it). Saves without one
+ * are like games set up before recovery codes: the grown-ups' home invites them to make one.
+ */
+export function withRecovery(d: SaveData, code = DEFAULT_RECOVERY_CODE): SaveData {
+  Object.assign(d.parent, makeRecoveryRecord(code))
+  return d
+}
+
 /** Today's local day key ("2026-10-03"), as the app writes `stoneDay`. */
 export function todayKey(now = new Date()): string {
   return dayKey(now)
@@ -921,16 +951,16 @@ export async function logDoneBraveThing(page: Page, log: QuickLog): Promise<void
 }
 
 /**
- * A climber well into the game, with something on every camp screen: a PIN, `stones` done brave
- * things with their stones (default 5), a framed flop with what she learned, an Oops Mission, a plan
- * and its smaller step (after a "Not today"), a read letter with its stone and a sealed one, a
- * Grown-ups' Wing flop, a custom idea card, two hidden built-in cards, fall poses, badges and the
- * first pitches sent.
+ * A climber well into the game, with something on every camp screen: a PIN and a recovery code,
+ * `stones` done brave things with their stones (default 5), a framed flop with what she learned, an
+ * Oops Mission, a plan and its smaller step (after a "Not today"), a read letter with its stone and a
+ * sealed one, a Grown-ups' Wing flop, a custom idea card, two hidden built-in cards, fall poses,
+ * badges and the first pitches sent.
  * `summit`: after Sky Lake (finale seen, every pitch sent), so the stones also brought treasures.
  */
 export function richSave(opts: { stones?: number; summit?: boolean; now?: Date } = {}): SaveData {
   const now = opts.now ?? new Date()
-  const d = withPin(climberSave(now))
+  const d = withRecovery(withPin(climberSave(now)))
   const at = (days: number, hours = 0) => new Date(now.getTime() - days * 86_400_000 - hours * 3_600_000)
   const iso = (days: number, hours = 0) => at(days, hours).toISOString()
   addStones(d, opts.stones ?? (opts.summit ? 20 : 5), now)

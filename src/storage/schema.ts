@@ -5,7 +5,7 @@
 import type { DayKey } from '../model/clock'
 import type { LevelId, ZoneId } from '../game/types'
 
-export const CURRENT_SCHEMA_VERSION = 2
+export const CURRENT_SCHEMA_VERSION = 3
 
 /** Flattened [x0, y0, x1, y1, …] world units, rounded to integers, ≤ ARC_POINTS points. */
 export type Arc = number[]
@@ -164,6 +164,12 @@ export interface SaveData {
   parent: {
     pinHash: string
     pinSalt: string
+    /**
+     * The recovery code (model/recovery.ts) as a salted SHA-256 — never the code itself. '' = no code
+     * (a save from before v3, or a code just used up by "Forgot PIN?"). Added in schema v3.
+     */
+    recoveryHash: string
+    recoverySalt: string
     /** What she calls each parent, e.g. two entries. Entered at first run, never in source. */
     names: string[]
     /** Daily climb time in minutes (default 20). 0 = no limit. */
@@ -258,7 +264,7 @@ export function defaultSave(now: Date = new Date()): SaveData {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     createdAt: now.toISOString(),
     setup: { parentDone: false, lookDone: false, complete: false },
-    parent: { pinHash: '', pinSalt: '', names: [], dailyClimbMinutes: DEFAULT_DAILY_MINUTES },
+    parent: { pinHash: '', pinSalt: '', recoveryHash: '', recoverySalt: '', names: [], dailyClimbMinutes: DEFAULT_DAILY_MINUTES },
     settings: { muted: false, music: true },
     profile: { look: defaultLook(), goatName: '', mountainName: '' },
     lessonDone: false,

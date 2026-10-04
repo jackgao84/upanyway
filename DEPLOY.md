@@ -68,9 +68,14 @@ open `http://localhost:4173/upanyway/`.
    **Add to Home Screen**, then **Add**. An "Up Anyway" icon appears on the Home Screen.
 3. **Open Up Anyway from that icon while the iPad is online**, and wait a few seconds on the first
    screen. That first open downloads everything the app needs to play offline.
-4. **Do the first-run setup inside the Home Screen app** (PIN, what she calls you, then hand it over).
-   A Home Screen app keeps its own storage, separate from Safari: a game set up in a Safari tab does
-   not appear in the icon's app, and the other way round. Use the icon from now on.
+4. **Do the first-run setup inside the Home Screen app** (PIN, recovery code, what she calls you, then
+   hand it over). A Home Screen app keeps its own storage, separate from Safari: a game set up in a
+   Safari tab does not appear in the icon's app, and the other way round. Use the icon from now on.
+5. **Write down the recovery code.** Right after the PIN, the app shows a 12-character recovery code
+   (like `K7QM-4XPA-TR9D`) once. Write it down and keep it somewhere she won't find it, then tap
+   **I've written it down**. If the PIN is ever forgotten, **Forgot PIN?** on the grown-ups' door asks
+   for this code and lets you choose a new PIN (you then get a new code, because each one works once).
+   Lost the code? While you still know the PIN, **Grown-ups → Change PIN → Make a new recovery code**.
 
 ## 3. Check that it plays offline
 
@@ -95,7 +100,8 @@ Restart now** when a new version is waiting. Nothing she has saved is lost by an
 Her cairn, plans and climbs live only on the iPad. Every so often, open **Grown-ups → Backup and
 data → Save a backup** and keep the file (Share / Save to Files, or Download file). The same page
 restores it on a new or reset iPad. Deleting the Home Screen icon deletes the app's data, so save a
-backup first.
+backup first. A backup carries the grown-ups' PIN and recovery code as they were when it was saved, and
+restoring it brings those back too.
 
 ## 6. Sharing the address with another app
 

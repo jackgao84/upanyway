@@ -1,13 +1,15 @@
 /**
  * The grown-ups' home (#/parent/home) and the dispatcher for every #/parent/<page> route.
  *
- * Home: a big card for each page, a note while test mode is on (with a one-tap "turn it off"), and
+ * Home: a big card for each page, a note while the game has no recovery code (with "Make one now"), a
+ * note while test mode is on (with a one-tap "turn it off"), and
  * "Back to camp", which locks the grown-ups' pages again (the route guard locks on any non-parent
  * path). Leaving with test mode still on asks first, so a child isn't handed a game that records
  * nothing.
  */
 import { save } from '../../app/context'
 import type { Screen, ScreenContext } from '../../app/router'
+import { hasRecoveryCode } from '../../model/recovery'
 import { unopenedLetters } from '../../model/stones'
 import { button, card, modal, toast, type Tone } from '../../ui/components'
 import { h } from '../../ui/dom'
@@ -98,6 +100,22 @@ export const homeScreen: Screen = (root, ctx) => {
   )
   testNote.hidden = !d.testMode
 
+  // No recovery code yet (a game from before them, or a new one not written down after "Forgot PIN?").
+  const recoveryNote = hasRecoveryCode(d.parent)
+    ? null
+    : h(
+        'div',
+        { class: 'callout pp-test-note pp-recovery-note', dataset: { tone: 'sun' } },
+        icon('pencil', 32),
+        h(
+          'div',
+          { class: 'pp-test-note__text' },
+          h('strong', { class: 'pp-test-note__title' }, c.noRecovery.title),
+          h('span', null, c.noRecovery.text),
+          button(c.noRecovery.make, { icon: 'pencil', onClick: () => ctx.navigate(`${parentPath('pin')}?make=1`) }),
+        ),
+      )
+
   const group = (title: string, specs: CardSpec[], cls: string) =>
     h(
       'section',
@@ -129,7 +147,7 @@ export const homeScreen: Screen = (root, ctx) => {
       class: 'parent--home',
       back: leave,
       backLabel: c.backToCamp,
-      body: [h('p', { class: 'pp-page-lead' }, c.lead), testNote, ...cards],
+      body: [h('p', { class: 'pp-page-lead' }, c.lead), recoveryNote, testNote, ...cards],
       footer: [
         button(c.backToCamp, { icon: 'tent', size: 'big', variant: 'secondary', onClick: leave }),
         h('p', { class: 'pp-home__lock' }, c.lockNote),

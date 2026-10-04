@@ -48,7 +48,14 @@ export function withStones(d: SaveData, n: number, start: Date = DAY1): void {
 export function richSave(): SaveData {
   const d = defaultSave(at(2026, 9, 1))
   d.setup = { parentDone: true, lookDone: true, complete: true }
-  d.parent = { pinHash: 'a'.repeat(64), pinSalt: 'salt123', names: ['Mum', 'Dad'], dailyClimbMinutes: 25 }
+  d.parent = {
+    pinHash: 'a'.repeat(64),
+    pinSalt: 'salt123',
+    recoveryHash: 'c'.repeat(64),
+    recoverySalt: 'rsalt456',
+    names: ['Mum', 'Dad'],
+    dailyClimbMinutes: 25,
+  }
   d.settings = { muted: true, music: false }
   d.profile = {
     look: { ...d.profile.look, hairStyle: 'bun', hairColor: '#222222', gear: ['gear-scarf', 'deco-lantern~sky-blue'] },

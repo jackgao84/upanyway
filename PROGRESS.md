@@ -25,6 +25,17 @@
     `vitest run` fails while it is stale or while any goat line or story beat isn't placed in its layout). No
     content wording changed. Checked: typecheck clean; check:stubs clean (now also scans REVIEW.md); vitest
     505/505 in 42 files. No app code, level data or e2e spec changed, so no Playwright run was needed.
+  - [x] **PIN recovery: a one-time recovery code replaces the multiplication** (Decision 87, superseding 13). Right
+    after the PIN at first run a grown-up gets a 12-character code (no 0/O/1/I/L, shown as K7QM-4XPA-TR9D) to write
+    down; only a salted hash is saved, on "I've written it down" (a reload first shows a new code). "Forgot PIN?" →
+    the code (any case, spaces/dashes ignored) → a new PIN → the old code is used up and a new one is shown once;
+    after five codes that don't match, a 30 s wait per try. No code on the save (older games) → a plain
+    explanation, no back door. Change PIN → "Make a new recovery code"; the grown-ups' home invites one while
+    there is none. Schema v3 (v2 → v3 migration). The press-and-hold and times-table question are gone.
+    Checked: typecheck clean; check:stubs clean; vitest 527/527 in 43 files; Playwright (the whole suite,
+    PW_WORKERS=2, all three projects) 88 passed + 2 skipped (the phone-only sideways-keyboard test on the two
+    iPad projects), zero console errors; first run 25 taps (was 24); `recovery` and `first-run` re-run on the
+    final build: 12 + 9 passed. No level data, goat lines or ideas changed.
 - **Final verification (Stage 7):**
   - `npm run typecheck` — clean (both configs).
   - `npm run check:stubs` — clean (no unfinished-work markers, skipped tests or empty content lists).
@@ -235,7 +246,8 @@ npm run review       # rewrite REVIEW.md after changing ideas or goat lines (vit
   "Try harder", disappointed reactions.
 
 ### First run (< 3 minutes)
-Parent: sets 4-digit PIN, enters what she calls each parent, hands over. Kid: designs
+Parent: sets 4-digit PIN, enters what she calls each parent, hands over. (Owner's change, Decision 87:
+right after the PIN, a one-time recovery code for the grown-up to write down — one more tap.) Kid: designs
 climber, meets + names the goat, names her mountain, 20-second lesson (leap, fall,
 rope catches), one screen on brave vs dangerous, one line telling her that her parents
 can read her cairn to cheer her on. Then Pitch 1.
@@ -247,6 +259,8 @@ can read her cairn to cheer her on. Then Pitch 1.
   own flops; don't rescue too fast; never use the game as reward/punishment for other
   things; never compare her with a sibling). Export/Import JSON, reset, Test mode
   (unlocks everything). No leaderboards; nothing compares her with anyone.
+  **Owner's change (Decision 87):** a forgotten PIN is reset with the recovery code written down at setup
+  (Change PIN can make a new one); nothing on her screens mentions it.
 
 ### Quality bar (run, don't claim)
 - Level validator (Vitest) with the REAL physics: for every step of every pitch's
@@ -287,7 +301,7 @@ Sky Lake with real brave things opening the way, every check above passing.
   Writes are try/caught (quota) and surfaced in parent mode. `upanyway:save:backup` holds the previous
   good copy before every migration/import/reset.
 - **Model** (`src/model/*`): pure functions over `SaveData` with an explicit `now: Date` — stones + daily
-  caps, unlocks, attempts/whippers/sends, badges, climb time, unlockables, PIN hash. All rules live here
+  caps, unlocks, attempts/whippers/sends, badges, climb time, unlockables, PIN + recovery-code hashes. All rules live here
   and are unit-tested without a DOM.
 - **Game** (`src/game/*`): pure deterministic physics (`physics.ts`, written) + solver (`solver.ts`,
   written) shared by the engine and the validator; level data; `ClimbSession` state machine (fixed
@@ -365,7 +379,7 @@ src/
   ui/term.ts (glossary words: first mention shows its one-line definition)  ui/goatBubble.ts
   ui/styles/{tokens,base,components,screens}.css
   storage/keys.ts (written)  schema.ts (written)  migrations.ts  store.ts (written)  backup.ts
-  model/clock.ts (written)  ids.ts  rng.ts  hash.ts  pin.ts  stones.ts  unlocks.ts  attempts.ts  ideas.ts
+  model/clock.ts (written)  ids.ts  rng.ts  hash.ts  pin.ts  recovery.ts  stones.ts  unlocks.ts  attempts.ts  ideas.ts
         badges.ts  climbTime.ts  unlockables.ts  goatVoice.ts (line picker: shuffle-bag, moral cap)
   content/goatLines.ts  ideas.ts  fallPoses.ts  badges.ts  glossary.ts  copy.ts  unlockables.ts
           learnChips.ts  happenedChips.ts  smaller.ts  wardrobe.ts  names.ts  cheer.ts
@@ -376,19 +390,20 @@ src/
                overlays.ts, fog.ts, nightGoat.ts, finale.ts}
   game/art/{rig.ts, poses.ts, fallPosesAnim.ts, climber.ts, goat.ts, preview.ts}
   audio/{audio.ts, sfx.ts, ambient.ts}
-  screens/setup/{hello,names,handover,climber,goat,mountain,lesson,brave,cheer}.ts
+  screens/setup/{hello,recovery,names,handover,climber,goat,mountain,lesson,brave,cheer}.ts
   screens/{camp,climb,cairn,log,plans,weather,flops,letters,wardrobe,map,badges,finale}.ts
-  screens/parent/{gate,home,settings,letter,grownupFlop,ideas,readCairn,cheer,data}.ts
+  screens/parent/{gate,home,settings,letter,grownupFlop,ideas,readCairn,cheer,data,pin}.ts
+  screens/parent/recoveryCode.ts (+ recovery.css: the code shown once — first run, gate, Change PIN)
 tests/unit/*.test.ts       storage, migrations, backup, stones, climbTime, attempts, badges, unlocks,
                            keys-prefix scan, content rules, beta classification, goat voice,
-                           review (builds REVIEW.md and checks the committed copy)
+                           review (builds REVIEW.md and checks the committed copy), recovery codes
 tests/levels/validator.ts + tests/levels/zone-*.test.ts (one file per zone so they run in parallel)
 e2e/*.spec.ts  e2e/helpers.ts
 ```
 
 ---
 
-## Data schema (`src/storage/schema.ts`, schemaVersion 2 — written; keep this in sync)
+## Data schema (`src/storage/schema.ts`, schemaVersion 3 — written; keep this in sync)
 
 ```ts
 type DayKey = string                       // local 'YYYY-MM-DD'
@@ -416,7 +431,9 @@ interface PitchProgress { sends; nightSends; totalAttempts; firstSentAt?
   foundCrumbles: string[] }          // crumbly ledges she has landed on: drawn cracked from then on
 interface SaveData { schemaVersion; createdAt
   setup: { parentDone; lookDone /*she saved a look in the designer*/; complete }
-  parent: { pinHash; pinSalt; names: string[]; dailyClimbMinutes /*default 20; 0 = no limit*/ }
+  parent: { pinHash; pinSalt
+            recoveryHash; recoverySalt   // v3: the recovery code's salted SHA-256 ('' = none) — never the code
+            names: string[]; dailyClimbMinutes /*default 20; 0 = no limit*/ }
   settings: { muted: boolean /*master: kid toggle + parent*/; music: boolean /*ambient, parent*/ }
   profile: { look; goatName; mountainName }; lessonDone
   pitches: Partial<Record<LevelId, PitchProgress>>
@@ -445,12 +462,16 @@ interface SaveData { schemaVersion; createdAt
   and any `caches.delete(` not guarded by the prefix.
 - **Load** (`migrations.ts: loadSave(storage)`): missing save → fresh (never the backup). Corrupt JSON →
   backup → else fresh (info `recovered`). No `schemaVersion` → v0. Run `MIGRATIONS[v]` up to current (0 → 1: the
-  prototype's field names; 1 → 2: adds an empty `hiddenIdeas`), then
+  prototype's field names; 1 → 2: adds an empty `hiddenIdeas`; 2 → 3: adds an empty recovery code), then
   `normalize()` fills missing fields from `defaultSave()`. Newer-than-current → best-effort normalize,
   raw copy kept in the backup key, notice in parent mode. Import uses the same path but refuses newer files.
 - **Hidden idea cards** (`hiddenIdeas`, v2): ids of built-in cards only (`content/ideas.ts`), in the order hidden;
   `normalize()` keeps only ids that are still built-in cards, each once (a grown-up's own cards are removed,
   never hidden). Rules in `model/ideas.ts` (Decision 85). Export/import carry it like any other field.
+- **Recovery code** (`parent.recoveryHash` + `parent.recoverySalt`, v3): `sha256(upanyway:recovery:<salt>:<code>)`
+  of the 12-character code (capitals, dashes and spaces removed), salt from `newId()`; both '' when there is no
+  code. `normalize()` keeps them only whole (a 64-hex hash with a salt), else both ''. Rules in `model/recovery.ts`
+  (Decision 87). Export/import carry them like the PIN.
 - **Reset** (parent, confirm + "Export first?"): copy current save to backup, write a fresh `defaultSave()`
   (never just delete), route to `#/setup`. Never `localStorage.clear()`, never touches caches.
 - **Export**: file `upanyway-backup-YYYY-MM-DD.json`. Buttons: "Share / Save to Files"
@@ -568,8 +589,11 @@ Failing pitch → edit the LEVEL. Never the validator, thresholds or tolerances.
   the word joins `glossarySeen`.
 - **First run** `#/setup/*` (target ≈ 150 s, every kid screen pre-filled with one big Next):
   - parent `hello` (what this is in 2 lines; tip to set up from the Home Screen icon when not standalone;
-    PIN pad, enter + confirm) ≈ 25 s → `names` (what she calls each parent, 1–4 fields; daily minutes
-    stepper, default 20) ≈ 20 s → `handover` ("Hand it to your climber") ≈ 5 s.
+    PIN pad, enter + confirm) ≈ 25 s → `recovery` (the recovery code, shown once: what it's for, the code in big
+    monospaced groups, "Write it down and keep it somewhere your climber won't find it.", "It won't be shown
+    again.", one big "I've written it down" that saves its hash; a reload before the tap shows a NEW code; the
+    guard keeps `names` closed until it's saved) ≈ 10 s → `names` (what she calls each parent, 1–4 fields; daily
+    minutes stepper, default 20; Back goes to `hello`) ≈ 20 s → `handover` ("Hand it to your climber") ≈ 5 s.
   - kid `climber` (designer, random starting look) ≈ 35 s → `goat` (the goat peeks out of the backpack,
     says it's scared of heights; name it, suggestions from `names.ts`) ≈ 20 s → `mountain` (name it,
     suggestions) ≈ 10 s → `lesson` (~20 s: goat prompts a leap to a ledge; then fall practice from a spot
@@ -630,8 +654,15 @@ Failing pitch → edit the LEVEL. Never the validator, thresholds or tolerances.
   both laughing → `summit.reached` (unlocks night + gear). Until `summit.finaleSeen`, every drawing of the
   goat (camp, wardrobe, cards) shows it in/peeking from the backpack. Night summit send: short ending (both
   splash in).
-- **Parent** `#/parent` (PIN pad; "Forgot PIN?" → 3 s press-and-hold, then a 2-digit × 2-digit product
-  written in words, typed as digits → set a new PIN; a deterrent, not security): settings (daily minutes,
+- **Parent** `#/parent` (PIN pad; "Forgot PIN?" → "Type your recovery code" (one text field, any case, spaces
+  and dashes ignored; a non-code says what's off — "never 0, O, 1, I or L" or how many characters — without
+  counting; a code that doesn't match: "That code doesn't match…"; after five, each try waits 30 s with the
+  button off) → the right code → choose a new PIN + confirm (saving it uses the old code up) → the new code shown
+  once → "I've written it down" → grown-ups' home. No code on the save → "This game has no recovery code yet":
+  why, how to set it up again on the device, and how to restore a backup and then make a code; no way round the
+  PIN. Grown-ups' home: a "No recovery code yet" note with "Make one now" while there is none. Change PIN: the PIN
+  pad, then a Recovery code panel (has one / none) with "Make a new recovery code" (shown once; replaces the old
+  one only on "I've written it down"; "Not now" changes nothing)): settings (daily minutes,
   sound master + music), Spotted! letter, Grown-ups' Wing flop, idea cards (add/remove her custom ones;
   never assign; "Built-in idea cards": every built-in card in her screen's groups and order, Oops Missions in
   their own section, each with a Shown/Hidden switch, hidden counts per group and in total, "Show all again"
@@ -674,9 +705,14 @@ Test mode never writes stats, poses, badges, stones or attempts.
 
 ## Testing
 
-- **Vitest** (node): migrations (v0 + v1 fixtures, v1 → v2 adds an empty `hiddenIdeas`, newer-version, corrupt →
-  backup, missing → fresh; normalize keeps only real built-in hidden ids, once each), export/import round-trip
-  (hidden idea cards included; a v1 backup restores with every card showing), reset keeps backup, hidden idea
+- **Vitest** (node): migrations (v0 + v1 + v2 fixtures, v1 → v2 adds an empty `hiddenIdeas`, v2 → v3 adds an empty
+  recovery code, newer-version, corrupt → backup, missing → fresh; normalize keeps only real built-in hidden ids, once
+  each, and a recovery code only whole), export/import round-trip (hidden idea cards and the recovery hash
+  included; a v1 backup restores with every card showing, a v2 one with no code), recovery codes
+  (`recovery.test.ts`: format + alphabet, every character equally likely, rejection sampling, forgiving input, a
+  salted hash never holding the code, verify, the wait after five, the grown-up words), first-run order (the code
+  step after the PIN, names closed until it's saved, an older save past the grown-ups' part not sent back), reset
+  keeps backup, hidden idea
   cards (`hiddenIdeas.test.ts`: hide/show/show all, only built-in ids, fully reversible, her brave things and
   plans untouched, `visibleIdeas` order, a whole group, test mode leaves it alone), stone limits (3/day + queue, letters 1/day, day change),
   climb-time daily cap, attempt counting (whippers/sends/slips/neutral hops), unlock rule (stones AND the
@@ -695,7 +731,12 @@ Test mode never writes stats, poses, badges, stones or attempts.
 - **Playwright** (webkit, `hasTouch`) against `vite preview` of the production build at `/upanyway/`,
   projects 820×1180, 1180×820, 390×844. Drags = dispatched `PointerEvent`s (`pointerType: 'touch'`) that
   start just outside the climber's hit radius; taps via `locator.tap()`. Every test fails on any
-  `console.error` / `pageerror`. Specs: `first-run` (incl. lesson; asserts tap count); `send-pitch1` (replays
+  `console.error` / `pageerror`. Specs: `first-run` (incl. lesson; asserts tap count ≤ 25, now 25 with the code's tap; the recovery code read
+  off its screen is the one saved, as a hash; a reload on it shows a new code and saves nothing); `recovery`
+  (Forgot PIN with the right code typed loosely → a new PIN → the new code shown once → old PIN and old code
+  refused, new ones work; codes that don't match → the gentle line, non-codes explained, five → the wait; a save
+  with no code → the plain explanation and the home's note; Change PIN → make a new code, "Not now", replace);
+  `send-pitch1` (replays
   `solutions.json`); `looks-scary`; `finale`; `brave` (every log step, "I already did it!" → Flopped → cairn
   → Hall of Flops → Weather Station empty state; "I'll do it later" → Plans → Not today → Make it smaller →
   I did it!); `unlock` (after the first run: p02's card names Pitch 1, p03's names Pitch 2 and a stone; one
@@ -711,7 +752,8 @@ Test mode never writes stats, poses, badges, stones or attempts.
   her plan from the card untouched. Seeded with a whole group hidden: no heading or jump chip for it → the
   downloaded backup holds the hidden ids → Show all again → restoring the file hides them again); `testmode`
   (everything open + night, a test-mode climb records nothing, off → deep-equal save); `letters` (bonus
-  stone today; a second letter's stone waits); fear-scale targets ≥ 48 px on the phone (checkScreen on the
+  stone today; a second letter's stone waits); `keyboard` (also the recovery code field behind "Forgot PIN?");
+  fear-scale targets ≥ 48 px on the phone (checkScreen on the
   log's weather steps). Stage 7: offline relaunch (SW controller → `setOffline` → reload → camp + climb;
   Chromium fallback if WebKit can't drive it, logged as a Known issue).
 
@@ -779,8 +821,8 @@ Test mode never writes stats, poses, badges, stones or attempts.
     `upanyway:` caches are ever deleted. DEPLOY.md explains how to force an update on the iPad.
 12. **The brief stays in `.brief/` (gitignored)**; this file carries the de-personalised checklist. No
     `author` in package.json; LICENSE holder "Up Anyway contributors"; fixtures use generic names.
-13. **Forgot PIN = 3 s press-and-hold + a 2-digit × 2-digit product written in words.** A deterrent beyond
-    her school maths, not security.
+13. ~~**Forgot PIN = 3 s press-and-hold + a 2-digit × 2-digit product written in words.** A deterrent beyond
+    her school maths, not security.~~ **Superseded by Decision 87** (owner follow-up): a one-time recovery code.
 14. **Looks Scary prompts are asked the first time each zone's moment is met**; replays show the reveal
     only. Weather Station + the stormy-5 badge use real brave things only.
 15. **Whipper definition** covers rope catches, slips onto a lower non-route ledge (> 40 units down), and
@@ -917,7 +959,7 @@ Test mode never writes stats, poses, badges, stones or attempts.
 55. **Parent mode:** switching test mode either way clears the test-mode climbs (`clearTestRuns`), so her
     real runs come back exactly as they were. A grown-up can take back an unopened letter (no stone yet);
     opened letters stay. Settings allow 5–120 minutes (first run offers 5–60). "Share / Save to Files"
-    only where the browser can share files. A restore brings back the backup's PIN and names; a backup
+    only where the browser can share files. A restore brings back the backup's PIN, recovery code and names; a backup
     made before the first run finished resumes at `#/setup`. "Restart now" reloads into the PIN door.
 56. **Test mode never changes the real-life half:** brave things, letters, flops and ideas added in test
     mode are real (stones and all); only climbs record nothing. The Settings page says so.
@@ -1056,6 +1098,38 @@ Test mode never writes stats, poses, badges, stones or attempts.
     `GOAT_LINES` line or `SCRIPTED` beat isn't placed exactly once (a beat that also sits in a group is listed
     there only), or while a group's `{slot}` has no note; `npm run review` (UPDATE_REVIEW=1) writes the file.
     Content wording was not changed. check:stubs also scans REVIEW.md.
+87. **PIN recovery: a one-time recovery code (owner follow-up after Stage 7; supersedes 13).** The times-table
+    question was a deterrent a determined kid could get past and a grown-up could fumble; a code written down at
+    setup is something only the grown-up has. **The code** (`model/recovery.ts`): 12 characters from
+    `23456789ABCDEFGHJKMNPQRSTUVWXYZ` (no 0/O, 1/I/L, so nothing is misread), from `crypto.getRandomValues` via
+    `randomBytes` (Math.random fallback) with rejection sampling (bytes ≥ 248 thrown away, so all 31 are equally
+    likely; 31^12 ≈ 8 × 10^17), shown as three groups ("K7QM-4XPA-TR9D"), monospaced and selectable (screen readers
+    get it spelled out). **Saved only as a salted SHA-256** (`model/hash.ts`, like the PIN) in
+    `parent.recoveryHash` + `recoverySalt` — never the code, never in the DOM after its screen goes. Typing is
+    forgiving: any case; spaces and any kind of dash ignored. **Shown once, saved on the tap:** at first run right
+    after the PIN is confirmed (`#/setup/recovery`, its own step: the guard opens it only while there's a PIN and
+    no saved code, and keeps `names` closed until it is saved), the hash is written only on "I've written it
+    down"; a reload before that mounts the screen again with a NEW code (never re-shown). A save from before codes
+    that is already past the grown-ups' part carries on with her steps (no grown-up screen in the middle of hers).
+    One more first-run tap: 24 → 25 measured, still within the e2e budget of 25 (unchanged). **Forgot PIN** (`screens/parent/gate.ts`): a plain button
+    → the code field → the right code → a new PIN (enter + confirm). Saving the PIN clears the old code there and
+    then (used up); a new code is shown once with the same "I've written it down" (until then — a reload, Back to
+    camp — there is no code and the grown-ups' home says so). Codes that don't match get a gentle line; input that
+    can't be a code (wrong length, or a character the alphabet never uses) says what's off and isn't counted.
+    After five that don't match in a row, every further try waits 30 s (`recoveryWaitMs`), the count kept while
+    the app is open; no lockout — the code space makes guessing pointless, this only slows a guesser. **No code on
+    the save** (games from before v3): a plain explanation — the PIN can't be reset here; set it up again by
+    deleting the Home Screen icon (this deletes the game on that device) and re-adding it; if there's a backup,
+    restore it straight after the new setup and make a recovery code before leaving the grown-ups' pages (the
+    backup brings its old PIN back; the session is still open, so "Make a new recovery code" works, then "Forgot
+    PIN?" sets a new PIN). No back door. **Parent mode:** Change PIN has a Recovery code panel (has one / none)
+    and "Make a new recovery code" (being on the page already needed the PIN; the new code replaces the old only on
+    "I've written it down"; "Not now" changes nothing); the grown-ups' home shows "No recovery code yet" with "Make
+    one now" (→ `#/parent/pin?make=1`, the code at once) while there is none. **Schema v3**, a real v2 → v3
+    migration adding an empty code; `normalize()` keeps a code only whole (64-hex hash + salt), else none. A restore
+    brings back the backup's PIN and code (the restore note says so). Copy: `GATE_COPY` (code, noCode),
+    `RECOVERY_COPY`, `PARENT_COPY.pin.recovery`, `PARENT_COPY.home.noRecovery` — grown-up words only; a unit test
+    keeps "recovery" and "Forgot PIN" out of every kid-facing string.
 
 ## Difficulty ramp (validator report, mean success % of the searched input space / min margin)
 

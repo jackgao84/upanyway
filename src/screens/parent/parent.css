@@ -1213,6 +1213,22 @@ textarea.pp-letter__input {
 .pp-pin__note {
   margin-top: 4px;
 }
+.pp-pin__main {
+  width: 100%;
+}
+/* The recovery code panel under the pad, and the new code in its place while it shows. */
+.pp-recovery {
+  width: 100%;
+  margin-top: 10px;
+  text-align: left;
+}
+.pp-recovery__status {
+  color: var(--ink);
+  font-weight: 750;
+}
+.pp-pin__show {
+  width: 100%;
+}
 
 /* ------------------------------------------------------------------------------------------ */
 /* Phones */

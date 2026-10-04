@@ -2,7 +2,8 @@
  * The route table and the guard that keeps the first run in order.
  *
  * Guard rules:
- * - Until the grown-up part is done, only /setup/hello and /setup/names (names needs a PIN first).
+ * - Until the grown-up part is done, only /setup/hello, then /setup/recovery (needs a PIN, until the
+ *   recovery code is saved) and /setup/names (needs the PIN and the recovery code).
  * - Until the whole first run is done, only /setup/* — her steps up to where she has got to
  *   (and the designer, which the hand-over screen opens). Anything else resumes the first run.
  * - Once it is done, /setup/* goes to camp (a parent reset makes a fresh save, so setup opens again).
@@ -33,9 +34,9 @@ import { helloScreen } from '../screens/setup/hello'
 import { lessonScreen } from '../screens/setup/lesson'
 import { mountainScreen } from '../screens/setup/mountain'
 import { namesScreen } from '../screens/setup/names'
+import { recoveryScreen } from '../screens/setup/recovery'
 import { wardrobeScreen } from '../screens/wardrobe'
 import { weatherScreen } from '../screens/weather'
-import { hasPin } from '../model/pin'
 import type { SaveData } from '../storage/schema'
 import { isParentUnlocked, KID_STEPS, lockParent, save, setupPath, setupStep, type KidStep } from './context'
 import type { Guard, Route, RouteMatch, Screen } from './router'
@@ -47,6 +48,7 @@ export const ROUTES: Route[] = [
   { pattern: '/', screen: redirectOnly },
   { pattern: '/setup', screen: redirectOnly },
   { pattern: '/setup/hello', screen: helloScreen },
+  { pattern: '/setup/recovery', screen: recoveryScreen },
   { pattern: '/setup/names', screen: namesScreen },
   { pattern: '/setup/handover', screen: handoverScreen },
   { pattern: '/setup/climber', screen: climberScreen },
@@ -86,7 +88,8 @@ function setupRedirect(path: string, d: SaveData): string | null {
   const step = path.slice('/setup/'.length)
   if (!d.setup.parentDone) {
     if (step === 'hello') return null
-    if (step === 'names') return hasPin(d.parent) ? null : '/setup/hello'
+    // The code screen only while there's a PIN and no saved code; names only once both are saved.
+    if (step === 'recovery' || step === 'names') return path === resume ? null : resume
     return resume
   }
   const i = KID_STEPS.indexOf(step as KidStep)
