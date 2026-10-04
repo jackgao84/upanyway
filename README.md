@@ -31,8 +31,14 @@ npm test             # unit tests + the level validator
 npm run validate     # the level validator only
 npm run e2e          # Playwright (WebKit, touch) against a production build
 npm run check:stubs  # no unfinished-work markers, skipped tests or empty content lists
+npm run review       # rebuild REVIEW.md after changing ideas or goat lines
 npm run build        # dist/ for GitHub Pages
 ```
+
+**[REVIEW.md](REVIEW.md)** lists every built-in brave idea, Oops Mission and goat line in one place,
+grouped the way they come up in the game. It is generated from `src/content/ideas.ts` and
+`src/content/goatLines.ts`; after editing either, run `npm run review` (`npm test` fails while it is
+out of date).
 
 ### Levels are data, proven by a validator
 

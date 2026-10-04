@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const DIRS = ['src', 'tests', 'e2e', 'scripts', 'public']
-const FILES = ['index.html', 'README.md', 'DEPLOY.md']
+const FILES = ['index.html', 'README.md', 'DEPLOY.md', 'REVIEW.md']
 const SKIP = new Set(['node_modules', 'dist', '.brief', '.git', 'test-results', 'playwright-report'])
 const TEXT = /\.(ts|js|mjs|css|html|json|webmanifest|md)$/
 const SELF = 'scripts/check-stubs.mjs'
