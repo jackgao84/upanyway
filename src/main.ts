@@ -55,13 +55,15 @@ applyUpdateIfSafe()
 // writes only unsaved changes, so a second tab of the app never rewinds the save when it is hidden.
 window.addEventListener('pagehide', () => store.flush())
 // Another tab of the app saved: take its copy (Safari tabs, or a browser tab beside the installed app).
+// Another app on the shared origin removed this app's keys (its localStorage.clear()): write them
+// straight back. See Store.externalWrite.
 window.addEventListener('storage', (e) => {
   try {
     if (e.storageArea && e.storageArea !== window.localStorage) return
   } catch {
     return
   }
-  store.externalWrite(e.key, e.newValue)
+  store.externalWrite(e)
 })
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') store.flush()

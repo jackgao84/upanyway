@@ -36,6 +36,22 @@
     PW_WORKERS=2, all three projects) 88 passed + 2 skipped (the phone-only sideways-keyboard test on the two
     iPad projects), zero console errors; first run 25 taps (was 24); `recovery` and `first-run` re-run on the
     final build: 12 + 9 passed. No level data, goat lines or ideas changed.
+  - [x] **Privacy and shared-origin pass** (Decision 88). A scan of every commit, message, author/committer field
+    and the working tree found no age, health term, school or place name, family name, or the owner's old name
+    or email; four comment/doc lines that echoed the private brief's audience now say "a young climber" and point
+    to `.brief/` for audience and reading level. Those rewordings and every commit's author + committer (the
+    owner's GitHub handle + noreply address) went into one history rewrite, before anything was pushed. Shared
+    origin: every key and cache was already `upanyway:`-prefixed, the worker deletes only its own caches and
+    reset never clears storage, so no key was renamed and no save needs migrating. New: if another app on the
+    origin removes this app's keys while it is open (`localStorage.clear()`), the app writes its save and backup
+    straight back; a changed key (a reset or restore in another tab) is still taken, never undone.
+    An independent read-only review (three reviewers, each finding verified) found four races in the first
+    version of the write-back, all fixed and unit-tested (Decision 88 a–c and the backup re-read). Checked:
+    typecheck clean; check:stubs clean; validate 21 + 17 passed; vitest 542/542 in 43 files (each new
+    write-back test fails with its fix knocked out); review 5/5, REVIEW.md unchanged; Playwright (the whole
+    suite, PW_WORKERS=2, all three projects) 91 passed + 2 skipped (the phone-only sideways-keyboard test on the
+    two iPad projects), zero console errors, including the new `shared-origin` spec (it fails on the code from
+    before the write-back). No level data, goat lines or ideas changed.
 - **Final verification (Stage 7):**
   - `npm run typecheck` — clean (both configs).
   - `npm run check:stubs` — clean (no unfinished-work markers, skipped tests or empty content lists).
@@ -47,8 +63,8 @@
     touch drags; Looks Scary; finale; log a brave thing; plans; unlock Pitch 3; every camp + parent screen;
     letters; backup export → reset → import; test mode; keyboard; two tabs; offline with the server stopped).
   - `npm run build` — dist 1.3 MB (JS 785 KB, 254 KB gzipped; CSS 133 KB; 2 font files); 11 files precached.
-- **Owner actions:** see Known issues (commit author identity before the first push; one Airplane Mode check
-  on the real iPad).
+- **Owner actions:** see Known issues (one Airplane Mode check on the real iPad); then create the GitHub repo and
+  push (DEPLOY.md).
 
 ## How to resume
 
@@ -718,7 +734,12 @@ Test mode never writes stats, poses, badges, stones or attempts.
   climb-time daily cap, attempt counting (whippers/sends/slips/neutral hops), unlock rule (stones AND the
   pitch below sent: 0 stones → p01 only, p02 once p01 is sent; stones but no send; a send but no stones;
   both; night sends don't count; waiting stones don't; test mode; `lockReason` agrees with every helper),
-  unlockables derivation, badge triggers, storage-key prefix scan,
+  unlockables derivation, badge triggers, storage-key prefix scan, two tabs on one storage, another app's
+  `clear()` / `removeItem` written back (unsaved changes and a failed earlier write included; a key another tab
+  already restored left alone unless it is a plain write-back of the save this tab's unsaved changes build on;
+  a save event handled after the clear takes the event's copy, in either tab order; the backup a newer version's
+  save made; never over storage it can't read, never after the browser itself cleared the site's data) while a
+  reset or restore in another tab — even one made between the clear and this tab's turn — is taken, never undone,
   content rules (goat lines, banned phrases, ≥ 30 ideas, ≥ 16 oops, 16 poses, ≥ 40 unlockables, glossary
   definitions ≤ 12 words, no empty arrays), beta classification, goat picker (moral cap, no fear input),
   and the level validator. `review.test.ts` builds REVIEW.md from the content (every goat line and story
@@ -753,6 +774,9 @@ Test mode never writes stats, poses, badges, stones or attempts.
   downloaded backup holds the hidden ids → Show all again → restoring the file hides them again); `testmode`
   (everything open + night, a test-mode climb records nothing, off → deep-equal save); `letters` (bonus
   stone today; a second letter's stone waits); `keyboard` (also the recovery code field behind "Forgot PIN?");
+  `shared-origin` (a stand-in other app at `/otherapp/` on the same origin calls `localStorage.clear()` → the open
+  app writes back its save, deep-equal with every stone and stat, and its backup, while the other app's keys stay
+  cleared; then a changed save from elsewhere is taken and not written over);
   fear-scale targets ≥ 48 px on the phone (checkScreen on the
   log's weather steps). Stage 7: offline relaunch (SW controller → `setOffline` → reload → camp + climb;
   Chromium fallback if WebKit can't drive it, logged as a Known issue).
@@ -1130,28 +1154,39 @@ Test mode never writes stats, poses, badges, stones or attempts.
     brings back the backup's PIN and code (the restore note says so). Copy: `GATE_COPY` (code, noCode),
     `RECOVERY_COPY`, `PARENT_COPY.pin.recovery`, `PARENT_COPY.home.noRecovery` — grown-up words only; a unit test
     keeps "recovery" and "Forgot PIN" out of every kid-facing string.
-
-## Difficulty ramp (validator report, mean success % of the searched input space / min margin)
-
-| zone | pitches | mean success | min margin |
-|---|---|---|---|
-| Meadow | p01 8.9 · p02 9.0 · p03 8.5 | ≈ 8.8 | ×1.25 |
-| Firefly Hollow | p04 9.2 · p05 9.0 · p06 8.7 | ≈ 9.0 | ×1.00 (p05) |
-| Crumble Cliffs | p07 8.1 · p08 7.9 · p09 6.9 | ≈ 7.6 | ×1.00 |
-| Gusty Ridge | p10 6.7 · p11 6.4 · p12 5.7 | ≈ 6.3 | ×1.00 |
-| Cloud Steps | p13 7.3 · p14 7.3 · p15 6.3 | ≈ 7.0 | ×1.00 |
-| Summit | p16 7.9 | 7.9 | ×1.25 |
-
-Holds make Firefly Hollow about as forgiving as the meadow (holds catch from any direction); wind makes Gusty
-Ridge the hardest zone by this metric, and the fog zone's Big Leaps are deliberately generous. Real difficulty
-for her also comes from the mechanic (crumbles, gust timing, hidden landings), which this metric can't see.
+88. **Another app's `clear()` is written back; changes never are (owner follow-up after Stage 7).** The origin
+    (`<handle>.github.io`) is shared with another app, and one careless `localStorage.clear()` there would wipe her
+    save. `Store.externalWrite` (fed the window `storage` event, which a page's change sends to every OTHER document
+    of the origin) now also handles removals: key `null` (a `clear()`) or `upanyway:save` / `upanyway:save:backup`
+    with no new value → write back whichever of the two is missing, from this tab's live document (unsaved changes
+    included) and the backup as last seen (read at load, after taking another tab's save — loading an older or
+    newer version's save writes the backup with no event — and on this tab's own backups and other tabs' backup
+    events). **Only removals:** the app itself never removes its keys (reset and restore overwrite them), so a
+    removal by a page always comes from outside; a changed key is another tab's save, reset or restore and is
+    taken as before, so it is never undone. Other apps' keys are never touched, removed or not. Details, each from
+    a reviewed race and unit-tested: (a) a removal with no page URL is the browser clearing the site's data (a
+    grown-up's choice; Chromium sends it with an empty `url`, WebKit sends no event at all — probed) and is left
+    alone; (b) a key that is present again (another open tab of the app got there first) is left alone, except
+    when this tab has unsaved changes and what was put back is exactly the save it last had in step
+    (`syncedText`, compared ignoring key order): then its copy is that save plus its changes and is written —
+    anything else there (a reset or restore made in between) wins; (c) taking another tab's save reads storage
+    (the latest write) but, if a `clear()` has emptied it since (a background tab handles its queued events late),
+    the event's own copy — never a fresh game; (d) nothing is written when storage can't be read. Limits: it works
+    only while the app is open; a closed app can't undo a `clear()`, so Export backups remain the safety net
+    (Known issues). No key was renamed in this pass, so no migration was needed.
 
 ## Known issues
 
-- **Owner action before the first push:** every commit so far carries the owner's real name and personal email
-  as author/committer, and `git config user.email` is still that address. DEPLOY.md ("Before the first push")
-  says how to switch to the GitHub handle + noreply address and, if wanted, rewrite the existing commits. No git
-  writes were made by the audit or the fixes.
+- **Commit identity:** every commit is authored and committed as the owner's GitHub handle + noreply address
+  (history rewritten before any push; nothing has been pushed yet). DEPLOY.md ("Before the first push") keeps the
+  steps for anyone forking the repo.
+- **Shared origin, outside this app's control:** another app on `<handle>.github.io` that calls
+  `localStorage.clear()` while Up Anyway is closed takes her save with it (Decision 88 writes it back only while
+  the app is open); one that deletes caches it doesn't own takes the `upanyway:` precache with it, and the worker
+  only fills that cache when it installs, so offline play stops working in that browser until the next deploy
+  (online play is unaffected, and so is the iPad's Home Screen app, whose storage is separate from Safari's); one that registers a
+  root-scoped service worker can answer `/upanyway/` on a very first visit (DEPLOY.md §6). Storage quota is per origin and shared (write failures show on the grown-ups' data page);
+  `navigator.storage.persist()` is granted per origin, so it covers both apps. Export backups are the safety net.
 - **Checked in WebKit, not on a physical iPad:** the keyboard spec uses a stand-in `visualViewport` (iPad
   370/410 px, phone 336 px, phone sideways 200 px). The offline spec goes offline for real by stopping its own
   preview server (Playwright's WebKit can't navigate after `setOffline` or through request interception).

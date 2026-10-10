@@ -32,6 +32,14 @@ export class MemoryStorage implements StorageLike {
 
 type Listener = (data: SaveData) => void
 
+/** What `Store.externalWrite` needs from a window 'storage' event (a StorageEvent fits). */
+export interface StorageChange {
+  key: string | null
+  newValue: string | null
+  /** The page that made the change; empty when the browser itself cleared the site's data. */
+  url: string
+}
+
 export class Store {
   private doc: SaveData
   private listeners = new Set<Listener>()
@@ -41,6 +49,14 @@ export class Store {
    * a tab that changed nothing never writes its (possibly stale) copy over another tab's save.
    */
   private dirty = false
+  /** The backup as last seen in storage, so a backup removed from outside can be written back. */
+  private backupText: string | null = null
+  /**
+   * The save as this tab last had it in step with storage (loaded, written, or taken from another
+   * tab), without its unsaved changes. After a removal it tells another tab's plain write-back of
+   * that same save (this tab's unsaved changes are newer) from a real new write such as a reset.
+   */
+  private syncedText: string | null = null
   /** How the document was loaded (fresh / migrated / recovered from backup / newer-version notice). */
   readonly loadInfo: LoadResult['info']
   /** Set when the stored save could not be written (e.g. storage full). Shown in parent mode. */
@@ -53,10 +69,12 @@ export class Store {
     const result = loadSave(storage)
     this.doc = result.data
     this.loadInfo = result.info
+    this.syncedText = JSON.stringify(this.doc)
     if (result.info.kind === 'migrated' || result.info.kind === 'recovered' || result.info.kind === 'fresh') {
       this.dirty = true
       this.flush()
     }
+    this.backupText = this.read(KEYS.backup)
   }
 
   /** The live document. Treat as read-only outside `update()`. */
@@ -87,19 +105,42 @@ export class Store {
   }
 
   /**
-   * Another tab or window of the app (same origin, same storage) wrote the save: take its copy, so
-   * this one never writes stale data back over it. Wired to the window 'storage' event in main.ts
-   * (the browser fires it only in the OTHER tabs). A change this tab made in the last moment before
-   * (still debounced) gives way to the other tab's newer write.
+   * Something else on this origin changed storage. Wired to the window 'storage' event in main.ts
+   * (a page's change reaches the OTHER tabs and windows of the origin, never its own).
+   * - Another tab of the app wrote the save: take its copy, so this one never writes stale data back
+   *   over it. A change this tab made in the last moment before (still debounced) gives way to it.
+   *   Storage is read now (the latest write); if a clear() has emptied it since, the event's own copy.
+   * - Another tab wrote the backup: remember it.
+   * - A page removed this app's save or backup (key null = another app on the shared origin called
+   *   localStorage.clear()): write this tab's copy straight back. Only removals: a changed key is
+   *   another tab's reset or restore, which is taken, never undone. The app itself never removes
+   *   its keys, so such a removal always comes from outside it. A removal with no page URL is the
+   *   browser clearing the site's data (a grown-up's choice, Clear-Site-Data): left alone.
    */
-  externalWrite(key: string | null, newValue: string | null): void {
-    if (key !== KEYS.save || newValue === null) return
+  externalWrite({ key, newValue, url }: StorageChange): void {
+    if (key !== null && key !== KEYS.save && key !== KEYS.backup) return
+    if (key === null || newValue === null) {
+      if (url) this.writeBackRemoved()
+      return
+    }
+    if (key === KEYS.backup) {
+      this.backupText = newValue
+      return
+    }
     if (this.timer) {
       clearTimeout(this.timer)
       this.timer = null
     }
-    this.doc = loadSave(this.storage).data
+    const latest: StorageLike = {
+      getItem: (k) => (k === KEYS.save ? (this.read(KEYS.save) ?? newValue) : this.storage.getItem(k)),
+      setItem: (k, v) => this.storage.setItem(k, v),
+      removeItem: (k) => this.storage.removeItem(k),
+    }
+    this.doc = loadSave(latest).data
+    this.syncedText = JSON.stringify(this.doc)
     this.dirty = false
+    // Loading an older or newer version's save writes the backup here, which no event reports.
+    this.backupText = this.read(KEYS.backup)
     this.emit()
   }
 
@@ -119,7 +160,9 @@ export class Store {
     }
     if (!this.dirty) return
     try {
-      this.storage.setItem(KEYS.save, JSON.stringify(this.doc))
+      const text = JSON.stringify(this.doc)
+      this.storage.setItem(KEYS.save, text)
+      this.syncedText = text
       this.dirty = false
       this.lastWriteError = null
     } catch (err) {
@@ -138,9 +181,52 @@ export class Store {
     try {
       if (holdsNewerSave(this.storage.getItem(KEYS.backup))) return
       const current = this.storage.getItem(KEYS.save)
-      if (current) this.storage.setItem(KEYS.backup, current)
+      if (current) {
+        this.storage.setItem(KEYS.backup, current)
+        this.backupText = current
+      }
     } catch (err) {
       console.warn('[upanyway] backup failed', err)
+    }
+  }
+
+  /**
+   * Put back whichever of the save and backup is missing from storage, from this tab's copies (the
+   * live document, unsaved changes included, and the backup as last seen). A key that is present
+   * again (another open tab got there first) is left alone, with one exception: when this tab has
+   * unsaved changes and what was put back is exactly the save it last had in step, its own copy is
+   * that save plus those changes, so it is written. Anything else there (a reset or restore made
+   * since) wins. Nothing is written when storage can't be read.
+   */
+  private writeBackRemoved(): void {
+    const save = this.peek(KEYS.save)
+    if (save === null || (save !== undefined && this.dirty && sameSave(save, this.syncedText))) {
+      this.dirty = true
+      this.flush()
+    }
+    if (this.backupText === null || this.peek(KEYS.backup) !== null) return
+    try {
+      this.storage.setItem(KEYS.backup, this.backupText)
+    } catch (err) {
+      console.warn('[upanyway] backup failed', err)
+    }
+  }
+
+  /** A stored value: null when storage answers that it isn't there, undefined when it can't be read. */
+  private peek(key: string): string | null | undefined {
+    try {
+      return this.storage.getItem(key)
+    } catch {
+      return undefined
+    }
+  }
+
+  /** A stored value, or null when it is missing or storage can't be read. */
+  private read(key: string): string | null {
+    try {
+      return this.storage.getItem(key)
+    } catch {
+      return null
     }
   }
 
@@ -155,6 +241,27 @@ export class Store {
   private emit(): void {
     for (const fn of [...this.listeners]) fn(this.doc)
   }
+}
+
+/** True when two saves hold the same document (key order aside). */
+function sameSave(a: string, b: string | null): boolean {
+  if (b === null) return false
+  if (a === b) return true
+  try {
+    return sameJson(JSON.parse(a), JSON.parse(b))
+  } catch {
+    return false
+  }
+}
+
+function sameJson(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b)) return false
+  const ka = Object.keys(a)
+  if (ka.length !== Object.keys(b).length) return false
+  return ka.every(
+    (k) => Object.hasOwn(b, k) && sameJson((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]),
+  )
 }
 
 /** True when `text` is a save written by a newer version of the app. */

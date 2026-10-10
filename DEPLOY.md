@@ -114,3 +114,11 @@ The other app should play by the same rules. In particular, it must **not** regi
 worker at the site root (`/`) that answers every page with its own fallback page: such a worker can
 catch `/upanyway/` on the very first visit, before Up Anyway's own worker has installed. If the
 other app lives at its own path (for example `/otherapp/`) with its worker scoped there, all is well.
+
+It must also never wipe storage it doesn't own: no `localStorage.clear()`, and no deleting caches
+whose names don't start with its own prefix. If it does clear storage while Up Anyway is open, Up
+Anyway notices and writes its saved game straight back. If Up Anyway is closed at that moment, the
+saved game is gone, which is one more reason to keep a recent backup (section 5). If it deletes Up
+Anyway's cache, the game still plays online but not offline in that browser until the next update
+of Up Anyway is published (section 4). On the iPad, the Home Screen app keeps its own storage,
+separate from Safari's, so the other app open in Safari can't reach it.
